@@ -23,7 +23,9 @@ class Lexer:
         *,
         limits: ParseLimits | None = None,
     ) -> None:
-        self._source = source if isinstance(source, SourceText) else SourceText(source)
+        self._source = (
+            source if isinstance(source, SourceText) else SourceText(source)
+        )
         self._limits = limits or ParseLimits()
         self._index = 0
         self._line = 1
@@ -38,7 +40,13 @@ class Lexer:
             if self._is_at_end():
                 break
             tokens.append(self._next_token())
-        tokens.append(self._make_token(TokenKind.EOF, "", self._current_position()))
+        tokens.append(
+            self._make_token(
+                TokenKind.EOF,
+                "",
+                self._current_position(),
+            )
+        )
         return tuple(tokens)
 
     def _next_token(self) -> Token:

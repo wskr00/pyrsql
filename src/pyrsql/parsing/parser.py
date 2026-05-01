@@ -2,9 +2,9 @@
 
 from pyrsql.parsing.ast import Argument
 from pyrsql.parsing.ast import ComparisonNode
+from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.ast import LogicalNode
 from pyrsql.parsing.ast import LogicalOperator
-from pyrsql.parsing.ast import Node
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
 from pyrsql.parsing.limits import ParseLimits
@@ -29,13 +29,13 @@ class Parser:
         self._index = 0
         self._node_count = 0
 
-    def parse(self) -> Node:
+    def parse(self) -> Expression:
         """Parses the configured query into an AST."""
         node = self._parse_or_expression(depth=1)
         self._expect(TokenKind.EOF, message="Unexpected trailing tokens")
         return node
 
-    def _parse_or_expression(self, depth: int) -> Node:
+    def _parse_or_expression(self, depth: int) -> Expression:
         """Parses OR-precedence logical expressions."""
         self._enforce_depth(depth)
         nodes = [self._parse_and_expression(depth + 1)]
@@ -45,7 +45,7 @@ class Parser:
             return nodes[0]
         return self._make_logical_node(LogicalOperator.OR, nodes)
 
-    def _parse_and_expression(self, depth: int) -> Node:
+    def _parse_and_expression(self, depth: int) -> Expression:
         """Parses AND-precedence logical expressions."""
         self._enforce_depth(depth)
         nodes = [self._parse_primary_expression(depth + 1)]
@@ -55,7 +55,7 @@ class Parser:
             return nodes[0]
         return self._make_logical_node(LogicalOperator.AND, nodes)
 
-    def _parse_primary_expression(self, depth: int) -> Node:
+    def _parse_primary_expression(self, depth: int) -> Expression:
         """Parses grouped or comparison expressions."""
         self._enforce_depth(depth)
         if self._current().kind is TokenKind.LPAREN:
@@ -87,7 +87,12 @@ class Parser:
         operator = OPERATORS_BY_SPELLING[operator_token.lexeme]
         arguments = self._parse_arguments()
         self._validate_argument_count(operator_token, operator, arguments)
-        return self._make_comparison_node(selector, operator_token, operator, arguments)
+        return self._make_comparison_node(
+            selector,
+            operator_token,
+            operator,
+            arguments,
+        )
 
     def _parse_arguments(self) -> tuple[Argument, ...]:
         """Parses comparison arguments."""
@@ -107,7 +112,10 @@ class Parser:
 
     def _parse_argument_list(self) -> tuple[Argument, ...]:
         """Parses a parenthesized argument list."""
-        self._expect(TokenKind.LPAREN, message="Expected '(' to start argument list")
+        self._expect(
+            TokenKind.LPAREN,
+            message="Expected '(' to start argument list",
+        )
         arguments: list[Argument] = []
         if self._current().kind is TokenKind.RPAREN:
             self._advance()
@@ -122,7 +130,9 @@ class Parser:
                     ),
                     span=self._current().span,
                 )
-            argument_token = self._expect_value("Expected an argument inside list")
+            argument_token = self._expect_value(
+                "Expected an argument inside list"
+            )
             arguments.append(self._make_argument(argument_token))
             if self._match(TokenKind.COMMA):
                 continue
@@ -161,7 +171,7 @@ class Parser:
     def _make_logical_node(
         self,
         operator: LogicalOperator,
-        children: list[Node],
+        children: list[Expression],
     ) -> LogicalNode:
         """Builds a logical node while tracking parser limits."""
         self._register_node()
@@ -196,7 +206,11 @@ class Parser:
             span=token.span,
         )
 
-    def _rebuild_with_span(self, node: Node, span: SourceSpan) -> Node:
+    def _rebuild_with_span(
+        self,
+        node: Expression,
+        span: SourceSpan,
+    ) -> Expression:
         """Returns a copy of a node with an updated span."""
         if isinstance(node, ComparisonNode):
             return ComparisonNode(

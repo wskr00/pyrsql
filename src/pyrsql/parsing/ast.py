@@ -45,4 +45,7 @@ class LogicalNode(Node):
     """Logical expression with two or more child nodes."""
 
     operator: LogicalOperator
-    children: tuple[Node, ...]
+    children: tuple["Expression", ...]
+
+
+Expression = ComparisonNode | LogicalNode
