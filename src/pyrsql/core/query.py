@@ -5,22 +5,24 @@ from dataclasses import dataclass
 from pyrsql.backends.base import Backend
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
-from pyrsql.parsing.ast import Node
+from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
+from pyrsql.semantic.analyzer import SemanticAnalyzer
+from pyrsql.semantic.ast import SemanticExpression
 
 
 @dataclass(frozen=True, slots=True)
 class Query:
     """Represents a backend-neutral parsed query request.
 
-    The custom lexer, parser, and AST are still pending. For now, the query
-    object preserves the raw text and project-wide options so the public API
-    and backend contracts can evolve independently from parser internals.
+    The query preserves the raw text, the parsed expression tree, and the
+    backend-neutral semantic representation used by later compilation steps.
     """
 
     text: str
     options: QueryOptions
-    expression: Node | None = None
+    expression: Expression | None = None
+    semantic_expression: SemanticExpression | None = None
 
     @classmethod
     def parse(
@@ -31,15 +33,38 @@ class Query:
     ) -> "Query":
         """Creates a query object from raw RSQL text."""
         resolved_options = options or QueryOptions()
-        expression = Parser(
-            query_text,
-            limits=resolved_options.parse_limits,
-        ).parse()
+        expression = cls.parse_expression(query_text, options=resolved_options)
+        semantic_expression = cls.analyze_expression(
+            expression,
+            options=resolved_options,
+        )
         return cls(
             text=query_text,
             options=resolved_options,
             expression=expression,
+            semantic_expression=semantic_expression,
         )
+
+    @staticmethod
+    def parse_expression(
+        query_text: str,
+        *,
+        options: QueryOptions,
+    ) -> Expression:
+        """Parses raw query text into a syntax tree."""
+        return Parser(
+            query_text,
+            limits=options.parse_limits,
+        ).parse()
+
+    @staticmethod
+    def analyze_expression(
+        expression: Expression,
+        *,
+        options: QueryOptions,
+    ) -> SemanticExpression:
+        """Analyzes a syntax tree into a semantic expression."""
+        return SemanticAnalyzer(options).analyze(expression)
 
     def compile(self, *, backend: Backend) -> CompilationResult:
         """Compiles the query using the provided backend."""
