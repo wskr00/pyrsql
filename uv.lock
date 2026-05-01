@@ -324,6 +324,11 @@ version = "0.1.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
+sqlalchemy = [
+    { name = "sqlalchemy" },
+]
+
+[package.dev-dependencies]
 dev = [
     { name = "black" },
     { name = "isort" },
@@ -331,20 +336,39 @@ dev = [
     { name = "pylint" },
     { name = "pytest" },
 ]
-sqlalchemy = [
-    { name = "sqlalchemy" },
+format = [
+    { name = "black" },
+    { name = "isort" },
+]
+lint = [
+    { name = "pylint" },
+]
+test = [
+    { name = "pytest" },
+]
+typing = [
+    { name = "mypy" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
-    { name = "isort", marker = "extra == 'dev'", specifier = ">=5.13.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10.0" },
-    { name = "pylint", marker = "extra == 'dev'", specifier = ">=3.2.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.2.0" },
-    { name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0,<3.0" },
+requires-dist = [{ name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0,<3.0" }]
+provides-extras = ["sqlalchemy"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black", specifier = ">=24.0.0" },
+    { name = "isort", specifier = ">=5.13.0" },
+    { name = "mypy", specifier = ">=1.10.0" },
+    { name = "pylint", specifier = ">=3.2.0" },
+    { name = "pytest", specifier = ">=8.2.0" },
 ]
-provides-extras = ["sqlalchemy", "dev"]
+format = [
+    { name = "black", specifier = ">=24.0.0" },
+    { name = "isort", specifier = ">=5.13.0" },
+]
+lint = [{ name = "pylint", specifier = ">=3.2.0" }]
+test = [{ name = "pytest", specifier = ">=8.2.0" }]
+typing = [{ name = "mypy", specifier = ">=1.10.0" }]
 
 [[package]]
 name = "pytest"

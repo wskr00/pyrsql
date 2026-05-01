@@ -10,20 +10,31 @@ dependencies = []
 sqlalchemy = [
     "sqlalchemy>=2.0,<3.0",
 ]
+
+[dependency-groups]
 dev = [
+    {include-group = "format"},
+    {include-group = "lint"},
+    {include-group = "test"},
+    {include-group = "typing"},
+]
+format = [
     "black>=24.0.0",
     "isort>=5.13.0",
-    "mypy>=1.10.0",
+]
+lint = [
     "pylint>=3.2.0",
+]
+test = [
     "pytest>=8.2.0",
+]
+typing = [
+    "mypy>=1.10.0",
 ]
 
 [build-system]
-requires = ["hatchling>=1.24.0"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/pyrsql"]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
 
 [tool.black]
 line-length = 80
@@ -41,10 +52,14 @@ addopts = ["--import-mode=importlib"]
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src"]
+files = ["src", "tests"]
 strict = true
 warn_unused_configs = true
 show_error_codes = true
 
-[tool.uv]
-package = true
+[tool.uv.build-backend]
+source-include = [
+    "docs/**",
+    "tests/**",
+    "pylintrc",
+]
