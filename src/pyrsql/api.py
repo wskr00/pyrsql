@@ -10,8 +10,7 @@ from pyrsql.core.query import Query
 
 def parse(query_text: str, *, options: QueryOptions | None = None) -> Query:
     """Builds a query object from raw RSQL text."""
-    resolved_options = options or QueryOptions()
-    return Query(text=query_text, options=resolved_options)
+    return Query.parse(query_text, options=options)
 
 
 def compile(

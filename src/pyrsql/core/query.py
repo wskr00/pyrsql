@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pyrsql.backends.base import Backend
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
+from pyrsql.parsing.ast import Node
+from pyrsql.parsing.parser import Parser
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +20,7 @@ class Query:
 
     text: str
     options: QueryOptions
+    expression: Node | None = None
 
     @classmethod
     def parse(
@@ -27,7 +30,16 @@ class Query:
         options: QueryOptions | None = None,
     ) -> "Query":
         """Creates a query object from raw RSQL text."""
-        return cls(text=query_text, options=options or QueryOptions())
+        resolved_options = options or QueryOptions()
+        expression = Parser(
+            query_text,
+            limits=resolved_options.parse_limits,
+        ).parse()
+        return cls(
+            text=query_text,
+            options=resolved_options,
+            expression=expression,
+        )
 
     def compile(self, *, backend: Backend) -> CompilationResult:
         """Compiles the query using the provided backend."""

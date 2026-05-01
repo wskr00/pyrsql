@@ -9,6 +9,7 @@ def test_parse_returns_query_object() -> None:
     query = pyrsql.parse("name==demo")
     assert query.text == "name==demo"
     assert query.options.strict_equality is False
+    assert query.expression is not None
 
 
 def test_compile_uses_backend_name() -> None:
