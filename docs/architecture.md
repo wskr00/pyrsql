@@ -2,9 +2,11 @@
 
 ## Purpose
 
-`pyrsql` is a Python library that translates RSQL-like queries into backend-specific query objects.
+`pyrsql` is a Python library that translates RSQL-like queries into
+backend-specific query objects.
 
-The project is being designed from the start to support multiple backends in the future, such as:
+The project is being designed from the start to support multiple backends in
+the future, such as:
 
 - `SQLAlchemy`
 - `Django ORM`
@@ -37,23 +39,31 @@ The following items are intentionally out of the MVP:
 - performant
 - easy to understand and maintain
 
-The API should use clean, stable, high-level names. Backend-specific behavior must not leak into the public API naming unnecessarily.
+The API should use clean, stable, high-level names. Backend-specific behavior
+must not leak into the public API naming unnecessarily.
 
 ## Core Architecture Principle
 
 The project must be split into:
 
 - a backend-agnostic core
-- one or more backend adapters
+- one or more query backends
+- one or more framework adapters
 
-The core must not import or depend on `SQLAlchemy` or any other backend implementation.
+The core must not import or depend on `SQLAlchemy` or any other backend
+implementation.
 
 Backends depend on the core, not the other way around.
+
+Framework adapters also depend on the core, and may depend on one or more
+backends.
 
 This separation is required so that:
 
 - `pip install pyrsql` installs only the core
 - `pip install pyrsql[sqlalchemy]` enables SQLAlchemy integration
+- `pip install pyrsql[fastapi,sqlalchemy]` enables HTTP adapter plus query
+  backend
 - future backends can be added without restructuring the project
 
 ## Architectural Style
@@ -77,22 +87,29 @@ Each major concern must live in its own component. For example:
 - type coercion
 - backend translation
 - backend application to a query object
+- framework request and error adaptation
 
 #### Open/Closed Principle
 
-The system must be open for extension through new backends and custom strategies, while avoiding modification of the core design when new backends are introduced.
+The system must be open for extension through new backends, adapters, and
+custom strategies, while avoiding modification of the core design when new
+capabilities are introduced.
 
 #### Liskov Substitution Principle
 
-Backends must honor clear behavioral contracts so one backend implementation can be replaced by another without breaking the API semantics.
+Backends must honor clear behavioral contracts so one backend implementation
+can be replaced by another without breaking the API semantics.
 
 #### Interface Segregation Principle
 
-Interfaces must remain small and focused. Avoid one oversized abstraction that handles parsing, semantic analysis, translation, and execution concerns at once.
+Interfaces must remain small and focused. Avoid one oversized abstraction that
+handles parsing, semantic analysis, translation, and execution concerns at
+once.
 
 #### Dependency Inversion Principle
 
-The core must depend on abstractions, such as `Protocol` or `ABC` contracts, rather than concrete backend implementations.
+The core must depend on abstractions, such as `Protocol` or `ABC` contracts,
+rather than concrete backend implementations.
 
 ## Public API Direction
 
@@ -104,16 +121,19 @@ Preferred public names:
 - `compile(...)`
 - `apply(...)`
 
-The naming of public functions should not vary by backend. For example, avoid names such as:
+The naming of public functions should not vary by backend. For example, avoid
+names such as:
 
 - `apply_sqlalchemy(...)`
 - `compile_django(...)`
 
-Instead, backend specialization should happen through injected backend objects or backend-specific configured objects.
+Instead, backend specialization should happen through injected backend objects
+or backend-specific configured objects.
 
 ## Object-Oriented API Direction
 
-The project should prefer high-level object-oriented composition over a purely procedural style.
+The project should prefer high-level object-oriented composition over a purely
+procedural style.
 
 Representative domain objects may include:
 
@@ -144,7 +164,8 @@ The exact public surface can still be refined, but it must stay:
 
 ## Parser Strategy
 
-The parser will be built in-house rather than relying on an external RSQL parser package.
+The parser will be built in-house rather than relying on an external RSQL
+parser package.
 
 ### Parser goals
 
@@ -177,7 +198,28 @@ Important constraints:
 - target `select(...)` workflows
 - do not design around legacy `Query`
 
-Future backends are expected, but the current implementation work should optimize for `SQLAlchemy` first without contaminating the core abstractions.
+Future backends are expected, including `django`, but the current
+implementation work should optimize for `SQLAlchemy` first without
+contaminating the core abstractions.
+
+## Adapter Strategy
+
+Framework-specific integration should live in adapters rather than backends.
+
+Examples:
+
+- `adapters.fastapi`
+- `adapters.django`
+
+The adapter layer is responsible for:
+
+- request extraction
+- transport-specific validation behavior
+- transport-specific error conversion
+- convenient binding to framework primitives
+
+Adapters must not own the query language semantics. They orchestrate the core
+and selected backend for a specific runtime environment.
 
 ## Packaging Strategy
 
@@ -193,12 +235,14 @@ Future examples:
 
 ```text
 pip install pyrsql[django]
+pip install pyrsql[fastapi,sqlalchemy]
 ```
 
 ### Packaging rules
 
 - base package contains only the core and shared abstractions
 - backend dependencies are optional
+- adapter dependencies are optional
 - development tooling lives in a separate extra
 
 Representative `pyproject.toml` direction:
@@ -206,6 +250,7 @@ Representative `pyproject.toml` direction:
 ```toml
 [project.optional-dependencies]
 sqlalchemy = ["sqlalchemy>=2.0"]
+fastapi = ["fastapi>=0.110"]
 django = ["django>=5.0"]
 dev = ["pytest", "pylint", "mypy", "black", "isort"]
 ```
@@ -220,9 +265,8 @@ Suggested structure:
 src/pyrsql/
   __init__.py
   api/
-  ast/
-  parser/
-  semantic/
+  core/
+  parsing/
   backends/
     base.py
     sqlalchemy/
@@ -230,6 +274,20 @@ src/pyrsql/
       backend.py
       translator.py
       resolver.py
+    django/
+      __init__.py
+      backend.py
+      translator.py
+      resolver.py
+  adapters/
+    fastapi/
+      __init__.py
+      dependency.py
+      errors.py
+    django/
+      __init__.py
+      request.py
+      errors.py
   errors.py
 
 docs/
@@ -264,7 +322,29 @@ The `SQLAlchemy` backend is expected to contain:
 - AST to predicate translation
 - application of compiled output to a `Select`
 
-The backend layer should handle ORM-specific behavior without leaking those details into the core model.
+The backend layer should handle ORM-specific behavior without leaking those
+details into the core model.
+
+Future backends are expected to follow the same responsibility split,
+including `django` as a query backend.
+
+## Adapter Components
+
+Adapters are separate from query backends.
+
+Examples:
+
+- `adapters.fastapi`
+- `adapters.django`
+
+Adapters should contain framework-facing concerns such as:
+
+- extracting query text from requests
+- mapping parsing and validation failures to framework errors
+- offering convenience helpers for framework-native usage
+
+An adapter may depend on a backend, but a backend must not depend on an
+adapter.
 
 ## Quality Standards
 
@@ -299,7 +379,8 @@ Key practical implications:
 - predictable formatting
 - typed interfaces where useful
 
-Python features should be used when they improve correctness, readability, architecture, or performance.
+Python features should be used when they improve correctness, readability,
+architecture, or performance.
 
 Examples of acceptable advanced usage:
 
@@ -318,6 +399,7 @@ The project should avoid:
 
 - giant procedural helper modules
 - backend-specific logic in the core
+- adapter-specific transport logic in the core
 - unstable or overly clever APIs
 - naming that changes by backend
 - unnecessary exact compatibility constraints with `rsql-jpa`
@@ -350,7 +432,8 @@ Representative operator coverage for the MVP:
 - boolean composition with `AND` / `OR`
 - parentheses
 
-The operator set does not need to be a perfect clone of the Java project as long as the model is coherent and useful.
+The operator set does not need to be a perfect clone of the Java project as
+long as the model is coherent and useful.
 
 ## Deferred Features
 
@@ -358,7 +441,8 @@ These items are intentionally postponed:
 
 - `JSON` / `JSONB`
 - secondary backends
-- advanced backend-specific features that would distort the initial architecture
+- advanced backend-specific features that would distort the initial
+  architecture
 
 ## Documentation Direction
 
@@ -373,4 +457,5 @@ Documentation should capture:
 - testing standards
 - implementation phases
 
-This file is the initial consolidation of the decisions made before coding begins.
+This file is the initial consolidation of the decisions made before coding
+begins.

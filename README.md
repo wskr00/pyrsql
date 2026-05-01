@@ -4,7 +4,8 @@
 
 The project is being designed to support multiple backends, starting with
 `SQLAlchemy 2.0`. The core package remains backend-neutral, while backend
-integrations live in dedicated adapters and optional dependency groups.
+implementations live in `backends`, and framework-specific integration lives
+in `adapters`.
 
 ## Development Principles
 
