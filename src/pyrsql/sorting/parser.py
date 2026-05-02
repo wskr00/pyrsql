@@ -4,6 +4,9 @@ from pyrsql.sorting.ast import SortDirection
 from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import SortParseError
 from pyrsql.sorting.limits import SortLimits
+from pyrsql.selector.ast import Selector
+from pyrsql.selector.parser import SelectorParseError
+from pyrsql.selector.parser import SelectorParser
 
 
 class SortParser:
@@ -17,6 +20,7 @@ class SortParser:
     ) -> None:
         self._source = (source or "").strip()
         self._limits = limits or SortLimits()
+        self._selector_parser = SelectorParser()
 
     def parse(self) -> tuple[SortField, ...]:
         """Parses the configured sort expression."""
@@ -30,10 +34,7 @@ class SortParser:
 
         fields: list[SortField] = []
         for clause_index, clause in enumerate(self._source.split(";"), start=1):
-            parsed_field = self._parse_clause(
-                clause,
-                clause_index=clause_index,
-            )
+            parsed_field = self._parse_clause(clause, clause_index=clause_index)
             if parsed_field is None:
                 continue
             fields.append(parsed_field)
@@ -51,7 +52,17 @@ class SortParser:
         clause_index: int,
     ) -> SortField | None:
         """Parses a single semicolon-delimited sort clause."""
-        parts = [part.strip() for part in clause.split(",") if part.strip()]
+        try:
+            parts = [
+                part.strip()
+                for part in self._selector_parser.split_top_level(
+                    clause,
+                    delimiter=",",
+                )
+                if part.strip()
+            ]
+        except SelectorParseError as error:
+            raise SortParseError(str(error)) from error
         if not parts:
             return None
         if len(parts) > 3:
@@ -61,13 +72,7 @@ class SortParser:
                 "parts."
             )
 
-        selector = parts[0]
-        if len(selector) > self._limits.max_field_path_length:
-            raise SortParseError(
-                "Sort selector in clause "
-                f"#{clause_index} exceeds the maximum supported length of "
-                f"{self._limits.max_field_path_length}."
-            )
+        selector = self._parse_selector(parts[0], clause_index=clause_index)
 
         direction = SortDirection.ASCENDING
         if len(parts) > 1:
@@ -124,3 +129,19 @@ class SortParser:
                 f"{raw_flag!r}."
             )
         return True
+
+    def _parse_selector(
+        self,
+        raw_selector: str,
+        *,
+        clause_index: int,
+    ) -> Selector:
+        """Parses a sort selector recursively."""
+        try:
+            return self._selector_parser.parse(
+                raw_selector,
+                max_length=self._limits.max_field_path_length,
+                context=f"Sort selector in clause #{clause_index}",
+            )
+        except SelectorParseError as error:
+            raise SortParseError(str(error)) from error

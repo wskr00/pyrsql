@@ -9,10 +9,14 @@ from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.operators import OPERATORS_BY_SPELLING
+from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
+from pyrsql.parsing.operators import OperatorRegistry
 from pyrsql.parsing.source import SourceSpan
 from pyrsql.parsing.tokens import Token
 from pyrsql.parsing.tokens import TokenKind
+from pyrsql.selector.ast import Selector
+from pyrsql.selector.parser import SelectorParseError
+from pyrsql.selector.parser import SelectorParser
 
 
 class Parser:
@@ -23,9 +27,16 @@ class Parser:
         source: str,
         *,
         limits: ParseLimits | None = None,
+        operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         self._limits = limits or ParseLimits()
-        self._tokens = Lexer(source, limits=self._limits).tokenize()
+        self._operator_registry = operator_registry
+        self._tokens = Lexer(
+            source,
+            limits=self._limits,
+            operator_spellings=operator_registry.operator_spellings,
+        ).tokenize()
+        self._selector_parser = SelectorParser()
         self._index = 0
         self._node_count = 0
 
@@ -80,15 +91,24 @@ class Parser:
             TokenKind.UNQUOTED_TEXT,
             message="Expected a selector before the comparison operator",
         )
+        try:
+            parsed_selector = self._selector_parser.parse(
+                selector.lexeme,
+                max_length=self._limits.max_selector_length,
+                context="Comparison selector",
+            )
+        except SelectorParseError as error:
+            raise ParseError(message=str(error), span=selector.span) from error
         operator_token = self._expect(
             TokenKind.COMPARISON_OPERATOR,
             message="Expected a comparison operator after the selector",
         )
-        operator = OPERATORS_BY_SPELLING[operator_token.lexeme]
+        operator = self._operator_registry.get(operator_token.lexeme)
         arguments = self._parse_arguments()
         self._validate_argument_count(operator_token, operator, arguments)
         return self._make_comparison_node(
             selector,
+            parsed_selector,
             operator_token,
             operator,
             arguments,
@@ -184,6 +204,7 @@ class Parser:
     def _make_comparison_node(
         self,
         selector_token: Token,
+        selector: Selector,
         operator_token: Token,
         operator: ComparisonOperator,
         arguments: tuple[Argument, ...],
@@ -193,7 +214,7 @@ class Parser:
         end_span = arguments[-1].span if arguments else operator_token.span
         return ComparisonNode(
             span=SourceSpan.cover(selector_token.span, end_span),
-            selector=selector_token.lexeme,
+            selector=selector,
             operator=operator,
             arguments=arguments,
         )

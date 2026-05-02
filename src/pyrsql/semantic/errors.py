@@ -28,3 +28,13 @@ class FieldNotWhitelistedError(SemanticError):
 @dataclass(frozen=True, slots=True)
 class FieldBlacklistedError(SemanticError):
     """Raised when a selector is blocked by the blacklist."""
+
+
+@dataclass(frozen=True, slots=True)
+class FunctionNotWhitelistedError(SemanticError):
+    """Raised when a function selector is not allowed by the whitelist."""
+
+
+@dataclass(frozen=True, slots=True)
+class FunctionBlacklistedError(SemanticError):
+    """Raised when a function selector is blocked by the blacklist."""

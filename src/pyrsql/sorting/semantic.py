@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from pyrsql.selector.semantic import SemanticSelector
 from pyrsql.sorting.ast import SortDirection
 
 
@@ -9,7 +10,6 @@ from pyrsql.sorting.ast import SortDirection
 class SemanticSortField:
     """Single sort field after selector normalization."""
 
-    selector: str
-    field_path: str
+    selector: SemanticSelector
     direction: SortDirection
     ignore_case: bool

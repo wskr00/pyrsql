@@ -56,6 +56,7 @@ class Query:
         return Parser(
             query_text,
             limits=options.parse_limits,
+            operator_registry=options.operator_registry,
         ).parse()
 
     @staticmethod

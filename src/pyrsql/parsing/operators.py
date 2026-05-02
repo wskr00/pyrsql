@@ -1,6 +1,9 @@
 """Supported comparison operators."""
 
 from dataclasses import dataclass
+from dataclasses import field
+from types import MappingProxyType
+from typing import Mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,6 +14,65 @@ class ComparisonOperator:
     spellings: tuple[str, ...]
     minimum_arguments: int
     maximum_arguments: int | None
+
+    def __post_init__(self) -> None:
+        """Validates operator invariants."""
+        if not self.name:
+            raise ValueError("Operator name cannot be empty.")
+        if not self.spellings:
+            raise ValueError("Operator must define at least one spelling.")
+        if self.minimum_arguments < 0:
+            raise ValueError("minimum_arguments cannot be negative.")
+        if (
+            self.maximum_arguments is not None
+            and self.maximum_arguments < self.minimum_arguments
+        ):
+            raise ValueError(
+                "maximum_arguments cannot be less than minimum_arguments."
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class OperatorRegistry:
+    """Immutable registry of supported comparison operators."""
+
+    operators: tuple[ComparisonOperator, ...] = field(default_factory=tuple)
+    operators_by_spelling: Mapping[str, ComparisonOperator] = field(
+        init=False
+    )
+    operator_spellings: tuple[str, ...] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Builds lookup structures and validates uniqueness."""
+        operators_by_spelling: dict[str, ComparisonOperator] = {}
+        for operator in self.operators:
+            for spelling in operator.spellings:
+                if spelling in operators_by_spelling:
+                    raise ValueError(
+                        "Duplicate operator spelling registered: "
+                        f"{spelling!r}."
+                    )
+                operators_by_spelling[spelling] = operator
+        object.__setattr__(
+            self,
+            "operators_by_spelling",
+            MappingProxyType(operators_by_spelling),
+        )
+        object.__setattr__(
+            self,
+            "operator_spellings",
+            tuple(
+                sorted(
+                    operators_by_spelling,
+                    key=len,
+                    reverse=True,
+                )
+            ),
+        )
+
+    def get(self, spelling: str) -> ComparisonOperator:
+        """Returns the operator registered for the provided spelling."""
+        return self.operators_by_spelling[spelling]
 
 
 EQUAL = ComparisonOperator(
@@ -136,14 +198,8 @@ SUPPORTED_COMPARISON_OPERATORS = (
     NOT_BETWEEN,
 )
 
-OPERATOR_SPELLINGS = tuple(
-    spelling
-    for operator in SUPPORTED_COMPARISON_OPERATORS
-    for spelling in operator.spellings
+DEFAULT_OPERATOR_REGISTRY = OperatorRegistry(
+    operators=SUPPORTED_COMPARISON_OPERATORS
 )
-
-OPERATORS_BY_SPELLING = {
-    spelling: operator
-    for operator in SUPPORTED_COMPARISON_OPERATORS
-    for spelling in operator.spellings
-}
+OPERATOR_SPELLINGS = DEFAULT_OPERATOR_REGISTRY.operator_spellings
+OPERATORS_BY_SPELLING = DEFAULT_OPERATOR_REGISTRY.operators_by_spelling

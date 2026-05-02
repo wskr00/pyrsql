@@ -6,6 +6,7 @@ from pyrsql.parsing.ast import Argument
 from pyrsql.parsing.ast import LogicalOperator
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.source import SourceSpan
+from pyrsql.selector.semantic import SemanticSelector
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,8 +20,7 @@ class SemanticNode:
 class SemanticComparison(SemanticNode):
     """Comparison expression after selector normalization."""
 
-    selector: str
-    field_path: str
+    selector: SemanticSelector
     operator: ComparisonOperator
     arguments: tuple[Argument, ...]
 

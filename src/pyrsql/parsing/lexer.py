@@ -9,11 +9,6 @@ from pyrsql.parsing.source import SourceText
 from pyrsql.parsing.tokens import Token
 from pyrsql.parsing.tokens import TokenKind
 
-_SORTED_OPERATOR_SPELLINGS = tuple(
-    sorted(OPERATOR_SPELLINGS, key=len, reverse=True)
-)
-
-
 class Lexer:
     """Converts raw query text into a token stream."""
 
@@ -22,11 +17,13 @@ class Lexer:
         source: str | SourceText,
         *,
         limits: ParseLimits | None = None,
+        operator_spellings: tuple[str, ...] = OPERATOR_SPELLINGS,
     ) -> None:
         self._source = (
             source if isinstance(source, SourceText) else SourceText(source)
         )
         self._limits = limits or ParseLimits()
+        self._operator_spellings = operator_spellings
         self._index = 0
         self._line = 1
         self._column = 1
@@ -125,7 +122,7 @@ class Lexer:
     def _match_operator(self) -> Token | None:
         """Consumes a comparison operator when present."""
         start = self._current_position()
-        for spelling in _SORTED_OPERATOR_SPELLINGS:
+        for spelling in self._operator_spellings:
             if self._source.text.startswith(spelling, self._index):
                 for _ in spelling:
                     self._advance()
@@ -138,7 +135,7 @@ class Lexer:
 
     def _starts_with_operator(self) -> bool:
         """Checks whether the current position begins an operator."""
-        for spelling in _SORTED_OPERATOR_SPELLINGS:
+        for spelling in self._operator_spellings:
             if self._source.text.startswith(spelling, self._index):
                 return True
         return False

@@ -6,6 +6,7 @@ from enum import auto
 
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.source import SourceSpan
+from pyrsql.selector.ast import Selector
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +29,7 @@ class Node:
 class ComparisonNode(Node):
     """Leaf node for selector/operator/arguments expressions."""
 
-    selector: str
+    selector: Selector
     operator: ComparisonOperator
     arguments: tuple[Argument, ...]
 

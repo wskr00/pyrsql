@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from pyrsql.selector.ast import Selector
+
 
 class SortDirection(Enum):
     """Supported sort directions."""
@@ -15,6 +17,6 @@ class SortDirection(Enum):
 class SortField:
     """Single parsed sort field."""
 
-    selector: str
+    selector: Selector
     direction: SortDirection
     ignore_case: bool

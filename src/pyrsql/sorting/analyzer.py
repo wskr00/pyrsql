@@ -1,9 +1,21 @@
 """Semantic analysis for sort expressions."""
 
+import re
+
 from pyrsql.core.options import SortOptions
+from pyrsql.selector.ast import ColumnSelector
+from pyrsql.selector.ast import FunctionSelector
+from pyrsql.selector.ast import LiteralSelector
+from pyrsql.selector.ast import Selector
+from pyrsql.selector.semantic import SemanticColumnSelector
+from pyrsql.selector.semantic import SemanticFunctionSelector
+from pyrsql.selector.semantic import SemanticLiteralSelector
+from pyrsql.selector.semantic import SemanticSelector
 from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import SortFieldBlacklistedError
 from pyrsql.sorting.errors import SortFieldNotWhitelistedError
+from pyrsql.sorting.errors import SortFunctionBlacklistedError
+from pyrsql.sorting.errors import SortFunctionNotWhitelistedError
 from pyrsql.sorting.semantic import SemanticSortField
 
 
@@ -22,19 +34,40 @@ class SortAnalyzer:
 
     def _analyze_field(self, field: SortField) -> SemanticSortField:
         """Analyzes a single parsed sort field."""
-        field_path = self._options.field_mapping.get(
-            field.selector,
-            field.selector,
-        )
-        self._validate_access(field_path)
         return SemanticSortField(
-            selector=field.selector,
-            field_path=field_path,
+            selector=self._analyze_selector(field.selector),
             direction=field.direction,
             ignore_case=field.ignore_case,
         )
 
-    def _validate_access(self, field_path: str) -> None:
+    def _analyze_selector(
+        self,
+        selector: Selector,
+    ) -> SemanticSelector:
+        """Analyzes a parsed selector recursively."""
+        if isinstance(selector, ColumnSelector):
+            field_path = self._options.field_mapping.get(
+                selector.selector,
+                selector.selector,
+            )
+            self._validate_field_access(field_path)
+            return SemanticColumnSelector(
+                selector=selector.selector,
+                field_path=field_path,
+            )
+        if isinstance(selector, LiteralSelector):
+            return SemanticLiteralSelector(value=selector.value)
+        self._validate_function_access(selector.function_name)
+        assert isinstance(selector, FunctionSelector)
+        return SemanticFunctionSelector(
+            function_name=selector.function_name,
+            arguments=tuple(
+                self._analyze_selector(argument)
+                for argument in selector.arguments
+            ),
+        )
+
+    def _validate_field_access(self, field_path: str) -> None:
         """Validates whitelist and blacklist rules for a sort field."""
         whitelist = self._options.field_whitelist
         blacklist = self._options.field_blacklist
@@ -46,3 +79,21 @@ class SortAnalyzer:
             raise SortFieldBlacklistedError(
                 f"Field {field_path!r} is blocked by the blacklist."
             )
+
+    def _validate_function_access(self, function_name: str) -> None:
+        """Validates whitelist and blacklist rules for a sort function."""
+        if not self._matches_any(
+            function_name,
+            self._options.procedure_whitelist,
+        ):
+            raise SortFunctionNotWhitelistedError(
+                f"Function {function_name!r} is not whitelisted."
+            )
+        if self._matches_any(function_name, self._options.procedure_blacklist):
+            raise SortFunctionBlacklistedError(
+                f"Function {function_name!r} is blacklisted."
+            )
+
+    def _matches_any(self, value: str, patterns: tuple[str, ...]) -> bool:
+        """Returns whether a value fully matches at least one regex."""
+        return any(re.fullmatch(pattern, value) for pattern in patterns)

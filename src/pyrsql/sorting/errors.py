@@ -11,3 +11,11 @@ class SortFieldNotWhitelistedError(ValueError):
 
 class SortFieldBlacklistedError(ValueError):
     """Raised when a sort selector is blocked by the blacklist."""
+
+
+class SortFunctionNotWhitelistedError(ValueError):
+    """Raised when a sort function is not allowed by the whitelist."""
+
+
+class SortFunctionBlacklistedError(ValueError):
+    """Raised when a sort function is blocked by the blacklist."""
