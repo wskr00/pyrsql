@@ -28,9 +28,7 @@ def test_parser_builds_comparison_node() -> None:
 
 def test_parser_preserves_and_or_precedence() -> None:
     """Parses AND more tightly than OR."""
-    expression = Parser(
-        "name==demo,city==sp;age=ge=18"
-    ).parse()
+    expression = Parser("name==demo,city==sp;age=ge=18").parse()
     assert isinstance(expression, LogicalNode)
     assert expression.operator is LogicalOperator.OR
     assert isinstance(expression.children[0], ComparisonNode)
