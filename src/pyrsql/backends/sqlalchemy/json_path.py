@@ -46,26 +46,8 @@ _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyJSONPathFunctionNames:
-    """PostgreSQL JSON path function names used by the backend."""
-
-    path_exists_tz: str = "jsonb_path_exists_tz"
-
-
 class SQLAlchemyJSONPathExpressionBuilder:
     """Builds PostgreSQL JSON path expressions for SQLAlchemy."""
-
-    def __init__(
-        self,
-        *,
-        function_names: (
-            SQLAlchemyJSONPathFunctionNames | None
-        ) = None,
-    ) -> None:
-        self._function_names = (
-            function_names or SQLAlchemyJSONPathFunctionNames()
-        )
 
     def build_filter_expression(
         self,
@@ -86,7 +68,16 @@ class SQLAlchemyJSONPathExpressionBuilder:
         if function_call.use_timezone_function:
             function_expression = getattr(
                 sa.func,
-                self._function_names.path_exists_tz,
+                function_call.path_exists_tz_function,
+            )(
+                jsonb_column,
+                sa.literal(function_call.json_path_expression),
+            )
+            return cast(ColumnElement[bool], function_expression)
+        if options and options.path_exists_function != "jsonb_path_exists":
+            function_expression = getattr(
+                sa.func,
+                options.path_exists_function,
             )(
                 jsonb_column,
                 sa.literal(function_call.json_path_expression),
@@ -259,6 +250,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         return _JSONPathFilterCall(
             json_path_expression=f"{target_path} ? {comparison_clause}",
             use_timezone_function=use_timezone_function,
+            path_exists_tz_function=options.path_exists_tz_function,
         )
 
     def _equality_comparison(
@@ -343,3 +335,4 @@ class _JSONPathFilterCall:
 
     json_path_expression: str
     use_timezone_function: bool
+    path_exists_tz_function: str

@@ -505,3 +505,23 @@ def test_backend_applies_json_datetime_tz_path_predicate() -> None:
         "@.datetime()" in str(value)
         for value in compiled.params.values()
     )
+
+
+def test_backend_uses_custom_json_path_function_names() -> None:
+    """Uses custom PostgreSQL JSON path function names from JSONOptions."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "payload.user.id==1",
+        options=QueryOptions(
+            json_options=JSONOptions(
+                path_exists_function="custom_json_path_exists",
+            ),
+        ),
+    )
+    statement = backend.compile_query(query).apply(
+        select(JsonEvent),
+        JsonEvent,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "custom_json_path_exists" in sql

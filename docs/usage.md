@@ -128,6 +128,8 @@ Current scope:
 
 Current options:
 
+- `path_exists_function`
+- `path_exists_tz_function`
 - `use_datetime`
 
 Example:
@@ -139,7 +141,11 @@ from pyrsql.core.json.options import JSONOptions
 query = Query.parse(
     "payload.created_at=gt=2026-05-02T10:30:00",
     options=QueryOptions(
-        json_options=JSONOptions(use_datetime=True),
+        json_options=JSONOptions(
+            use_datetime=True,
+            path_exists_function="jsonb_path_exists",
+            path_exists_tz_function="jsonb_path_exists_tz",
+        ),
     ),
 )
 ```

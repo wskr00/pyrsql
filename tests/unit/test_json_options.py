@@ -21,3 +21,13 @@ def test_query_options_accept_json_options_override() -> None:
     """Query options accept explicit JSON option overrides."""
     options = QueryOptions(json_options=JSONOptions(use_datetime=True))
     assert options.json_options.use_datetime is True
+
+
+def test_json_options_accept_function_name_overrides() -> None:
+    """JSON options expose configurable PostgreSQL function names."""
+    options = JSONOptions(
+        path_exists_function="custom_path_exists",
+        path_exists_tz_function="custom_path_exists_tz",
+    )
+    assert options.path_exists_function == "custom_path_exists"
+    assert options.path_exists_tz_function == "custom_path_exists_tz"

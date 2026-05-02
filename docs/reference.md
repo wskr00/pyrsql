@@ -101,6 +101,7 @@ Supported:
 - field-specific and type-specific conversion
 - PostgreSQL-style JSON / JSONB path filtering and sorting
 - `JSONOptions(use_datetime=...)` for temporal JSON path semantics
+- configurable JSON path function names via `JSONOptions`
 
 Not currently supported:
 
