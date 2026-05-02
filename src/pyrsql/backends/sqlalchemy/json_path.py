@@ -147,49 +147,41 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 comparison.values[0],
                 use_datetime=use_datetime,
             )
-            comparison_clause = (
-                f"({value_reference} > {value_literal})"
-            )
+            comparison_clause = f"({value_reference} > {value_literal})"
         elif comparison.operator_name == GREATER_THAN_OR_EQUAL.name:
             value_literal = self._print_value(
                 comparison.values[0],
                 use_datetime=use_datetime,
             )
-            comparison_clause = (
-                f"({value_reference} >= {value_literal})"
-            )
+            comparison_clause = f"({value_reference} >= {value_literal})"
         elif comparison.operator_name == LESS_THAN.name:
             value_literal = self._print_value(
                 comparison.values[0],
                 use_datetime=use_datetime,
             )
-            comparison_clause = (
-                f"({value_reference} < {value_literal})"
-            )
+            comparison_clause = f"({value_reference} < {value_literal})"
         elif comparison.operator_name == LESS_THAN_OR_EQUAL.name:
             value_literal = self._print_value(
                 comparison.values[0],
                 use_datetime=use_datetime,
             )
-            comparison_clause = (
-                f"({value_reference} <= {value_literal})"
-            )
+            comparison_clause = f"({value_reference} <= {value_literal})"
         elif comparison.operator_name == IN.name:
-            comparison_clause = "(" + " || ".join(
-                (
-                    f"({value_reference} == "
-                    f"{self._print_value(value, use_datetime=use_datetime)})"
-                )
-                for value in comparison.values
-            ) + ")"
+            comparison_clause = self._membership_comparison(
+                value_reference,
+                comparison.values,
+                operator="==",
+                join_operator="||",
+                use_datetime=use_datetime,
+            )
         elif comparison.operator_name == NOT_IN.name:
-            comparison_clause = "(" + " && ".join(
-                (
-                    f"({value_reference} != "
-                    f"{self._print_value(value, use_datetime=use_datetime)})"
-                )
-                for value in comparison.values
-            ) + ")"
+            comparison_clause = self._membership_comparison(
+                value_reference,
+                comparison.values,
+                operator="!=",
+                join_operator="&&",
+                use_datetime=use_datetime,
+            )
         elif comparison.operator_name == IS_NULL.name:
             comparison_clause = "(@ == null)"
         elif comparison.operator_name == LIKE.name:
@@ -294,6 +286,25 @@ class SQLAlchemyJSONPathExpressionBuilder:
         if ignore_case:
             return f"(@ like_regex {literal} flag \"i\")"
         return f"(@ like_regex {literal})"
+
+    def _membership_comparison(
+        self,
+        value_reference: str,
+        values: tuple[JSONScalarValue, ...],
+        *,
+        operator: str,
+        join_operator: str,
+        use_datetime: bool,
+    ) -> str:
+        """Builds one JSON membership comparison clause."""
+        comparisons = (
+            (
+                f"({value_reference} {operator} "
+                f"{self._print_value(value, use_datetime=use_datetime)})"
+            )
+            for value in values
+        )
+        return "(" + f" {join_operator} ".join(comparisons) + ")"
 
     def _print_value(
         self,

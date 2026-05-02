@@ -118,19 +118,14 @@ class ValueConverterRegistry:
         """Converts a string into datetime with LocalDate-style fallback."""
         try:
             return dt.datetime.fromisoformat(raw_value)
-        except ValueError as error:
+        except ValueError:
             try:
                 parsed_date = dt.date.fromisoformat(raw_value)
             except ValueError as date_error:
                 raise ValueConversionError(
                     f"Failed to convert {raw_value!r} to datetime."
                 ) from date_error
-            parsed_datetime = dt.datetime.combine(parsed_date, dt.time.min)
-            if parsed_datetime is None:  # pragma: no cover
-                raise ValueConversionError(
-                    f"Failed to convert {raw_value!r} to datetime."
-                ) from error
-            return parsed_datetime
+            return dt.datetime.combine(parsed_date, dt.time.min)
 
     def _construct_from_string(
         self,

@@ -20,7 +20,7 @@ def compile(
     *,
     backend: Backend,
     options: QueryOptions | None = None,
-    ) -> CompilationResult:
+) -> CompilationResult:
     """Compiles a query string using the provided backend."""
     return parse(query_text, options=options).compile(backend=backend)
 

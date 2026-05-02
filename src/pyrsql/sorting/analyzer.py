@@ -1,7 +1,5 @@
 """Semantic analysis for sort expressions."""
 
-import re
-
 from pyrsql.core.options import SortOptions
 from pyrsql.selector.ast import ColumnSelector
 from pyrsql.selector.ast import FunctionSelector
@@ -82,18 +80,12 @@ class SortAnalyzer:
 
     def _validate_function_access(self, function_name: str) -> None:
         """Validates whitelist and blacklist rules for a sort function."""
-        if not self._matches_any(
-            function_name,
-            self._options.procedure_whitelist,
-        ):
+        procedure_policy = self._options.procedure_policy
+        if not procedure_policy.is_whitelisted(function_name):
             raise SortFunctionNotWhitelistedError(
                 f"Function {function_name!r} is not whitelisted."
             )
-        if self._matches_any(function_name, self._options.procedure_blacklist):
+        if procedure_policy.is_blacklisted(function_name):
             raise SortFunctionBlacklistedError(
                 f"Function {function_name!r} is blacklisted."
             )
-
-    def _matches_any(self, value: str, patterns: tuple[str, ...]) -> bool:
-        """Returns whether a value fully matches at least one regex."""
-        return any(re.fullmatch(pattern, value) for pattern in patterns)

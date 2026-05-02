@@ -49,6 +49,13 @@ def test_parser_parses_argument_list() -> None:
     )
 
 
+def test_parser_expands_grouped_expression_span() -> None:
+    """Expands grouped expressions to cover the surrounding parentheses."""
+    expression = Parser("(name==demo)").parse()
+    assert expression.span.start.column == 1
+    assert expression.span.end.column == len("(name==demo)") + 1
+
+
 def test_parser_parses_function_selector_in_comparison() -> None:
     """Parses nested function selectors in comparison expressions."""
     expression = Parser("@concat[@upper[name]|#123]==demo").parse()

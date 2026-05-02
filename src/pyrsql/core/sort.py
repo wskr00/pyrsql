@@ -11,6 +11,36 @@ from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.parser import SortParser
 from pyrsql.sorting.semantic import SemanticSortField
 
+_DEFAULT_SORT_OPTIONS = SortOptions()
+
+
+def _resolve_sort_options(
+    options: SortOptions | None,
+) -> SortOptions:
+    """Returns the provided options or the shared immutable default."""
+    return options or _DEFAULT_SORT_OPTIONS
+
+
+def _parse_sort_fields(
+    sort_text: str | None,
+    *,
+    options: SortOptions,
+) -> tuple[SortField, ...]:
+    """Parses raw sort text into sort fields."""
+    return SortParser(
+        sort_text,
+        limits=options.sort_limits,
+    ).parse()
+
+
+def _analyze_sort_fields(
+    fields: tuple[SortField, ...],
+    *,
+    options: SortOptions,
+) -> tuple[SemanticSortField, ...]:
+    """Analyzes sort fields into semantic sort fields."""
+    return SortAnalyzer(options).analyze(fields)
+
 
 @dataclass(frozen=True, slots=True)
 class Sort:
@@ -29,7 +59,7 @@ class Sort:
         options: SortOptions | None = None,
     ) -> "Sort":
         """Creates a sort object from raw sort text."""
-        resolved_options = options or SortOptions()
+        resolved_options = _resolve_sort_options(options)
         fields = cls.parse_fields(sort_text, options=resolved_options)
         semantic_fields = cls.analyze_fields(fields, options=resolved_options)
         return cls(
@@ -46,10 +76,7 @@ class Sort:
         options: SortOptions,
     ) -> tuple[SortField, ...]:
         """Parses raw sort text into sort fields."""
-        return SortParser(
-            sort_text,
-            limits=options.sort_limits,
-        ).parse()
+        return _parse_sort_fields(sort_text, options=options)
 
     @staticmethod
     def analyze_fields(
@@ -58,7 +85,7 @@ class Sort:
         options: SortOptions,
     ) -> tuple[SemanticSortField, ...]:
         """Analyzes sort fields into semantic sort fields."""
-        return SortAnalyzer(options).analyze(fields)
+        return _analyze_sort_fields(fields, options=options)
 
     def compile(self, *, backend: Backend) -> SortCompilationResult:
         """Compiles the sort using the provided backend."""

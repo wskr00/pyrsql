@@ -1,7 +1,5 @@
 """Backend-neutral semantic analysis."""
 
-import re
-
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.ast import ComparisonNode
 from pyrsql.parsing.ast import Expression
@@ -116,23 +114,14 @@ class SemanticAnalyzer:
         expression: ComparisonNode,
     ) -> None:
         """Validates whitelist and blacklist rules for functions."""
-        if not self._matches_any(
-            function_name,
-            self._options.procedure_whitelist,
-        ):
+        procedure_policy = self._options.procedure_policy
+        if not procedure_policy.is_whitelisted(function_name):
             raise FunctionNotWhitelistedError(
                 message=f"Function {function_name!r} is not whitelisted",
                 span=expression.span,
             )
-        if self._matches_any(
-            function_name,
-            self._options.procedure_blacklist,
-        ):
+        if procedure_policy.is_blacklisted(function_name):
             raise FunctionBlacklistedError(
                 message=f"Function {function_name!r} is blacklisted",
                 span=expression.span,
             )
-
-    def _matches_any(self, value: str, patterns: tuple[str, ...]) -> bool:
-        """Returns whether a value fully matches at least one regex."""
-        return any(re.fullmatch(pattern, value) for pattern in patterns)

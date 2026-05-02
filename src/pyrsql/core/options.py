@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
 from typing import Any
+from typing import Final
 from typing import Mapping
 from typing import TypeVar
 
@@ -15,12 +16,59 @@ from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.joins import JoinHint
+from pyrsql.core.procedure_policy import ProcedureAccessPolicy
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.operators import OperatorRegistry
 from pyrsql.sorting.limits import SortLimits
 
 _NestedValueT = TypeVar("_NestedValueT")
+_EMPTY_TUPLE: Final[tuple[str, ...]] = ()
+
+
+def _normalize_mapping(
+    mapping: Mapping[str, _NestedValueT],
+) -> Mapping[str, _NestedValueT]:
+    """Normalizes a flat mapping into an immutable view."""
+    return MappingProxyType(dict(mapping))
+
+
+def _normalize_tuple(values: tuple[str, ...]) -> tuple[str, ...]:
+    """Normalizes tuple-like string containers."""
+    return tuple(values)
+
+
+def _normalize_frozenset(values: frozenset[str]) -> frozenset[str]:
+    """Normalizes set-like string containers."""
+    return frozenset(values)
+
+
+def _build_field_policy(
+    *,
+    field_mapping: Mapping[str, str],
+    field_whitelist: frozenset[str],
+    field_blacklist: frozenset[str],
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]],
+    model_field_whitelist: Mapping[type[Any], frozenset[str]],
+    model_field_blacklist: Mapping[type[Any], frozenset[str]],
+) -> FieldPolicySet:
+    """Builds a normalized field policy from option values."""
+    return FieldPolicySet(
+        field_mapping=field_mapping,
+        field_whitelist=field_whitelist,
+        field_blacklist=field_blacklist,
+        model_field_mapping=model_field_mapping,
+        model_field_whitelist=model_field_whitelist,
+        model_field_blacklist=model_field_blacklist,
+    )
+
+
+def _build_procedure_policy(
+    whitelist: tuple[str, ...],
+    blacklist: tuple[str, ...],
+) -> ProcedureAccessPolicy:
+    """Builds a compiled procedure policy from raw patterns."""
+    return ProcedureAccessPolicy.from_patterns(whitelist, blacklist)
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,13 +108,28 @@ class QueryOptions:
         type[Any], Mapping[str, ValueConverter]
     ] = field(default_factory=dict)
     json_options: JSONOptions = field(default_factory=JSONOptions)
+    _field_policy: FieldPolicySet = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _field_converter_set: FieldValueConverterSet = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _procedure_policy: ProcedureAccessPolicy = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         object.__setattr__(
             self,
             "field_mapping",
-            MappingProxyType(dict(self.field_mapping)),
+            _normalize_mapping(self.field_mapping),
         )
         object.__setattr__(
             self,
@@ -76,12 +139,12 @@ class QueryOptions:
         object.__setattr__(
             self,
             "join_hints",
-            MappingProxyType(dict(self.join_hints)),
+            _normalize_mapping(self.join_hints),
         )
         object.__setattr__(
             self,
             "field_value_converters",
-            MappingProxyType(dict(self.field_value_converters)),
+            _normalize_mapping(self.field_value_converters),
         )
         object.__setattr__(
             self,
@@ -91,17 +154,17 @@ class QueryOptions:
         object.__setattr__(
             self,
             "custom_predicates",
-            MappingProxyType(dict(self.custom_predicates)),
+            _normalize_mapping(self.custom_predicates),
         )
         object.__setattr__(
             self,
             "field_whitelist",
-            frozenset(self.field_whitelist),
+            _normalize_frozenset(self.field_whitelist),
         )
         object.__setattr__(
             self,
             "field_blacklist",
-            frozenset(self.field_blacklist),
+            _normalize_frozenset(self.field_blacklist),
         )
         object.__setattr__(
             self,
@@ -116,12 +179,12 @@ class QueryOptions:
         object.__setattr__(
             self,
             "procedure_whitelist",
-            tuple(self.procedure_whitelist),
+            _normalize_tuple(self.procedure_whitelist),
         )
         object.__setattr__(
             self,
             "procedure_blacklist",
-            tuple(self.procedure_blacklist),
+            _normalize_tuple(self.procedure_blacklist),
         )
         object.__setattr__(
             self,
@@ -135,6 +198,17 @@ class QueryOptions:
             raise ValueError(
                 "like_escape_character must be a single character when set."
             )
+        object.__setattr__(self, "_field_policy", self._build_field_policy())
+        object.__setattr__(
+            self,
+            "_field_converter_set",
+            self._build_field_converter_set(),
+        )
+        object.__setattr__(
+            self,
+            "_procedure_policy",
+            self._build_procedure_policy(),
+        )
 
     def _build_operator_registry(self) -> OperatorRegistry:
         """Extends the configured operator registry with custom predicates."""
@@ -165,7 +239,21 @@ class QueryOptions:
     @property
     def field_policy(self) -> FieldPolicySet:
         """Returns the normalized field mapping and access configuration."""
-        return FieldPolicySet(
+        return self._field_policy
+
+    @property
+    def field_converter_set(self) -> FieldValueConverterSet:
+        """Returns the normalized field-scoped converter configuration."""
+        return self._field_converter_set
+
+    @property
+    def procedure_policy(self) -> ProcedureAccessPolicy:
+        """Returns the compiled procedure access policy."""
+        return self._procedure_policy
+
+    def _build_field_policy(self) -> FieldPolicySet:
+        """Builds the immutable field-policy object once."""
+        return _build_field_policy(
             field_mapping=self.field_mapping,
             field_whitelist=self.field_whitelist,
             field_blacklist=self.field_blacklist,
@@ -174,12 +262,18 @@ class QueryOptions:
             model_field_blacklist=self.model_field_blacklist,
         )
 
-    @property
-    def field_converter_set(self) -> FieldValueConverterSet:
-        """Returns the normalized field-scoped converter configuration."""
+    def _build_field_converter_set(self) -> FieldValueConverterSet:
+        """Builds the immutable field-converter object once."""
         return FieldValueConverterSet(
             field_converters=self.field_value_converters,
             model_field_converters=self.model_field_value_converters,
+        )
+
+    def _build_procedure_policy(self) -> ProcedureAccessPolicy:
+        """Builds the compiled procedure policy once."""
+        return _build_procedure_policy(
+            self.procedure_whitelist,
+            self.procedure_blacklist,
         )
 
 
@@ -204,13 +298,23 @@ class SortOptions:
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = field(default_factory=SortLimits)
     json_options: JSONOptions = field(default_factory=JSONOptions)
+    _field_policy: FieldPolicySet = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _procedure_policy: ProcedureAccessPolicy = field(
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         object.__setattr__(
             self,
             "field_mapping",
-            MappingProxyType(dict(self.field_mapping)),
+            _normalize_mapping(self.field_mapping),
         )
         object.__setattr__(
             self,
@@ -220,17 +324,17 @@ class SortOptions:
         object.__setattr__(
             self,
             "join_hints",
-            MappingProxyType(dict(self.join_hints)),
+            _normalize_mapping(self.join_hints),
         )
         object.__setattr__(
             self,
             "field_whitelist",
-            frozenset(self.field_whitelist),
+            _normalize_frozenset(self.field_whitelist),
         )
         object.__setattr__(
             self,
             "field_blacklist",
-            frozenset(self.field_blacklist),
+            _normalize_frozenset(self.field_blacklist),
         )
         object.__setattr__(
             self,
@@ -245,24 +349,46 @@ class SortOptions:
         object.__setattr__(
             self,
             "procedure_whitelist",
-            tuple(self.procedure_whitelist),
+            _normalize_tuple(self.procedure_whitelist),
         )
         object.__setattr__(
             self,
             "procedure_blacklist",
-            tuple(self.procedure_blacklist),
+            _normalize_tuple(self.procedure_blacklist),
+        )
+        object.__setattr__(self, "_field_policy", self._build_field_policy())
+        object.__setattr__(
+            self,
+            "_procedure_policy",
+            self._build_procedure_policy(),
         )
 
     @property
     def field_policy(self) -> FieldPolicySet:
         """Returns the normalized field mapping and access configuration."""
-        return FieldPolicySet(
+        return self._field_policy
+
+    @property
+    def procedure_policy(self) -> ProcedureAccessPolicy:
+        """Returns the compiled procedure access policy."""
+        return self._procedure_policy
+
+    def _build_field_policy(self) -> FieldPolicySet:
+        """Builds the immutable field-policy object once."""
+        return _build_field_policy(
             field_mapping=self.field_mapping,
             field_whitelist=self.field_whitelist,
             field_blacklist=self.field_blacklist,
             model_field_mapping=self.model_field_mapping,
             model_field_whitelist=self.model_field_whitelist,
             model_field_blacklist=self.model_field_blacklist,
+        )
+
+    def _build_procedure_policy(self) -> ProcedureAccessPolicy:
+        """Builds the compiled procedure policy once."""
+        return _build_procedure_policy(
+            self.procedure_whitelist,
+            self.procedure_blacklist,
         )
 
 

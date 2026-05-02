@@ -79,8 +79,7 @@ class Parser:
                 TokenKind.RPAREN,
                 message="Expected ')' to close grouped expression",
             )
-            return self._rebuild_with_span(
-                expression,
+            return expression.with_span(
                 SourceSpan.cover(opening.span, closing.span),
             )
         return self._parse_comparison()
@@ -225,25 +224,6 @@ class Parser:
             text=token.lexeme,
             quoted=token.kind is TokenKind.QUOTED_TEXT,
             span=token.span,
-        )
-
-    def _rebuild_with_span(
-        self,
-        node: Expression,
-        span: SourceSpan,
-    ) -> Expression:
-        """Returns a copy of a node with an updated span."""
-        if isinstance(node, ComparisonNode):
-            return ComparisonNode(
-                span=span,
-                selector=node.selector,
-                operator=node.operator,
-                arguments=node.arguments,
-            )
-        return LogicalNode(
-            span=span,
-            operator=node.operator,
-            children=node.children,
         )
 
     def _expect_value(self, message: str) -> Token:

@@ -1,8 +1,10 @@
 """AST node definitions for pyrsql parsing."""
 
 from dataclasses import dataclass
+from dataclasses import replace
 from enum import Enum
 from enum import auto
+from typing import Self
 
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.source import SourceSpan
@@ -23,6 +25,10 @@ class Node:
     """Base AST node."""
 
     span: SourceSpan
+
+    def with_span(self, span: SourceSpan) -> Self:
+        """Returns a copy of the node with an updated source span."""
+        return replace(self, span=span)
 
 
 @dataclass(frozen=True, slots=True)

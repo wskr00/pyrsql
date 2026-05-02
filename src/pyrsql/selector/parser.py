@@ -107,12 +107,15 @@ class SelectorParser:
     def _parse_literal_value(self, raw_literal: str) -> ast.SelectorLiteral:
         """Parses a static literal selector value."""
         normalized_literal = raw_literal.replace("\t", " ")
-        if normalized_literal.lower() == "null":
-            return None
-        if normalized_literal.lower() == "true":
-            return True
-        if normalized_literal.lower() == "false":
-            return False
+        match normalized_literal.lower():
+            case "null":
+                return None
+            case "true":
+                return True
+            case "false":
+                return False
+            case _:
+                pass
         if self._INTEGER_PATTERN.fullmatch(normalized_literal):
             return int(normalized_literal)
         if self._FLOAT_PATTERN.fullmatch(normalized_literal):

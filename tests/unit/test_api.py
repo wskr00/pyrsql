@@ -10,6 +10,7 @@ from pyrsql.core.joins import JoinHint
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.options import SortOptions
 from pyrsql.core.page import PageRequest
+from pyrsql.core.procedure_policy import ProcedureAccessPolicy
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.operators import OperatorRegistry
@@ -118,6 +119,14 @@ def test_query_options_store_field_value_converters() -> None:
     assert "value" in options.model_field_value_converters[str]
 
 
+def test_query_options_cache_derived_policy_objects() -> None:
+    """Caches derived helper objects after normalization."""
+    options = QueryOptions()
+    assert options.field_policy is options.field_policy
+    assert options.field_converter_set is options.field_converter_set
+    assert options.procedure_policy is options.procedure_policy
+
+
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
     """Rejects custom predicate definitions keyed by the wrong name."""
     with pytest.raises(ValueError):
@@ -172,6 +181,25 @@ def test_sort_options_normalize_model_field_policies() -> None:
     assert options.model_field_mapping[str]["alias"] == "value"
     assert options.model_field_whitelist[str] == frozenset({"value"})
     assert options.model_field_blacklist[int] == frozenset({"blocked"})
+
+
+def test_sort_options_cache_derived_policy_objects() -> None:
+    """Caches derived helper objects after normalization."""
+    options = SortOptions()
+    assert options.field_policy is options.field_policy
+    assert options.procedure_policy is options.procedure_policy
+
+
+def test_procedure_policy_compiles_regex_rules() -> None:
+    """Evaluates compiled whitelist and blacklist regex rules."""
+    policy = ProcedureAccessPolicy.from_patterns(
+        whitelist=("upper", "concat|lower"),
+        blacklist=("lower",),
+    )
+    assert policy.is_whitelisted("upper") is True
+    assert policy.is_whitelisted("concat") is True
+    assert policy.is_whitelisted("trim") is False
+    assert policy.is_blacklisted("lower") is True
 
 
 def test_page_request_apply_uses_backend() -> None:

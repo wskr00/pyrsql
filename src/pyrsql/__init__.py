@@ -20,6 +20,7 @@ from pyrsql.core.json.values import JSONScalarValue
 from pyrsql.core.page import PageRequest
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.options import SortOptions
+from pyrsql.core.procedure_policy import ProcedureAccessPolicy
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 
@@ -40,6 +41,7 @@ __all__ = [
     "JSONScalarValue",
     "PageCompilationResult",
     "PageRequest",
+    "ProcedureAccessPolicy",
     "Query",
     "QueryOptions",
     "Sort",

@@ -1,5 +1,7 @@
 """Single-pass lexer for pyrsql query strings."""
 
+from collections.abc import Mapping
+
 from pyrsql.parsing.errors import LexError
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import OPERATOR_SPELLINGS
@@ -8,6 +10,7 @@ from pyrsql.parsing.source import SourceSpan
 from pyrsql.parsing.source import SourceText
 from pyrsql.parsing.tokens import Token
 from pyrsql.parsing.tokens import TokenKind
+
 
 class Lexer:
     """Converts raw query text into a token stream."""
@@ -24,6 +27,9 @@ class Lexer:
         )
         self._limits = limits or ParseLimits()
         self._operator_spellings = operator_spellings
+        self._operator_spellings_by_prefix = self._index_operator_spellings(
+            operator_spellings
+        )
         self._index = 0
         self._line = 1
         self._column = 1
@@ -52,17 +58,19 @@ class Lexer:
             return operator
 
         current_char = self._peek()
-        if current_char == "(":
-            return self._single_char_token(TokenKind.LPAREN)
-        if current_char == ")":
-            return self._single_char_token(TokenKind.RPAREN)
-        if current_char == ",":
-            return self._single_char_token(TokenKind.COMMA)
-        if current_char == ";":
-            return self._single_char_token(TokenKind.SEMICOLON)
-        if current_char == "'":
-            return self._consume_quoted_text()
-        return self._consume_unquoted_text()
+        match current_char:
+            case "(":
+                return self._single_char_token(TokenKind.LPAREN)
+            case ")":
+                return self._single_char_token(TokenKind.RPAREN)
+            case ",":
+                return self._single_char_token(TokenKind.COMMA)
+            case ";":
+                return self._single_char_token(TokenKind.SEMICOLON)
+            case "'":
+                return self._consume_quoted_text()
+            case _:
+                return self._consume_unquoted_text()
 
     def _consume_quoted_text(self) -> Token:
         """Consumes a single-quoted text token."""
@@ -105,10 +113,13 @@ class Lexer:
                 span=SourceSpan(start=start, end=self._current_position()),
             )
 
-        if lexeme == "and":
-            return self._make_token(TokenKind.AND, lexeme, start)
-        if lexeme == "or":
-            return self._make_token(TokenKind.OR, lexeme, start)
+        match lexeme:
+            case "and":
+                return self._make_token(TokenKind.AND, lexeme, start)
+            case "or":
+                return self._make_token(TokenKind.OR, lexeme, start)
+            case _:
+                pass
 
         self._enforce_selector_length(lexeme, start)
         return self._make_token(TokenKind.UNQUOTED_TEXT, lexeme, start)
@@ -122,7 +133,7 @@ class Lexer:
     def _match_operator(self) -> Token | None:
         """Consumes a comparison operator when present."""
         start = self._current_position()
-        for spelling in self._operator_spellings:
+        for spelling in self._candidate_operator_spellings():
             if self._source.text.startswith(spelling, self._index):
                 for _ in spelling:
                     self._advance()
@@ -135,10 +146,31 @@ class Lexer:
 
     def _starts_with_operator(self) -> bool:
         """Checks whether the current position begins an operator."""
-        for spelling in self._operator_spellings:
+        for spelling in self._candidate_operator_spellings():
             if self._source.text.startswith(spelling, self._index):
                 return True
         return False
+
+    def _candidate_operator_spellings(self) -> tuple[str, ...]:
+        """Returns spellings matching the current prefix character."""
+        current_char = self._peek()
+        return self._operator_spellings_by_prefix.get(
+            current_char,
+            self._operator_spellings,
+        )
+
+    def _index_operator_spellings(
+        self,
+        operator_spellings: tuple[str, ...],
+    ) -> Mapping[str, tuple[str, ...]]:
+        """Indexes operator spellings by their first character."""
+        spellings_by_prefix: dict[str, list[str]] = {}
+        for spelling in operator_spellings:
+            spellings_by_prefix.setdefault(spelling[0], []).append(spelling)
+        return {
+            prefix: tuple(spellings)
+            for prefix, spellings in spellings_by_prefix.items()
+        }
 
     def _skip_whitespace(self) -> None:
         """Skips ASCII whitespace characters."""

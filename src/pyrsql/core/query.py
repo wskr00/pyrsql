@@ -11,6 +11,37 @@ from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.analyzer import SemanticAnalyzer
 from pyrsql.semantic.ast import SemanticExpression
 
+_DEFAULT_QUERY_OPTIONS = QueryOptions()
+
+
+def _resolve_query_options(
+    options: QueryOptions | None,
+) -> QueryOptions:
+    """Returns the provided options or the shared immutable default."""
+    return options or _DEFAULT_QUERY_OPTIONS
+
+
+def _parse_query_expression(
+    query_text: str,
+    *,
+    options: QueryOptions,
+) -> Expression:
+    """Parses raw query text into a syntax tree."""
+    return Parser(
+        query_text,
+        limits=options.parse_limits,
+        operator_registry=options.operator_registry,
+    ).parse()
+
+
+def _analyze_query_expression(
+    expression: Expression,
+    *,
+    options: QueryOptions,
+) -> SemanticExpression:
+    """Analyzes a syntax tree into a semantic expression."""
+    return SemanticAnalyzer(options).analyze(expression)
+
 
 @dataclass(frozen=True, slots=True)
 class Query:
@@ -33,7 +64,7 @@ class Query:
         options: QueryOptions | None = None,
     ) -> "Query":
         """Creates a query object from raw RSQL text."""
-        resolved_options = options or QueryOptions()
+        resolved_options = _resolve_query_options(options)
         expression = cls.parse_expression(query_text, options=resolved_options)
         semantic_expression = cls.analyze_expression(
             expression,
@@ -53,11 +84,7 @@ class Query:
         options: QueryOptions,
     ) -> Expression:
         """Parses raw query text into a syntax tree."""
-        return Parser(
-            query_text,
-            limits=options.parse_limits,
-            operator_registry=options.operator_registry,
-        ).parse()
+        return _parse_query_expression(query_text, options=options)
 
     @staticmethod
     def analyze_expression(
@@ -66,7 +93,7 @@ class Query:
         options: QueryOptions,
     ) -> SemanticExpression:
         """Analyzes a syntax tree into a semantic expression."""
-        return SemanticAnalyzer(options).analyze(expression)
+        return _analyze_query_expression(expression, options=options)
 
     def compile(self, *, backend: Backend) -> CompilationResult:
         """Compiles the query using the provided backend."""
