@@ -1,20 +1,27 @@
 """Helpers for mutating SQLAlchemy Select statements."""
 
-from typing import Any, Mapping
+from typing import Mapping
 
 from sqlalchemy.sql import Select
 
 from pyrsql.core.joins import JoinHint
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan, SQLAlchemySelect
+
+
+def require_sqlalchemy_select(target: object) -> SQLAlchemySelect:
+    """Validates and narrows an ORM target to a SQLAlchemy Select."""
+    if not isinstance(target, Select):
+        raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
+    return target
 
 
 def apply_relationship_joins(
-    statement: Select[Any],
+    statement: SQLAlchemySelect,
     joins: tuple[SQLAlchemyJoinPlan, ...],
     *,
     join_hints: Mapping[str, JoinHint] | None = None,
-) -> Select[Any]:
+) -> SQLAlchemySelect:
     """Applies relationship joins once each while preserving order."""
     join_hints = join_hints or {}
     deduplicated_joins = dict.fromkeys(joins)

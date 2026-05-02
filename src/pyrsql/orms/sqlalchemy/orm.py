@@ -4,9 +4,7 @@ from typing import TYPE_CHECKING, Mapping
 
 from pyrsql.orms import base
 from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
-from pyrsql.orms.sqlalchemy.compiled_page import (
-    SQLAlchemyCompiledPageRequest,
-)
+from pyrsql.orms.sqlalchemy.compiled_page import SQLAlchemyCompiledPageRequest
 from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
 from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
@@ -40,7 +38,7 @@ class SQLAlchemyORM(base.ORM):
         """Returns the ORM name."""
         return "sqlalchemy"
 
-    def compile_query(self, query: "Query") -> base.CompiledQuery:
+    def compile_query(self, query: "Query") -> SQLAlchemyCompiledQuery:
         """Compiles a pyrsql query for SQLAlchemy."""
         if query.semantic_expression is None:
             raise ValueError("Query must carry a semantic expression.")
@@ -50,7 +48,7 @@ class SQLAlchemyORM(base.ORM):
             translator=self._translator,
         )
 
-    def compile_sort(self, sort: "Sort") -> base.CompiledSort:
+    def compile_sort(self, sort: "Sort") -> SQLAlchemyCompiledSort:
         """Compiles a pyrsql sort for SQLAlchemy."""
         return SQLAlchemyCompiledSort(
             fields=sort.semantic_fields,
@@ -61,6 +59,6 @@ class SQLAlchemyORM(base.ORM):
     def compile_page_request(
         self,
         page_request: "PageRequest",
-    ) -> base.CompiledPageRequest:
+    ) -> SQLAlchemyCompiledPageRequest:
         """Compiles a pyrsql page request for SQLAlchemy."""
         return SQLAlchemyCompiledPageRequest(page_request=page_request)

@@ -1,13 +1,14 @@
 """Compiled query support for SQLAlchemy."""
 
 from dataclasses import dataclass
-from typing import Any
-
-from sqlalchemy.sql import Select
 
 from pyrsql.core.options import QueryOptions
-from pyrsql.orms.sqlalchemy.statement import apply_relationship_joins
+from pyrsql.orms.sqlalchemy.statement import (
+    apply_relationship_joins,
+    require_sqlalchemy_select,
+)
 from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 from pyrsql.semantic.ast import SemanticExpression
 
 
@@ -19,17 +20,20 @@ class SQLAlchemyCompiledQuery:
     options: QueryOptions
     translator: SQLAlchemyExpressionTranslator
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def apply(
+        self,
+        target: SQLAlchemySelect | object,
+        model: SQLAlchemyModel,
+    ) -> SQLAlchemySelect:
         """Applies the compiled query to a SQLAlchemy Select."""
-        if not isinstance(target, Select):
-            raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
+        statement = require_sqlalchemy_select(target)
         joins, predicate = self.translator.translate(
             model,
             self.expression,
             options=self.options,
         )
         statement = apply_relationship_joins(
-            target,
+            statement,
             joins,
             join_hints=self.options.join_hints,
         )

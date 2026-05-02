@@ -1,11 +1,10 @@
 """Compiled pagination support for SQLAlchemy."""
 
 from dataclasses import dataclass
-from typing import Any
-
-from sqlalchemy.sql import Select
 
 from pyrsql.core.page import PageRequest
+from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
 @dataclass(frozen=True, slots=True)
@@ -14,11 +13,14 @@ class SQLAlchemyCompiledPageRequest:
 
     page_request: PageRequest
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def apply(
+        self,
+        target: SQLAlchemySelect | object,
+        model: SQLAlchemyModel,
+    ) -> SQLAlchemySelect:
         """Applies the compiled page request to a SQLAlchemy Select."""
         del model
-        if not isinstance(target, Select):
-            raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
-        return target.limit(self.page_request.limit).offset(
+        statement = require_sqlalchemy_select(target)
+        return statement.limit(self.page_request.limit).offset(
             self.page_request.offset
         )
