@@ -147,6 +147,50 @@ class ValueConverterRegistry:
             ) from error
 
 
+@dataclass(frozen=True, slots=True)
+class FieldValueConverterSet:
+    """Immutable field-scoped value converter configuration."""
+
+    field_converters: Mapping[str, ValueConverter]
+    model_field_converters: Mapping[type[Any], Mapping[str, ValueConverter]]
+
+    def __post_init__(self) -> None:
+        """Normalizes nested converter mappings into immutable views."""
+        object.__setattr__(
+            self,
+            "field_converters",
+            MappingProxyType(dict(self.field_converters)),
+        )
+        object.__setattr__(
+            self,
+            "model_field_converters",
+            MappingProxyType(
+                {
+                    model: MappingProxyType(dict(converters))
+                    for model, converters in self.model_field_converters.items()
+                }
+            ),
+        )
+
+    def resolve(
+        self,
+        *,
+        model: type[Any] | None,
+        field_name: str | None,
+        field_path: str | None,
+    ) -> ValueConverter | None:
+        """Resolves the most specific converter configured for a field."""
+        if model is not None and field_name is not None:
+            model_converters = self.model_field_converters.get(model)
+            if model_converters is not None:
+                converter = model_converters.get(field_name)
+                if converter is not None:
+                    return converter
+        if field_path is not None:
+            return self.field_converters.get(field_path)
+        return None
+
+
 DEFAULT_VALUE_CONVERTER_REGISTRY = ValueConverterRegistry(
     {
         bool: _convert_bool,
@@ -157,4 +201,9 @@ DEFAULT_VALUE_CONVERTER_REGISTRY = ValueConverterRegistry(
         dt.date: dt.date.fromisoformat,
         dt.time: dt.time.fromisoformat,
     }
+)
+
+DEFAULT_FIELD_VALUE_CONVERTER_SET = FieldValueConverterSet(
+    field_converters={},
+    model_field_converters={},
 )

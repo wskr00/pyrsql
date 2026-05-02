@@ -105,12 +105,32 @@ class SQLAlchemyExpressionTranslator:
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
         """Translates a comparison semantic expression."""
-        selector_joins, selector_expression, python_type = (
-            self._translate_selector(
-            model,
-            expression.selector,
+        field_model = None
+        field_name = None
+        field_path = None
+        if isinstance(expression.selector, SemanticColumnSelector):
+            resolved_path = self._path_resolver.resolve(
+                model,
+                expression.selector.field_path,
+                field_policy=options.field_policy,
             )
-        )
+            selector_joins = resolved_path.joins
+            selector_expression = cast(
+                ColumnElement[Any],
+                resolved_path.leaf_attribute,
+            )
+            python_type = resolved_path.python_type
+            field_model = resolved_path.leaf_model
+            field_name = resolved_path.leaf_attribute.key
+            field_path = resolved_path.field_path
+        else:
+            selector_joins, selector_expression, python_type = (
+                self._translate_selector(
+                    model,
+                    expression.selector,
+                    options=options,
+                )
+            )
         custom_predicate = options.custom_predicates.get(
             expression.operator.name
         )
@@ -123,6 +143,10 @@ class SQLAlchemyExpressionTranslator:
             self._value_coercer.coerce(
                 argument.text,
                 argument_type,
+                field_converter_set=options.field_converter_set,
+                model=field_model,
+                field_name=field_name,
+                field_path=field_path,
                 registry=options.value_converter_registry,
             )
             for argument in expression.arguments
@@ -140,6 +164,8 @@ class SQLAlchemyExpressionTranslator:
         self,
         model: type[Any],
         selector: SemanticSelector,
+        *,
+        options: QueryOptions,
     ) -> tuple[
         tuple[SQLAlchemyJoinPlan, ...],
         ColumnElement[Any],
@@ -150,6 +176,7 @@ class SQLAlchemyExpressionTranslator:
             resolved_path = self._path_resolver.resolve(
                 model,
                 selector.field_path,
+                field_policy=options.field_policy,
             )
             return (
                 resolved_path.joins,
@@ -170,7 +197,11 @@ class SQLAlchemyExpressionTranslator:
         argument_types: list[type[Any] | None] = []
         for argument in selector.arguments:
             argument_joins, argument_expression, argument_type = (
-                self._translate_selector(model, argument)
+                self._translate_selector(
+                    model,
+                    argument,
+                    options=options,
+                )
             )
             joins.extend(argument_joins)
             argument_expressions.append(argument_expression)

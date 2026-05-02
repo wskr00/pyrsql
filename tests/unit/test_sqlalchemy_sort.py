@@ -135,3 +135,20 @@ def test_backend_applies_left_join_hint_in_sort() -> None:
     )
     sql = str(statement)
     assert "LEFT OUTER JOIN company" in sql
+
+
+def test_backend_applies_model_field_mapping_in_sort() -> None:
+    """Applies model-scoped field aliases during sort resolution."""
+    backend = SQLAlchemyBackend()
+    statement = Sort.parse(
+        "company.companyName,asc",
+        options=SortOptions(
+            model_field_mapping={Company: {"companyName": "name"}},
+        ),
+    ).apply(
+        select(User),
+        User,
+        backend=backend,
+    )
+    sql = str(statement)
+    assert "company.name ASC" in sql

@@ -239,3 +239,65 @@ def test_backend_uses_core_datetime_conversion_fallback() -> None:
     statement = backend.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
     assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
+
+
+def test_backend_applies_model_field_mapping_in_where_clause() -> None:
+    """Applies model-scoped field aliases during query resolution."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "company.companyName==demo",
+        options=QueryOptions(
+            model_field_mapping={Company: {"companyName": "name"}},
+        ),
+    )
+    statement = backend.compile_query(query).apply(select(User), User)
+    sql = str(statement)
+    assert "company.name =" in sql
+
+
+def test_backend_enforces_model_field_whitelist() -> None:
+    """Rejects fields not listed in a model-specific whitelist."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "company.name==demo",
+        options=QueryOptions(
+            model_field_whitelist={Company: frozenset({"id"})},
+        ),
+    )
+    with pytest.raises(SQLAlchemyBackendError):
+        backend.compile_query(query).apply(select(User), User)
+
+
+def test_backend_applies_field_specific_converter() -> None:
+    """Uses field-path converters before falling back to type converters."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "created_at==02/05/2026",
+        options=QueryOptions(
+            field_value_converters={
+                "created_at": lambda raw: dt.datetime.strptime(
+                    raw,
+                    "%d/%m/%Y",
+                )
+            }
+        ),
+    )
+    statement = backend.compile_query(query).apply(select(Event), Event)
+    compiled = statement.compile()
+    assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
+
+
+def test_backend_applies_model_field_specific_converter() -> None:
+    """Uses model-scoped field converters on resolved leaf models."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "company.name==demo",
+        options=QueryOptions(
+            model_field_value_converters={
+                Company: {"name": lambda raw: raw.upper()}
+            }
+        ),
+    )
+    statement = backend.compile_query(query).apply(select(User), User)
+    compiled = statement.compile()
+    assert compiled.params["name_1"] == "DEMO"

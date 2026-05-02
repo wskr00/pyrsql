@@ -8,6 +8,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.core.options import SortOptions
 from pyrsql.selector.semantic import SemanticColumnSelector
 from pyrsql.selector.semantic import SemanticLiteralSelector
 from pyrsql.selector.semantic import SemanticSelector
@@ -29,6 +30,8 @@ class SQLAlchemySortTranslator:
         self,
         model: type[Any],
         fields: tuple[SemanticSortField, ...],
+        *,
+        options: SortOptions | None = None,
     ) -> tuple[
         tuple[SQLAlchemyJoinPlan, ...],
         tuple[ColumnElement[Any], ...],
@@ -40,6 +43,7 @@ class SQLAlchemySortTranslator:
             selector_joins, expression, python_type = self._translate_selector(
                 model,
                 field.selector,
+                options=options,
             )
             joins.extend(selector_joins)
             order_clauses.append(
@@ -55,6 +59,8 @@ class SQLAlchemySortTranslator:
         self,
         model: type[Any],
         selector: SemanticSelector,
+        *,
+        options: SortOptions | None = None,
     ) -> tuple[
         tuple[SQLAlchemyJoinPlan, ...],
         ColumnElement[Any],
@@ -65,6 +71,7 @@ class SQLAlchemySortTranslator:
             resolved_path = self._path_resolver.resolve(
                 model,
                 selector.field_path,
+                field_policy=options.field_policy if options else None,
             )
             return (
                 resolved_path.joins,
@@ -84,7 +91,11 @@ class SQLAlchemySortTranslator:
         argument_types: list[type[Any] | None] = []
         for argument in selector.arguments:
             argument_joins, argument_expression, argument_type = (
-                self._translate_selector(model, argument)
+                self._translate_selector(
+                    model,
+                    argument,
+                    options=options,
+                )
             )
             joins.extend(argument_joins)
             argument_expressions.append(argument_expression)

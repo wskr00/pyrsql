@@ -25,7 +25,11 @@ class SQLAlchemyCompiledSort:
             raise TypeError(
                 "SQLAlchemy backend expects a sqlalchemy.sql.Select."
             )
-        joins, order_clauses = self.translator.translate(model, self.fields)
+        joins, order_clauses = self.translator.translate(
+            model,
+            self.fields,
+            options=self.options,
+        )
         statement = apply_relationship_joins(
             target,
             joins,

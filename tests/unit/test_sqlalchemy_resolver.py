@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 
 
@@ -96,3 +97,40 @@ def test_path_resolver_rejects_path_through_column() -> None:
     resolver = SQLAlchemyPathResolver()
     with pytest.raises(SQLAlchemyPathResolutionError):
         resolver.resolve(User, "name.value")
+
+
+def test_path_resolver_applies_model_field_mapping() -> None:
+    """Resolves per-model field aliases during path traversal."""
+    resolver = SQLAlchemyPathResolver()
+    resolved = resolver.resolve(
+        User,
+        "company.companyName",
+        field_policy=FieldPolicySet(
+            field_mapping={},
+            field_whitelist=frozenset(),
+            field_blacklist=frozenset(),
+            model_field_mapping={Company: {"companyName": "name"}},
+            model_field_whitelist={},
+            model_field_blacklist={},
+        ),
+    )
+    assert resolved.python_type is str
+    assert resolved.leaf_model is Company
+
+
+def test_path_resolver_enforces_model_field_whitelist() -> None:
+    """Rejects leaf attributes outside model-specific whitelists."""
+    resolver = SQLAlchemyPathResolver()
+    with pytest.raises(SQLAlchemyPathResolutionError):
+        resolver.resolve(
+            User,
+            "company.name",
+            field_policy=FieldPolicySet(
+                field_mapping={},
+                field_whitelist=frozenset(),
+                field_blacklist=frozenset(),
+                model_field_mapping={},
+                model_field_whitelist={Company: frozenset({"id"})},
+                model_field_blacklist={},
+            ),
+        )

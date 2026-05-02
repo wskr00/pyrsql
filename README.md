@@ -18,5 +18,7 @@ in `adapters`.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Usage](docs/usage.md)
+- [Reference](docs/reference.md)
 - [Google Python Style Guide](docs/pyguide.md)
 - [Quality and Tooling](docs/quality.md)

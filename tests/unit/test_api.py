@@ -89,11 +89,33 @@ def test_query_options_normalize_distinct_and_join_hints() -> None:
     assert options.join_hints["User.company"] is JoinHint.LEFT
 
 
+def test_query_options_normalize_model_field_policies() -> None:
+    """Normalizes model-scoped field mapping and ACL containers."""
+    options = QueryOptions(
+        model_field_mapping={str: {"alias": "value"}},
+        model_field_whitelist={str: frozenset({"value"})},
+        model_field_blacklist={int: frozenset({"blocked"})},
+    )
+    assert options.model_field_mapping[str]["alias"] == "value"
+    assert options.model_field_whitelist[str] == frozenset({"value"})
+    assert options.model_field_blacklist[int] == frozenset({"blocked"})
+
+
 def test_query_options_store_value_converter_registry() -> None:
     """Preserves the configured value conversion registry."""
     registry = ValueConverterRegistry({str: lambda raw: raw.upper()})
     options = QueryOptions(value_converter_registry=registry)
     assert options.value_converter_registry is registry
+
+
+def test_query_options_store_field_value_converters() -> None:
+    """Preserves normalized field-scoped converter configuration."""
+    options = QueryOptions(
+        field_value_converters={"created_at": lambda raw: raw},
+        model_field_value_converters={str: {"value": lambda raw: raw}},
+    )
+    assert "created_at" in options.field_value_converters
+    assert "value" in options.model_field_value_converters[str]
 
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
@@ -138,6 +160,18 @@ def test_sort_options_are_normalized() -> None:
     )
     assert options.field_whitelist == frozenset({"name"})
     assert options.join_hints["User.company"] is JoinHint.INNER
+
+
+def test_sort_options_normalize_model_field_policies() -> None:
+    """Normalizes model-scoped sort policy containers."""
+    options = SortOptions(
+        model_field_mapping={str: {"alias": "value"}},
+        model_field_whitelist={str: frozenset({"value"})},
+        model_field_blacklist={int: frozenset({"blocked"})},
+    )
+    assert options.model_field_mapping[str]["alias"] == "value"
+    assert options.model_field_whitelist[str] == frozenset({"value"})
+    assert options.model_field_blacklist[int] == frozenset({"blocked"})
 
 
 def test_page_request_apply_uses_backend() -> None:

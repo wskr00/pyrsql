@@ -3,16 +3,23 @@
 from dataclasses import dataclass
 from dataclasses import field
 from types import MappingProxyType
+from typing import Any
 from typing import Mapping
+from typing import TypeVar
 
 from pyrsql.core.conversion import DEFAULT_VALUE_CONVERTER_REGISTRY
+from pyrsql.core.conversion import FieldValueConverterSet
+from pyrsql.core.conversion import ValueConverter
 from pyrsql.core.conversion import ValueConverterRegistry
 from pyrsql.core.custom import CustomPredicateDefinition
+from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.operators import OperatorRegistry
 from pyrsql.sorting.limits import SortLimits
+
+_NestedValueT = TypeVar("_NestedValueT")
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,9 +30,18 @@ class QueryOptions:
     distinct: bool = False
     like_escape_character: str | None = None
     field_mapping: Mapping[str, str] = field(default_factory=dict)
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
+        default_factory=dict
+    )
     join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
     field_whitelist: frozenset[str] = field(default_factory=frozenset)
     field_blacklist: frozenset[str] = field(default_factory=frozenset)
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
+        default_factory=dict
+    )
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
+        default_factory=dict
+    )
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     parse_limits: ParseLimits = field(default_factory=ParseLimits)
@@ -36,6 +52,12 @@ class QueryOptions:
     value_converter_registry: ValueConverterRegistry = (
         DEFAULT_VALUE_CONVERTER_REGISTRY
     )
+    field_value_converters: Mapping[str, ValueConverter] = field(
+        default_factory=dict
+    )
+    model_field_value_converters: Mapping[
+        type[Any], Mapping[str, ValueConverter]
+    ] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
@@ -46,8 +68,23 @@ class QueryOptions:
         )
         object.__setattr__(
             self,
+            "model_field_mapping",
+            _normalize_nested_mapping(self.model_field_mapping),
+        )
+        object.__setattr__(
+            self,
             "join_hints",
             MappingProxyType(dict(self.join_hints)),
+        )
+        object.__setattr__(
+            self,
+            "field_value_converters",
+            MappingProxyType(dict(self.field_value_converters)),
+        )
+        object.__setattr__(
+            self,
+            "model_field_value_converters",
+            _normalize_nested_mapping(self.model_field_value_converters),
         )
         object.__setattr__(
             self,
@@ -63,6 +100,16 @@ class QueryOptions:
             self,
             "field_blacklist",
             frozenset(self.field_blacklist),
+        )
+        object.__setattr__(
+            self,
+            "model_field_whitelist",
+            _normalize_nested_sets(self.model_field_whitelist),
+        )
+        object.__setattr__(
+            self,
+            "model_field_blacklist",
+            _normalize_nested_sets(self.model_field_blacklist),
         )
         object.__setattr__(
             self,
@@ -113,15 +160,44 @@ class QueryOptions:
                 )
         return OperatorRegistry(operators=tuple(merged_operators))
 
+    @property
+    def field_policy(self) -> FieldPolicySet:
+        """Returns the normalized field mapping and access configuration."""
+        return FieldPolicySet(
+            field_mapping=self.field_mapping,
+            field_whitelist=self.field_whitelist,
+            field_blacklist=self.field_blacklist,
+            model_field_mapping=self.model_field_mapping,
+            model_field_whitelist=self.model_field_whitelist,
+            model_field_blacklist=self.model_field_blacklist,
+        )
+
+    @property
+    def field_converter_set(self) -> FieldValueConverterSet:
+        """Returns the normalized field-scoped converter configuration."""
+        return FieldValueConverterSet(
+            field_converters=self.field_value_converters,
+            model_field_converters=self.model_field_value_converters,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class SortOptions:
     """Backend-neutral sort options."""
 
     field_mapping: Mapping[str, str] = field(default_factory=dict)
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
+        default_factory=dict
+    )
     join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
     field_whitelist: frozenset[str] = field(default_factory=frozenset)
     field_blacklist: frozenset[str] = field(default_factory=frozenset)
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
+        default_factory=dict
+    )
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
+        default_factory=dict
+    )
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = field(default_factory=SortLimits)
@@ -132,6 +208,11 @@ class SortOptions:
             self,
             "field_mapping",
             MappingProxyType(dict(self.field_mapping)),
+        )
+        object.__setattr__(
+            self,
+            "model_field_mapping",
+            _normalize_nested_mapping(self.model_field_mapping),
         )
         object.__setattr__(
             self,
@@ -150,6 +231,16 @@ class SortOptions:
         )
         object.__setattr__(
             self,
+            "model_field_whitelist",
+            _normalize_nested_sets(self.model_field_whitelist),
+        )
+        object.__setattr__(
+            self,
+            "model_field_blacklist",
+            _normalize_nested_sets(self.model_field_blacklist),
+        )
+        object.__setattr__(
+            self,
             "procedure_whitelist",
             tuple(self.procedure_whitelist),
         )
@@ -158,3 +249,39 @@ class SortOptions:
             "procedure_blacklist",
             tuple(self.procedure_blacklist),
         )
+
+    @property
+    def field_policy(self) -> FieldPolicySet:
+        """Returns the normalized field mapping and access configuration."""
+        return FieldPolicySet(
+            field_mapping=self.field_mapping,
+            field_whitelist=self.field_whitelist,
+            field_blacklist=self.field_blacklist,
+            model_field_mapping=self.model_field_mapping,
+            model_field_whitelist=self.model_field_whitelist,
+            model_field_blacklist=self.model_field_blacklist,
+        )
+
+
+def _normalize_nested_mapping(
+    mapping: Mapping[type[Any], Mapping[str, _NestedValueT]],
+) -> Mapping[type[Any], Mapping[str, _NestedValueT]]:
+    """Normalizes nested mapping structures into immutable views."""
+    return MappingProxyType(
+        {
+            model: MappingProxyType(dict(model_mapping))
+            for model, model_mapping in mapping.items()
+        }
+    )
+
+
+def _normalize_nested_sets(
+    mapping: Mapping[type[Any], frozenset[str]],
+) -> Mapping[type[Any], frozenset[str]]:
+    """Normalizes nested set-like mappings into immutable views."""
+    return MappingProxyType(
+        {
+            model: frozenset(values)
+            for model, values in mapping.items()
+        }
+    )
