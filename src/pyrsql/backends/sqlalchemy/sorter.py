@@ -6,6 +6,7 @@ from typing import cast
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
+from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.options import SortOptions
@@ -23,8 +24,10 @@ class SQLAlchemySortTranslator:
         self,
         *,
         path_resolver: SQLAlchemyPathResolver | None = None,
+        json_support: SQLAlchemyJSONSupport | None = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
+        self._json_support = json_support or SQLAlchemyJSONSupport()
 
     def translate(
         self,
@@ -75,8 +78,8 @@ class SQLAlchemySortTranslator:
             )
             return (
                 resolved_path.joins,
-                cast(ColumnElement[Any], resolved_path.leaf_attribute),
-                resolved_path.python_type,
+                self._resolve_column_expression(resolved_path),
+                str if resolved_path.is_json else resolved_path.python_type,
             )
         if isinstance(selector, SemanticLiteralSelector):
             python_type = (
@@ -110,6 +113,19 @@ class SQLAlchemySortTranslator:
                 selector.function_name,
                 tuple(argument_types),
             ),
+        )
+
+    def _resolve_column_expression(
+        self,
+        resolved_path: Any,
+    ) -> ColumnElement[Any]:
+        """Builds the effective SQL expression for a resolved path."""
+        base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
+        if not resolved_path.is_json:
+            return base_expression
+        return self._json_support.build_sort_expression(
+            base_expression,
+            resolved_path.json_path,
         )
 
     def _build_order_clause(

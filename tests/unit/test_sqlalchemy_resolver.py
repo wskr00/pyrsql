@@ -8,6 +8,7 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -42,6 +43,15 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     company: Mapped[Company] = relationship()
+
+
+class Event(Base):
+    """Test event model with JSON content."""
+
+    __tablename__ = "event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[dict[str, object]] = mapped_column(postgresql.JSONB)
 
 
 def test_model_inspector_reads_column_metadata() -> None:
@@ -134,3 +144,12 @@ def test_path_resolver_enforces_model_field_whitelist() -> None:
                 model_field_blacklist={},
             ),
         )
+
+
+def test_path_resolver_resolves_json_path() -> None:
+    """Resolves nested JSON paths from a JSONB column."""
+    resolver = SQLAlchemyPathResolver()
+    resolved = resolver.resolve(Event, "payload.user.id")
+    assert resolved.is_json is True
+    assert resolved.json_path == ("user", "id")
+    assert resolved.leaf_model is Event

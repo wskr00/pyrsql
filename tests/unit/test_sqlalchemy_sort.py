@@ -2,6 +2,8 @@
 
 # pylint: disable=wrong-import-position,unsubscriptable-object
 
+from typing import Any
+
 import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -9,6 +11,7 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -42,6 +45,15 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     company: Mapped[Company] = relationship()
+
+
+class JsonEvent(Base):
+    """Test event model with JSON payload for sorting."""
+
+    __tablename__ = "json_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[dict[str, object]] = mapped_column(postgresql.JSONB)
 
 
 def test_backend_applies_simple_order_by_clause() -> None:
@@ -152,3 +164,17 @@ def test_backend_applies_model_field_mapping_in_sort() -> None:
     )
     sql = str(statement)
     assert "company.name ASC" in sql
+
+
+def test_backend_applies_json_sort_clause() -> None:
+    """Builds jsonb_extract_path_text for JSON sort expressions."""
+    backend = SQLAlchemyBackend()
+    statement = Sort.parse("payload.user.id,asc").apply(
+        select(JsonEvent),
+        JsonEvent,
+        backend=backend,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "jsonb_extract_path_text" in sql
+    assert "payload" in sql

@@ -6,6 +6,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.properties import ColumnProperty
+from sqlalchemy.sql.sqltypes import JSON
 
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyModelInspectionError
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyAttributeKind
@@ -55,6 +56,7 @@ class SQLAlchemyModelInspector:
                 attribute=getattr(model, attribute_name),
                 mapper=None,
                 python_type=self._resolve_column_python_type(column_property),
+                is_json=self._is_json_column(column_property),
             )
         raise SQLAlchemyModelInspectionError(
             f"Attribute {attribute_name!r} is not mapped on model "
@@ -72,3 +74,12 @@ class SQLAlchemyModelInspector:
             return column_property.columns[0].type.python_type
         except (AttributeError, NotImplementedError):
             return None
+
+    def _is_json_column(
+        self,
+        column_property: ColumnProperty[Any],
+    ) -> bool:
+        """Returns whether the column property stores JSON-like data."""
+        if not column_property.columns:
+            return False
+        return isinstance(column_property.columns[0].type, JSON)

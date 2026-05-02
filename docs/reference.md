@@ -99,9 +99,11 @@ Supported:
 - custom predicates
 - field mapping and ACL
 - field-specific and type-specific conversion
+- PostgreSQL-style JSON / JSONB path filtering and sorting
 
 Not currently supported:
 
-- JSON / JSONB
 - framework adapters
 - non-SQLAlchemy backends
+- backend-neutral JSON configuration
+- advanced temporal JSON semantics

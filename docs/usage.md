@@ -90,6 +90,41 @@ stmt = PageRequest.of(0, 20).apply(
 )
 ```
 
+## JSON / JSONB
+
+The current `SQLAlchemy` backend supports PostgreSQL-style JSON filtering and
+sorting on `JSON` and `JSONB` columns.
+
+Filter by nested JSON path:
+
+```python
+Query.parse("payload.user.id==1")
+```
+
+Sort by nested JSON path:
+
+```python
+Sort.parse("payload.user.id,asc")
+```
+
+Current behavior:
+
+- `JSON` columns are cast to `JSONB`
+- filter translation uses `jsonb_path_exists(...)`
+- sort translation uses `jsonb_extract_path_text(...)`
+
+Current scope:
+
+- nested path filters such as `payload.user.id==1`
+- string, boolean, numeric, and `null` JSON scalar comparisons
+- JSON and JSONB column support in the `SQLAlchemy` backend
+
+Not yet implemented:
+
+- framework adapters
+- backend-neutral JSON configuration
+- advanced temporal JSON semantics
+
 ## Selector Functions
 
 Filter selectors support functions:

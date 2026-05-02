@@ -1,6 +1,9 @@
 """Path resolution for SQLAlchemy ORM models."""
 
 from typing import Any
+from typing import cast
+
+from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
@@ -101,6 +104,22 @@ class SQLAlchemyPathResolver:
                 continue
 
             if not is_last_segment:
+                if mapped_attribute.is_json:
+                    return SQLAlchemyResolvedPath(
+                        root_model=model,
+                        leaf_model=current_model,
+                        field_path=".".join(segments_to_resolve),
+                        joins=tuple(joins),
+                        leaf_attribute=cast(
+                            ColumnElement[Any],
+                            mapped_attribute.attribute,
+                        ),
+                        python_type=None,
+                        json_path=tuple(
+                            segments_to_resolve[segment_index + 1 :]
+                        ),
+                        is_json=True,
+                    )
                 raise SQLAlchemyPathResolutionError(
                     f"Field path {field_path!r} traverses through "
                     f"non-relationship segment {segment!r}."
@@ -121,7 +140,10 @@ class SQLAlchemyPathResolver:
             leaf_model=current_model,
             field_path=field_path,
             joins=tuple(joins),
-            leaf_attribute=leaf_attribute.attribute,
+            leaf_attribute=cast(
+                ColumnElement[Any],
+                leaf_attribute.attribute,
+            ),
             python_type=leaf_attribute.python_type,
         )
 

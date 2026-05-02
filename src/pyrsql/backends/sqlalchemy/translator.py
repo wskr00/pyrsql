@@ -12,6 +12,7 @@ from pyrsql.backends.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicateInput
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.options import QueryOptions
@@ -52,9 +53,11 @@ class SQLAlchemyExpressionTranslator:
         custom_predicates: (
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
+        json_support: SQLAlchemyJSONSupport | None = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._value_coercer = value_coercer or SQLAlchemyValueCoercer()
+        self._json_support = json_support or SQLAlchemyJSONSupport()
         self._custom_predicates = MappingProxyType(
             dict(custom_predicates or {})
         )
@@ -115,14 +118,22 @@ class SQLAlchemyExpressionTranslator:
                 field_policy=options.field_policy,
             )
             selector_joins = resolved_path.joins
-            selector_expression = cast(
-                ColumnElement[Any],
-                resolved_path.leaf_attribute,
-            )
+            selector_expression = resolved_path.leaf_attribute
             python_type = resolved_path.python_type
             field_model = resolved_path.leaf_model
-            field_name = resolved_path.leaf_attribute.key
+            field_name = getattr(resolved_path.leaf_attribute, "key", None)
             field_path = resolved_path.field_path
+            if resolved_path.is_json:
+                predicate = self._json_support.build_filter_expression(
+                    selector_expression,
+                    resolved_path.json_path,
+                    expression.operator.name,
+                    tuple(
+                        (argument.text, argument.quoted)
+                        for argument in expression.arguments
+                    ),
+                )
+                return selector_joins, predicate
         else:
             selector_joins, selector_expression, python_type = (
                 self._translate_selector(
@@ -180,8 +191,8 @@ class SQLAlchemyExpressionTranslator:
             )
             return (
                 resolved_path.joins,
-                cast(ColumnElement[Any], resolved_path.leaf_attribute),
-                resolved_path.python_type,
+                self._resolve_column_expression(resolved_path),
+                str if resolved_path.is_json else resolved_path.python_type,
             )
         if isinstance(selector, SemanticLiteralSelector):
             python_type = (
@@ -216,6 +227,19 @@ class SQLAlchemyExpressionTranslator:
                 selector.function_name,
                 tuple(argument_types),
             ),
+        )
+
+    def _resolve_column_expression(
+        self,
+        resolved_path: Any,
+    ) -> ColumnElement[Any]:
+        """Builds the effective SQL expression for a resolved path."""
+        base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
+        if not resolved_path.is_json:
+            return base_expression
+        return self._json_support.build_sort_expression(
+            base_expression,
+            resolved_path.json_path,
         )
 
     def _build_predicate(

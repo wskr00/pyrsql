@@ -7,6 +7,15 @@ The project is being designed to support multiple backends, starting with
 implementations live in `backends`, and framework-specific integration lives
 in `adapters`.
 
+Current `SQLAlchemy` support includes:
+
+- filters
+- sorting
+- pagination
+- `distinct`
+- `join_hints`
+- PostgreSQL-style JSON / JSONB path support
+
 ## Development Principles
 
 - Object-oriented design

@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position,unsubscriptable-object
 
 import datetime as dt
+from typing import Any
 
 import pytest
 
@@ -12,6 +13,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import String
 from sqlalchemy import func
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -57,6 +59,24 @@ class Event(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[dt.datetime] = mapped_column()
+
+
+class JsonEvent(Base):
+    """Test event model with JSONB payload."""
+
+    __tablename__ = "json_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[dict[str, object]] = mapped_column(postgresql.JSONB)
+
+
+class JsonDocument(Base):
+    """Test event model with JSON payload."""
+
+    __tablename__ = "json_document"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    payload: Mapped[dict[str, object]] = mapped_column(postgresql.JSON)
 
 
 def test_backend_applies_simple_where_clause() -> None:
@@ -301,3 +321,28 @@ def test_backend_applies_model_field_specific_converter() -> None:
     statement = backend.compile_query(query).apply(select(User), User)
     compiled = statement.compile()
     assert compiled.params["name_1"] == "DEMO"
+
+
+def test_backend_applies_jsonb_where_clause() -> None:
+    """Builds jsonb_path_exists for nested JSONB selectors."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.user.id==1")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "jsonb_path_exists" in sql
+    assert "CAST(json_event.payload AS JSONB)" in sql
+
+
+def test_backend_applies_json_where_clause_via_jsonb_cast() -> None:
+    """Builds JSON filters by casting JSON columns to JSONB."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.name==demo")
+    statement = backend.compile_query(query).apply(
+        select(JsonDocument),
+        JsonDocument,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "jsonb_path_exists" in sql
+    assert "CAST(json_document.payload AS JSONB)" in sql

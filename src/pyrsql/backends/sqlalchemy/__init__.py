@@ -8,9 +8,11 @@ from pyrsql.backends.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.backends.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
 from pyrsql.backends.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.backends.sqlalchemy.errors import SQLAlchemyJSONSupportError
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyModelInspectionError
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
+from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.backends.sqlalchemy.translator import SQLAlchemyExpressionTranslator
@@ -21,6 +23,8 @@ __all__ = [
     "SQLAlchemyCompiledPageRequest",
     "SQLAlchemyCompiledQuery",
     "SQLAlchemyCompiledSort",
+    "SQLAlchemyJSONSupport",
+    "SQLAlchemyJSONSupportError",
     "SQLAlchemyModelInspector",
     "SQLAlchemyModelInspectionError",
     "SQLAlchemyPathResolutionError",

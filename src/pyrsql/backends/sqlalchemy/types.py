@@ -5,6 +5,7 @@ from enum import Enum
 from enum import auto
 from typing import Any
 
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
@@ -35,8 +36,10 @@ class SQLAlchemyResolvedPath:
     leaf_model: type[Any]
     field_path: str
     joins: tuple[SQLAlchemyJoinPlan, ...]
-    leaf_attribute: InstrumentedAttribute[Any]
+    leaf_attribute: ColumnElement[Any]
     python_type: type[Any] | None
+    json_path: tuple[str, ...] = ()
+    is_json: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,3 +52,4 @@ class SQLAlchemyMappedAttribute:
     attribute: InstrumentedAttribute[Any]
     mapper: Mapper[Any] | None
     python_type: type[Any] | None
+    is_json: bool = False

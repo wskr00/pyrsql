@@ -11,3 +11,7 @@ class SQLAlchemyModelInspectionError(SQLAlchemyBackendError):
 
 class SQLAlchemyPathResolutionError(SQLAlchemyBackendError):
     """Raised when a semantic field path cannot be resolved."""
+
+
+class SQLAlchemyJSONSupportError(SQLAlchemyBackendError):
+    """Raised when JSON/JSONB translation cannot be completed."""
