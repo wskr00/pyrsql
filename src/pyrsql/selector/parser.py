@@ -55,14 +55,18 @@ class SelectorParser:
                         f"Selector fragment {text!r} has unbalanced brackets."
                     )
             elif character == delimiter and depth == 0:
-                parts.append(text[start_index:index])
+                part = text[start_index:index].strip()
+                if part:
+                    parts.append(part)
                 start_index = index + 1
         if depth != 0:
             raise SelectorParseError(
                 f"Selector fragment {text!r} has unbalanced brackets."
             )
-        parts.append(text[start_index:])
-        return tuple(part for part in parts if part.strip())
+        final_part = text[start_index:].strip()
+        if final_part:
+            parts.append(final_part)
+        return tuple(parts)
 
     def _parse_function_selector(
         self,
@@ -96,7 +100,7 @@ class SelectorParser:
             function_name=function_name,
             arguments=tuple(
                 self.parse(
-                    fragment.strip(),
+                    fragment,
                     max_length=max_length,
                     context=context,
                 )
@@ -121,3 +125,6 @@ class SelectorParser:
         if self._FLOAT_PATTERN.fullmatch(normalized_literal):
             return float(normalized_literal)
         return normalized_literal
+
+
+DEFAULT_SELECTOR_PARSER = SelectorParser()

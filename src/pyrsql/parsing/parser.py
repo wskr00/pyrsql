@@ -15,8 +15,8 @@ from pyrsql.parsing.source import SourceSpan
 from pyrsql.parsing.tokens import Token
 from pyrsql.parsing.tokens import TokenKind
 from pyrsql.selector.ast import Selector
+from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER
 from pyrsql.selector.parser import SelectorParseError
-from pyrsql.selector.parser import SelectorParser
 
 
 class Parser:
@@ -36,7 +36,7 @@ class Parser:
             limits=self._limits,
             operator_spellings=operator_registry.operator_spellings,
         ).tokenize()
-        self._selector_parser = SelectorParser()
+        self._selector_parser = DEFAULT_SELECTOR_PARSER
         self._index = 0
         self._node_count = 0
 

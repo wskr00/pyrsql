@@ -5,8 +5,8 @@ from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import SortParseError
 from pyrsql.sorting.limits import SortLimits
 from pyrsql.selector.ast import Selector
+from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER
 from pyrsql.selector.parser import SelectorParseError
-from pyrsql.selector.parser import SelectorParser
 
 
 class SortParser:
@@ -20,7 +20,7 @@ class SortParser:
     ) -> None:
         self._source = (source or "").strip()
         self._limits = limits or SortLimits()
-        self._selector_parser = SelectorParser()
+        self._selector_parser = DEFAULT_SELECTOR_PARSER
 
     def parse(self) -> tuple[SortField, ...]:
         """Parses the configured sort expression."""
@@ -53,14 +53,12 @@ class SortParser:
     ) -> SortField | None:
         """Parses a single semicolon-delimited sort clause."""
         try:
-            parts = [
-                part.strip()
-                for part in self._selector_parser.split_top_level(
+            parts = list(
+                self._selector_parser.split_top_level(
                     clause,
                     delimiter=",",
                 )
-                if part.strip()
-            ]
+            )
         except SelectorParseError as error:
             raise SortParseError(str(error)) from error
         if not parts:

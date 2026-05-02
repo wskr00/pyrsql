@@ -4,13 +4,8 @@ from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.ast import ComparisonNode
 from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.ast import LogicalNode
-from pyrsql.selector.ast import ColumnSelector
-from pyrsql.selector.ast import FunctionSelector
-from pyrsql.selector.ast import LiteralSelector
+from pyrsql.selector.analyzer import SelectorSemanticAnalyzer
 from pyrsql.selector.ast import Selector
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticFunctionSelector
-from pyrsql.selector.semantic import SemanticLiteralSelector
 from pyrsql.selector.semantic import SemanticSelector
 from pyrsql.semantic.ast import SemanticComparison
 from pyrsql.semantic.ast import SemanticExpression
@@ -26,6 +21,12 @@ class SemanticAnalyzer:
 
     def __init__(self, options: QueryOptions) -> None:
         self._options = options
+        self._field_whitelist = options.field_whitelist
+        self._field_blacklist = options.field_blacklist
+        self._procedure_policy = options.procedure_policy
+        self._selector_analyzer = SelectorSemanticAnalyzer(
+            options.field_mapping
+        )
 
     def analyze(self, expression: Expression) -> SemanticExpression:
         """Analyzes a parsed AST into a semantic expression tree."""
@@ -62,28 +63,17 @@ class SemanticAnalyzer:
         expression: ComparisonNode,
     ) -> SemanticSelector:
         """Analyzes a parsed selector recursively."""
-        if isinstance(selector, ColumnSelector):
-            field_path = self._options.field_mapping.get(
-                selector.selector,
-                selector.selector,
-            )
-            self._enforce_field_access_policy(field_path, expression)
-            return SemanticColumnSelector(
-                selector=selector.selector,
-                field_path=field_path,
-            )
-        if isinstance(selector, LiteralSelector):
-            return SemanticLiteralSelector(value=selector.value)
-        assert isinstance(selector, FunctionSelector)
-        self._enforce_function_access_policy(
-            selector.function_name,
-            expression=expression,
-        )
-        return SemanticFunctionSelector(
-            function_name=selector.function_name,
-            arguments=tuple(
-                self._analyze_selector(argument, expression=expression)
-                for argument in selector.arguments
+        return self._selector_analyzer.analyze(
+            selector,
+            validate_field=lambda field_path: self._enforce_field_access_policy(
+                field_path,
+                expression,
+            ),
+            validate_function=(
+                lambda function_name: self._enforce_function_access_policy(
+                    function_name,
+                    expression=expression,
+                )
             ),
         )
 
@@ -93,15 +83,12 @@ class SemanticAnalyzer:
         expression: ComparisonNode,
     ) -> None:
         """Validates whitelist and blacklist rules."""
-        if (
-            self._options.field_whitelist
-            and field_path not in self._options.field_whitelist
-        ):
+        if self._field_whitelist and field_path not in self._field_whitelist:
             raise FieldNotWhitelistedError(
                 message=f"Field {field_path!r} is not allowed",
                 span=expression.span,
             )
-        if field_path in self._options.field_blacklist:
+        if field_path in self._field_blacklist:
             raise FieldBlacklistedError(
                 message=f"Field {field_path!r} is blocked",
                 span=expression.span,
@@ -114,13 +101,12 @@ class SemanticAnalyzer:
         expression: ComparisonNode,
     ) -> None:
         """Validates whitelist and blacklist rules for functions."""
-        procedure_policy = self._options.procedure_policy
-        if not procedure_policy.is_whitelisted(function_name):
+        if not self._procedure_policy.is_whitelisted(function_name):
             raise FunctionNotWhitelistedError(
                 message=f"Function {function_name!r} is not whitelisted",
                 span=expression.span,
             )
-        if procedure_policy.is_blacklisted(function_name):
+        if self._procedure_policy.is_blacklisted(function_name):
             raise FunctionBlacklistedError(
                 message=f"Function {function_name!r} is blacklisted",
                 span=expression.span,

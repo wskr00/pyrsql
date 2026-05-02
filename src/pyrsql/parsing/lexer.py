@@ -98,9 +98,10 @@ class Lexer:
         start = self._current_position()
         start_index = self._index
         while not self._is_at_end():
-            if self._peek().isspace():
+            current_char = self._peek()
+            if current_char.isspace():
                 break
-            if self._peek() in "(),;":
+            if current_char in "(),;":
                 break
             if self._starts_with_operator():
                 break
@@ -135,8 +136,7 @@ class Lexer:
         start = self._current_position()
         for spelling in self._candidate_operator_spellings():
             if self._source.text.startswith(spelling, self._index):
-                for _ in spelling:
-                    self._advance()
+                self._advance_operator(spelling)
                 return self._make_token(
                     TokenKind.COMPARISON_OPERATOR,
                     spelling,
@@ -174,7 +174,9 @@ class Lexer:
 
     def _skip_whitespace(self) -> None:
         """Skips ASCII whitespace characters."""
-        while not self._is_at_end() and self._peek().isspace():
+        while not self._is_at_end():
+            if not self._peek().isspace():
+                break
             self._advance()
 
     def _validate_source_length(self) -> None:
@@ -229,6 +231,11 @@ class Lexer:
         else:
             self._column += 1
         return character
+
+    def _advance_operator(self, operator: str) -> None:
+        """Consumes a comparison operator in one step."""
+        self._index += len(operator)
+        self._column += len(operator)
 
     def _peek(self) -> str:
         """Returns the current character without consuming it."""
