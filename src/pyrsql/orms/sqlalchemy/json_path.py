@@ -44,6 +44,7 @@ _ISO_DATE_TIME_PATTERN = re.compile(
 )
 _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
+_DEFAULT_JSON_OPTIONS = JSONOptions()
 
 
 class SQLAlchemyJSONPathExpressionBuilder:
@@ -59,7 +60,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         """Builds a PostgreSQL JSONB path-exists predicate."""
         function_call = self._build_filter_call(
             comparison,
-            options=options or JSONOptions(),
+            options=options or _DEFAULT_JSON_OPTIONS,
         )
         jsonb_column = cast(
             ColumnElement[Any],

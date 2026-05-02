@@ -64,6 +64,7 @@ def test_query_options_cache_derived_policy_objects() -> None:
     assert options.field_policy is options.field_policy
     assert options.field_converter_set is options.field_converter_set
     assert options.procedure_policy is options.procedure_policy
+    assert options.field_policy.is_empty is True
 
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
@@ -111,6 +112,23 @@ def test_sort_options_cache_derived_policy_objects() -> None:
     options = SortOptions()
     assert options.field_policy is options.field_policy
     assert options.procedure_policy is options.procedure_policy
+    assert options.field_policy.is_empty is True
+
+
+def test_query_options_field_policy_is_not_empty_when_restrictions_exist(
+) -> None:
+    """Marks field policy as non-empty for configured query restrictions."""
+    options = QueryOptions(field_mapping={"alias": "name"})
+    assert options.field_policy.is_empty is False
+
+
+def test_sort_options_field_policy_is_not_empty_when_restrictions_exist(
+) -> None:
+    """Marks field policy as non-empty when sort restrictions are configured."""
+    options = SortOptions(
+        model_field_whitelist={str: frozenset({"name"})}
+    )
+    assert options.field_policy.is_empty is False
 
 
 def test_procedure_policy_compiles_regex_rules() -> None:

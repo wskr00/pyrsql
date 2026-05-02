@@ -25,6 +25,9 @@ class SQLAlchemyPathResolver:
         inspector: SQLAlchemyModelInspector | None = None,
     ) -> None:
         self._inspector = inspector or SQLAlchemyModelInspector()
+        self._default_resolution_cache: dict[
+            tuple[type[Any], str], SQLAlchemyResolvedPath
+        ] = {}
 
     def resolve(
         self,
@@ -34,6 +37,32 @@ class SQLAlchemyPathResolver:
         field_policy: FieldPolicySet | None = None,
     ) -> SQLAlchemyResolvedPath:
         """Resolves a dotted field path against a mapped SQLAlchemy model."""
+        if field_policy is None or field_policy.is_empty:
+            cache_key = (model, field_path)
+            cached_path = self._default_resolution_cache.get(cache_key)
+            if cached_path is not None:
+                return cached_path
+            resolved_path = self._resolve_with_field_policy(
+                model,
+                field_path,
+                field_policy=None,
+            )
+            self._default_resolution_cache[cache_key] = resolved_path
+            return resolved_path
+        return self._resolve_with_field_policy(
+            model,
+            field_path,
+            field_policy=field_policy,
+        )
+
+    def _resolve_with_field_policy(
+        self,
+        model: type[Any],
+        field_path: str,
+        *,
+        field_policy: FieldPolicySet | None,
+    ) -> SQLAlchemyResolvedPath:
+        """Resolves a dotted field path with the provided field policy."""
         if not field_path:
             raise SQLAlchemyPathResolutionError(
                 "Field path cannot be empty."
@@ -118,9 +147,7 @@ class SQLAlchemyPathResolver:
                         ),
                         python_type=None,
                         json_path=JSONPath(
-                            tuple(
-                                segments_to_resolve[segment_index + 1 :]
-                            )
+                            tuple(segments_to_resolve[segment_index + 1 :])
                         ),
                         is_json=True,
                     )
@@ -151,16 +178,16 @@ class SQLAlchemyPathResolver:
             python_type=leaf_attribute.python_type,
         )
 
+    @staticmethod
     def _make_join_key(
-        self,
         model: type[Any],
         segment: str,
     ) -> str:
         """Builds the stable join-hint lookup key for one relationship step."""
         return f"{model.__name__}.{segment}"
 
+    @staticmethod
     def _validate_field_policy(
-        self,
         field_policy: FieldPolicySet,
         model: type[Any],
         field_name: str,

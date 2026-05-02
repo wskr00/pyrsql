@@ -10,7 +10,10 @@ from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
 from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.orms.sqlalchemy.type_inference import infer_sql_function_python_type
+from pyrsql.orms.sqlalchemy.type_inference import is_string_python_type
 from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
 from pyrsql.core.options import SortOptions
 from pyrsql.selector.semantic import SemanticColumnSelector
 from pyrsql.selector.semantic import SemanticLiteralSelector
@@ -46,7 +49,7 @@ class SQLAlchemySortTranslator:
         tuple[ColumnElement[Any], ...],
     ]:
         """Translates semantic sort fields for a mapped model."""
-        joins: list[Any] = []
+        joins: list[SQLAlchemyJoinPlan] = []
         order_clauses: list[ColumnElement[Any]] = []
         for field in fields:
             selector_joins, expression, python_type = self._translate_selector(
@@ -95,7 +98,7 @@ class SQLAlchemySortTranslator:
             )
             return (), sa.literal(selector.value), python_type
 
-        joins: list[Any] = []
+        joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []
         for argument in selector.arguments:
@@ -115,7 +118,7 @@ class SQLAlchemySortTranslator:
         return (
             tuple(joins),
             cast(ColumnElement[Any], function_expression),
-            self._infer_function_python_type(
+            infer_sql_function_python_type(
                 selector.function_name,
                 tuple(argument_types),
             ),
@@ -123,10 +126,10 @@ class SQLAlchemySortTranslator:
 
     def _resolve_column_expression(
         self,
-        resolved_path: Any,
+        resolved_path: SQLAlchemyResolvedPath,
     ) -> ColumnElement[Any]:
         """Builds the effective SQL expression for a resolved path."""
-        base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
+        base_expression = resolved_path.leaf_attribute
         if not resolved_path.is_json:
             return base_expression
         return self._json_path_builder.build_sort_expression(
@@ -141,7 +144,7 @@ class SQLAlchemySortTranslator:
         field: SemanticSortField,
     ) -> ColumnElement[Any]:
         """Builds an ORDER BY clause for a resolved sort field."""
-        if field.ignore_case and self._is_string_type(python_type):
+        if field.ignore_case and is_string_python_type(python_type):
             expression = cast(ColumnElement[Any], sa.func.lower(expression))
         if field.direction is SortDirection.DESCENDING:
             return cast(ColumnElement[Any], expression.desc())

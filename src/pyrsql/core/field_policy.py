@@ -9,6 +9,18 @@ from typing import Mapping
 class FieldPolicySet:
     """ORM-neutral field mapping and access-policy configuration."""
 
+    @property
+    def is_empty(self) -> bool:
+        """Returns whether the policy carries no active restrictions."""
+        return not any((
+            self.field_mapping,
+            self.field_whitelist,
+            self.field_blacklist,
+            self.model_field_mapping,
+            self.model_field_whitelist,
+            self.model_field_blacklist,
+        ))
+
     field_mapping: Mapping[str, str]
     field_whitelist: frozenset[str]
     field_blacklist: frozenset[str]

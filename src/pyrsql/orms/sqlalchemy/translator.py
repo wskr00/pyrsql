@@ -16,7 +16,10 @@ from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
 from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.orms.sqlalchemy.type_inference import infer_sql_function_python_type
+from pyrsql.orms.sqlalchemy.type_inference import is_string_python_type
 from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.operators import BETWEEN
@@ -93,7 +96,7 @@ class SQLAlchemyExpressionTranslator:
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
         """Translates a logical semantic expression."""
-        joins: list[Any] = []
+        joins: list[SQLAlchemyJoinPlan] = []
         predicates: list[ColumnElement[bool]] = []
         for child in expression.children:
             child_joins, child_predicate = self.translate(
@@ -230,7 +233,7 @@ class SQLAlchemyExpressionTranslator:
             return (), sa.literal(selector.value), python_type
 
         assert isinstance(selector, SemanticFunctionSelector)
-        joins: list[Any] = []
+        joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []
         for argument in selector.arguments:
@@ -250,7 +253,7 @@ class SQLAlchemyExpressionTranslator:
         return (
             tuple(joins),
             cast(ColumnElement[Any], function_expression),
-            self._infer_function_python_type(
+            infer_sql_function_python_type(
                 selector.function_name,
                 tuple(argument_types),
             ),
@@ -258,10 +261,10 @@ class SQLAlchemyExpressionTranslator:
 
     def _resolve_column_expression(
         self,
-        resolved_path: Any,
+        resolved_path: SQLAlchemyResolvedPath,
     ) -> ColumnElement[Any]:
         """Builds the effective SQL expression for a resolved path."""
-        base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
+        base_expression = resolved_path.leaf_attribute
         if not resolved_path.is_json:
             return base_expression
         return self._json_path_builder.build_sort_expression(
@@ -384,7 +387,7 @@ class SQLAlchemyExpressionTranslator:
     ) -> ColumnElement[bool]:
         """Builds equality semantics, including RSQL wildcard handling."""
         predicate: ColumnElement[bool]
-        if self._is_string_type(python_type):
+        if is_string_python_type(python_type):
             predicate = self._build_string_equality_predicate(
                 expression,
                 str(value),
