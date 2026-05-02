@@ -10,3 +10,6 @@ class SortLimits:
     max_sort_length: int = 4096
     max_fields: int = 32
     max_field_path_length: int = 256
+
+
+DEFAULT_SORT_LIMITS = SortLimits()

@@ -16,7 +16,6 @@ class SortAnalyzer:
     """Applies selector mapping and access rules to parsed sort fields."""
 
     def __init__(self, options: SortOptions) -> None:
-        self._options = options
         self._field_whitelist = options.field_whitelist
         self._field_blacklist = options.field_blacklist
         self._procedure_policy = options.procedure_policy

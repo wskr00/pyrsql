@@ -1,12 +1,17 @@
 """Parser for pyrsql sort expressions."""
 
+from typing import Final
+
 from pyrsql.sorting.ast import SortDirection
 from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import SortParseError
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
 from pyrsql.sorting.limits import SortLimits
 from pyrsql.selector.ast import Selector
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER
 from pyrsql.selector.parser import SelectorParseError
+
+_EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
 
 
 class SortParser:
@@ -19,17 +24,20 @@ class SortParser:
         limits: SortLimits | None = None,
     ) -> None:
         self._source = (source or "").strip()
-        self._limits = limits or SortLimits()
+        self._limits = limits or DEFAULT_SORT_LIMITS
         self._selector_parser = DEFAULT_SELECTOR_PARSER
 
     def parse(self) -> tuple[SortField, ...]:
         """Parses the configured sort expression."""
         if not self._source:
-            return ()
-        if len(self._source) > self._limits.max_sort_length:
+            return _EMPTY_FIELDS
+
+        max_sort_length = self._limits.max_sort_length
+        max_fields = self._limits.max_fields
+        if len(self._source) > max_sort_length:
             raise SortParseError(
                 "Sort expression exceeds the maximum supported length of "
-                f"{self._limits.max_sort_length}."
+                f"{max_sort_length}."
             )
 
         fields: list[SortField] = []
@@ -38,10 +46,10 @@ class SortParser:
             if parsed_field is None:
                 continue
             fields.append(parsed_field)
-            if len(fields) > self._limits.max_fields:
+            if len(fields) > max_fields:
                 raise SortParseError(
                     "Sort expression exceeds the maximum supported field "
-                    f"count of {self._limits.max_fields}."
+                    f"count of {max_fields}."
                 )
         return tuple(fields)
 
@@ -102,11 +110,9 @@ class SortParser:
         clause_index: int,
     ) -> SortDirection:
         """Parses the direction token for a sort clause."""
-        normalized_direction = raw_direction.lower()
-        if normalized_direction == SortDirection.ASCENDING.value:
-            return SortDirection.ASCENDING
-        if normalized_direction == SortDirection.DESCENDING.value:
-            return SortDirection.DESCENDING
+        direction = SortDirection.from_raw(raw_direction)
+        if direction is not None:
+            return direction
         raise SortParseError(
             f"Sort clause #{clause_index} {clause!r} has unsupported direction "
             f"{raw_direction!r}."
@@ -120,13 +126,15 @@ class SortParser:
         clause_index: int,
     ) -> bool:
         """Parses the ignore-case modifier for a sort clause."""
-        if raw_flag.lower() != "ic":
-            raise SortParseError(
-                f"Sort clause #{clause_index} {clause!r} has unsupported "
-                "modifier "
-                f"{raw_flag!r}."
-            )
-        return True
+        match raw_flag.lower():
+            case "ic":
+                return True
+            case _:
+                raise SortParseError(
+                    f"Sort clause #{clause_index} {clause!r} has unsupported "
+                    "modifier "
+                    f"{raw_flag!r}."
+                )
 
     def _parse_selector(
         self,
