@@ -6,20 +6,16 @@ import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.joins import JoinHint
+from pyrsql.core.json.path import JSONPath
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
 from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
-from pyrsql.core.field_policy import FieldPolicySet
-from pyrsql.core.json.path import JSONPath
-from pyrsql.core.joins import JoinHint
 
 
 class Base(DeclarativeBase):

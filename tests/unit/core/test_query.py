@@ -3,12 +3,14 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
-from pyrsql.parsing.operators import OperatorRegistry
+from pyrsql.orms.base import ORM
+from pyrsql.parsing.operators import (
+    DEFAULT_OPERATOR_REGISTRY,
+    ComparisonOperator,
+    OperatorRegistry,
+)
 
 
 @dataclass(frozen=True, slots=True)

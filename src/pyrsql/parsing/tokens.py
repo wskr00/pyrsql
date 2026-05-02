@@ -1,8 +1,7 @@
 """Token models for the lexer."""
 
 from dataclasses import dataclass
-from enum import Enum
-from enum import auto
+from enum import Enum, auto
 
 from pyrsql.parsing.source import SourceSpan
 

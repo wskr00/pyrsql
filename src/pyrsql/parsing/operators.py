@@ -1,7 +1,6 @@
 """Supported comparison operators."""
 
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Mapping
 
@@ -37,9 +36,7 @@ class OperatorRegistry:
     """Immutable registry of supported comparison operators."""
 
     operators: tuple[ComparisonOperator, ...] = field(default_factory=tuple)
-    operators_by_spelling: Mapping[str, ComparisonOperator] = field(
-        init=False
-    )
+    operators_by_spelling: Mapping[str, ComparisonOperator] = field(init=False)
     operator_spellings: tuple[str, ...] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -49,8 +46,7 @@ class OperatorRegistry:
             for spelling in operator.spellings:
                 if spelling in operators_by_spelling:
                     raise ValueError(
-                        "Duplicate operator spelling registered: "
-                        f"{spelling!r}."
+                        f"Duplicate operator spelling registered: {spelling!r}."
                     )
                 operators_by_spelling[spelling] = operator
         object.__setattr__(

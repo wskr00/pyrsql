@@ -1,7 +1,6 @@
 """Immutable JSON path primitives."""
 
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)

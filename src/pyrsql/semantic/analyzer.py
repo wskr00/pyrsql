@@ -1,19 +1,21 @@
 """ORM-neutral semantic analysis."""
 
 from pyrsql.core.options import QueryOptions
-from pyrsql.parsing.ast import ComparisonNode
-from pyrsql.parsing.ast import Expression
-from pyrsql.parsing.ast import LogicalNode
+from pyrsql.parsing.ast import ComparisonNode, Expression, LogicalNode
 from pyrsql.selector.analyzer import SelectorSemanticAnalyzer
 from pyrsql.selector.ast import Selector
 from pyrsql.selector.semantic import SemanticSelector
-from pyrsql.semantic.ast import SemanticComparison
-from pyrsql.semantic.ast import SemanticExpression
-from pyrsql.semantic.ast import SemanticLogical
-from pyrsql.semantic.errors import FieldBlacklistedError
-from pyrsql.semantic.errors import FieldNotWhitelistedError
-from pyrsql.semantic.errors import FunctionBlacklistedError
-from pyrsql.semantic.errors import FunctionNotWhitelistedError
+from pyrsql.semantic.ast import (
+    SemanticComparison,
+    SemanticExpression,
+    SemanticLogical,
+)
+from pyrsql.semantic.errors import (
+    FieldBlacklistedError,
+    FieldNotWhitelistedError,
+    FunctionBlacklistedError,
+    FunctionNotWhitelistedError,
+)
 
 
 class SemanticAnalyzer:

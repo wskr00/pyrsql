@@ -21,6 +21,7 @@ dev = [
 format = [
     "black>=24.0.0",
     "isort>=5.13.0",
+    "ruff>=0.11.0",
 ]
 lint = [
     "pylint>=3.2.0",
@@ -44,6 +45,36 @@ target-version = ["py312"]
 profile = "black"
 line_length = 80
 src_paths = ["src", "tests"]
+
+[tool.ruff]
+line-length = 80
+indent-width = 4
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+    "I",
+]
+ignore = [
+    "E501",
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E402"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

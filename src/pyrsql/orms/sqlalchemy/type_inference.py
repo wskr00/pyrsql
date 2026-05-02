@@ -2,7 +2,6 @@
 
 from typing import Any
 
-
 _STRING_SQL_FUNCTIONS = frozenset({"lower", "upper", "concat"})
 
 

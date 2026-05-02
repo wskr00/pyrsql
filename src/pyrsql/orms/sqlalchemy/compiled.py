@@ -5,9 +5,9 @@ from typing import Any
 
 from sqlalchemy.sql import Select
 
-from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
-from pyrsql.orms.sqlalchemy.statement import apply_relationship_joins
 from pyrsql.core.options import QueryOptions
+from pyrsql.orms.sqlalchemy.statement import apply_relationship_joins
+from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
 from pyrsql.semantic.ast import SemanticExpression
 
 
@@ -22,9 +22,7 @@ class SQLAlchemyCompiledQuery:
     def apply(self, target: Any, model: type[Any]) -> Any:
         """Applies the compiled query to a SQLAlchemy Select."""
         if not isinstance(target, Select):
-            raise TypeError(
-                "SQLAlchemy ORM expects a sqlalchemy.sql.Select."
-            )
+            raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
         joins, predicate = self.translator.translate(
             model,
             self.expression,

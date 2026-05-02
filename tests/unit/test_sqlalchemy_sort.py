@@ -8,19 +8,14 @@ import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy import select
+from sqlalchemy import ForeignKey, String, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.options import SortOptions
 from pyrsql.core.sort import Sort
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 
 class Base(DeclarativeBase):

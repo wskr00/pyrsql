@@ -3,13 +3,17 @@
 import pytest
 
 from pyrsql.core.options import SortOptions
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticFunctionSelector
+from pyrsql.selector.semantic import (
+    SemanticColumnSelector,
+    SemanticFunctionSelector,
+)
 from pyrsql.sorting.analyzer import SortAnalyzer
-from pyrsql.sorting.errors import SortFieldBlacklistedError
-from pyrsql.sorting.errors import SortFieldNotWhitelistedError
-from pyrsql.sorting.errors import SortFunctionBlacklistedError
-from pyrsql.sorting.errors import SortFunctionNotWhitelistedError
+from pyrsql.sorting.errors import (
+    SortFieldBlacklistedError,
+    SortFieldNotWhitelistedError,
+    SortFunctionBlacklistedError,
+    SortFunctionNotWhitelistedError,
+)
 from pyrsql.sorting.parser import SortParser
 
 
@@ -28,18 +32,18 @@ def test_sort_analyzer_enforces_whitelist() -> None:
     """Rejects sort fields outside the configured whitelist."""
     fields = SortParser("name").parse()
     with pytest.raises(SortFieldNotWhitelistedError):
-        SortAnalyzer(
-            SortOptions(field_whitelist=frozenset({"city"}))
-        ).analyze(fields)
+        SortAnalyzer(SortOptions(field_whitelist=frozenset({"city"}))).analyze(
+            fields
+        )
 
 
 def test_sort_analyzer_enforces_blacklist() -> None:
     """Rejects sort fields inside the configured blacklist."""
     fields = SortParser("name").parse()
     with pytest.raises(SortFieldBlacklistedError):
-        SortAnalyzer(
-            SortOptions(field_blacklist=frozenset({"name"}))
-        ).analyze(fields)
+        SortAnalyzer(SortOptions(field_blacklist=frozenset({"name"}))).analyze(
+            fields
+        )
 
 
 def test_sort_analyzer_maps_field_selectors_inside_functions() -> None:

@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.page import PageRequest
+from pyrsql.orms.base import ORM
 
 
 @dataclass(frozen=True, slots=True)

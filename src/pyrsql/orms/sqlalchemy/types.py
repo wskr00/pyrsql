@@ -1,16 +1,15 @@
 """Shared SQLAlchemy ORM value objects."""
 
 from dataclasses import dataclass
-from enum import Enum
-from enum import auto
+from enum import Enum, auto
 from typing import Any
 
-from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint
+from pyrsql.core.json.path import JSONPath
 
 
 class SQLAlchemyAttributeKind(Enum):

@@ -2,14 +2,11 @@
 
 from typing import Final
 
-from pyrsql.sorting.ast import SortDirection
-from pyrsql.sorting.ast import SortField
-from pyrsql.sorting.errors import SortParseError
-from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
-from pyrsql.sorting.limits import SortLimits
 from pyrsql.selector.ast import Selector
-from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER
-from pyrsql.selector.parser import SelectorParseError
+from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
+from pyrsql.sorting.ast import SortDirection, SortField
+from pyrsql.sorting.errors import SortParseError
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
 
 _EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
 

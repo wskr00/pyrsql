@@ -1,19 +1,20 @@
 """Path resolution for SQLAlchemy ORM models."""
 
-from typing import Any
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy.sql.elements import ColumnElement
 
+from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.joins import JoinHint
+from pyrsql.core.json.path import JSONPath
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyAttributeKind
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyMappedAttribute
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
-from pyrsql.core.field_policy import FieldPolicySet
-from pyrsql.core.json.path import JSONPath
-from pyrsql.core.joins import JoinHint
+from pyrsql.orms.sqlalchemy.types import (
+    SQLAlchemyAttributeKind,
+    SQLAlchemyJoinPlan,
+    SQLAlchemyMappedAttribute,
+    SQLAlchemyResolvedPath,
+)
 
 
 class SQLAlchemyPathResolver:
@@ -64,9 +65,7 @@ class SQLAlchemyPathResolver:
     ) -> SQLAlchemyResolvedPath:
         """Resolves a dotted field path with the provided field policy."""
         if not field_path:
-            raise SQLAlchemyPathResolutionError(
-                "Field path cannot be empty."
-            )
+            raise SQLAlchemyPathResolutionError("Field path cannot be empty.")
 
         segments = tuple(
             segment for segment in field_path.split(".") if segment
@@ -99,9 +98,9 @@ class SQLAlchemyPathResolver:
                             f"Mapped field {segment!r} on "
                             f"{current_model.__name__!r} is invalid."
                         )
-                    segments_to_resolve[
-                        segment_index : segment_index + 1
-                    ] = mapped_segments
+                    segments_to_resolve[segment_index : segment_index + 1] = (
+                        mapped_segments
+                    )
                     expansion_count += 1
                     if expansion_count > 32:
                         raise SQLAlchemyPathResolutionError(

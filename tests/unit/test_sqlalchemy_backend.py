@@ -9,23 +9,17 @@ import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy import func
-from sqlalchemy import select
+from sqlalchemy import ForeignKey, String, func, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 import pyrsql
+from pyrsql.core.custom import CustomPredicateDefinition
+from pyrsql.core.joins import JoinHint
+from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.options import QueryOptions
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
-from pyrsql.core.json.options import JSONOptions
-from pyrsql.core.joins import JoinHint
-from pyrsql.core.options import QueryOptions
-from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.parsing.operators import ComparisonOperator
 
 
@@ -264,10 +258,9 @@ def test_orm_applies_custom_operator_predicate() -> None:
     )
     orm = SQLAlchemyORM(
         custom_predicates={
-            "all_match": lambda payload: func.lower(
-                payload.expression
+            "all_match": lambda payload: (
+                func.lower(payload.expression) == str(payload.values[0]).lower()
             )
-            == str(payload.values[0]).lower()
         }
     )
     query = pyrsql.parse("name=all=DEMO", options=options)
@@ -458,7 +451,7 @@ def test_orm_applies_json_quoted_object_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.meta ? (@ == {\"id\": 1})" == str(value)
+        '$.meta ? (@ == {"id": 1})' == str(value)
         for value in compiled.params.values()
     )
 
@@ -502,8 +495,7 @@ def test_orm_applies_json_datetime_tz_path_predicate() -> None:
     sql = str(compiled)
     assert "jsonb_path_exists_tz" in sql
     assert any(
-        "@.datetime()" in str(value)
-        for value in compiled.params.values()
+        "@.datetime()" in str(value) for value in compiled.params.values()
     )
 
 

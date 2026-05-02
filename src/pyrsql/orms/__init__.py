@@ -1,9 +1,11 @@
 """ORM integrations for pyrsql."""
 
-from pyrsql.orms.base import ORM
-from pyrsql.orms.base import CompiledPageRequest
-from pyrsql.orms.base import CompiledQuery
-from pyrsql.orms.base import CompiledSort
+from pyrsql.orms.base import (
+    ORM,
+    CompiledPageRequest,
+    CompiledQuery,
+    CompiledSort,
+)
 
 __all__ = [
     "ORM",

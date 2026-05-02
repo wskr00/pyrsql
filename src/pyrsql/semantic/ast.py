@@ -2,8 +2,7 @@
 
 from dataclasses import dataclass
 
-from pyrsql.parsing.ast import Argument
-from pyrsql.parsing.ast import LogicalOperator
+from pyrsql.parsing.ast import Argument, LogicalOperator
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.source import SourceSpan
 from pyrsql.selector.semantic import SemanticSelector

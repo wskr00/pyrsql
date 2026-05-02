@@ -5,9 +5,11 @@ import pytest
 import pyrsql
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.options import QueryOptions
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
-from pyrsql.parsing.operators import OperatorRegistry
+from pyrsql.parsing.operators import (
+    DEFAULT_OPERATOR_REGISTRY,
+    ComparisonOperator,
+    OperatorRegistry,
+)
 
 
 def test_parse_returns_query_object() -> None:

@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import TypeAlias
 
-
 SelectorLiteral: TypeAlias = str | int | float | bool | None
 
 

@@ -1,17 +1,19 @@
 """Unit tests for the pyrsql parser."""
 
-from pyrsql.parsing.ast import ComparisonNode
-from pyrsql.parsing.ast import LogicalNode
-from pyrsql.parsing.ast import LogicalOperator
+from pyrsql.parsing.ast import ComparisonNode, LogicalNode, LogicalOperator
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.limits import ParseLimits
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
-from pyrsql.parsing.operators import OperatorRegistry
+from pyrsql.parsing.operators import (
+    DEFAULT_OPERATOR_REGISTRY,
+    ComparisonOperator,
+    OperatorRegistry,
+)
 from pyrsql.parsing.parser import Parser
-from pyrsql.selector.ast import ColumnSelector
-from pyrsql.selector.ast import FunctionSelector
-from pyrsql.selector.ast import LiteralSelector
+from pyrsql.selector.ast import (
+    ColumnSelector,
+    FunctionSelector,
+    LiteralSelector,
+)
 
 
 def test_parser_builds_comparison_node() -> None:

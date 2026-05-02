@@ -3,9 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.orms.base import CompiledPageRequest
-from pyrsql.orms.base import CompiledQuery
-from pyrsql.orms.base import CompiledSort
+from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,8 +1,7 @@
 """Unit tests for orm-neutral JSON options."""
 
 from pyrsql.core.json.options import JSONOptions
-from pyrsql.core.options import QueryOptions
-from pyrsql.core.options import SortOptions
+from pyrsql.core.options import QueryOptions, SortOptions
 
 
 def test_query_options_expose_default_json_options() -> None:

@@ -1,9 +1,7 @@
 """AST node definitions for pyrsql parsing."""
 
-from dataclasses import dataclass
-from dataclasses import replace
-from enum import Enum
-from enum import auto
+from dataclasses import dataclass, replace
+from enum import Enum, auto
 from typing import Self
 
 from pyrsql.parsing.operators import ComparisonOperator

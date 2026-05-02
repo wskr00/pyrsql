@@ -6,10 +6,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any
-from typing import Mapping
+from typing import Any, Mapping
 from uuid import UUID
-
 
 ValueConverter = Callable[[str], Any]
 
@@ -137,8 +135,7 @@ class ValueConverterRegistry:
             return target_type(raw_value)
         except Exception as error:
             raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to "
-                f"{target_type.__name__}."
+                f"Failed to convert {raw_value!r} to {target_type.__name__}."
             ) from error
 
 

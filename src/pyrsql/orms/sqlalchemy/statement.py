@@ -1,13 +1,12 @@
 """Helpers for mutating SQLAlchemy Select statements."""
 
-from typing import Any
-from typing import Mapping
+from typing import Any, Mapping
 
 from sqlalchemy.sql import Select
 
+from pyrsql.core.joins import JoinHint
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
-from pyrsql.core.joins import JoinHint
 
 
 def apply_relationship_joins(
@@ -26,9 +25,7 @@ def apply_relationship_joins(
             updated_statement = updated_statement.join(join_plan.attribute)
             continue
         if resolved_hint is JoinHint.LEFT:
-            updated_statement = updated_statement.outerjoin(
-                join_plan.attribute
-            )
+            updated_statement = updated_statement.outerjoin(join_plan.attribute)
             continue
         raise SQLAlchemyORMError(
             "SQLAlchemy ORM does not support RIGHT joins via join_hints."

@@ -1,10 +1,7 @@
 """Shared ORM contracts."""
 
-from abc import ABC
-from abc import abstractmethod
-from typing import Any
-from typing import TYPE_CHECKING
-from typing import Protocol
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     from pyrsql.core.page import PageRequest

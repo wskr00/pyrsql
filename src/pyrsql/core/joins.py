@@ -9,4 +9,3 @@ class JoinHint(Enum):
     INNER = "inner"
     LEFT = "left"
     RIGHT = "right"
-

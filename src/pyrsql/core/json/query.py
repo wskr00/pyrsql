@@ -2,10 +2,12 @@
 
 from dataclasses import dataclass
 
-from pyrsql.core.json.values import DEFAULT_JSON_SCALAR_NORMALIZER
 from pyrsql.core.json.path import JSONPath
-from pyrsql.core.json.values import JSONScalarNormalizer
-from pyrsql.core.json.values import JSONScalarValue
+from pyrsql.core.json.values import (
+    DEFAULT_JSON_SCALAR_NORMALIZER,
+    JSONScalarNormalizer,
+    JSONScalarValue,
+)
 
 
 @dataclass(frozen=True, slots=True)

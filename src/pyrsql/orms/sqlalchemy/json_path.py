@@ -3,35 +3,36 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Any
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import JSONScalarValue
-from pyrsql.parsing.operators import BETWEEN
-from pyrsql.parsing.operators import EQUAL
-from pyrsql.parsing.operators import GREATER_THAN
-from pyrsql.parsing.operators import GREATER_THAN_OR_EQUAL
-from pyrsql.parsing.operators import IGNORE_CASE
-from pyrsql.parsing.operators import IGNORE_CASE_LIKE
-from pyrsql.parsing.operators import IGNORE_CASE_NOT_LIKE
-from pyrsql.parsing.operators import IN
-from pyrsql.parsing.operators import IS_NULL
-from pyrsql.parsing.operators import LESS_THAN
-from pyrsql.parsing.operators import LESS_THAN_OR_EQUAL
-from pyrsql.parsing.operators import LIKE
-from pyrsql.parsing.operators import NOT_BETWEEN
-from pyrsql.parsing.operators import NOT_EQUAL
-from pyrsql.parsing.operators import NOT_IN
-from pyrsql.parsing.operators import NOT_LIKE
-from pyrsql.parsing.operators import NOT_NULL
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
+from pyrsql.parsing.operators import (
+    BETWEEN,
+    EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL,
+    IGNORE_CASE,
+    IGNORE_CASE_LIKE,
+    IGNORE_CASE_NOT_LIKE,
+    IN,
+    IS_NULL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL,
+    LIKE,
+    NOT_BETWEEN,
+    NOT_EQUAL,
+    NOT_IN,
+    NOT_LIKE,
+    NOT_NULL,
+)
 
 _ISO_DATE_TIME_PATTERN_TZ = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
@@ -285,7 +286,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         pattern = re.escape(normalized).replace(r"\*", ".*")
         literal = json.dumps(pattern)
         if ignore_case:
-            return f"(@ like_regex {literal} flag \"i\")"
+            return f'(@ like_regex {literal} flag "i")'
         return f"(@ like_regex {literal})"
 
     def _membership_comparison(
@@ -315,7 +316,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
     ) -> str:
         """Prints one JSON value for PostgreSQL jsonpath expressions."""
         if use_datetime and self._is_datetime_value(value):
-            return f"\"{value.value}\".datetime()"
+            return f'"{value.value}".datetime()'
         return value.json_literal
 
     def _is_datetime_value(self, value: JSONScalarValue) -> bool:

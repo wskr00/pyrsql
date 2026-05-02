@@ -7,9 +7,11 @@ from uuid import UUID
 
 import pytest
 
-from pyrsql.core.conversion import DEFAULT_VALUE_CONVERTER_REGISTRY
-from pyrsql.core.conversion import ValueConversionError
-from pyrsql.core.conversion import ValueConverterRegistry
+from pyrsql.core.conversion import (
+    DEFAULT_VALUE_CONVERTER_REGISTRY,
+    ValueConversionError,
+    ValueConverterRegistry,
+)
 
 
 class Status(Enum):
@@ -66,14 +68,20 @@ def test_default_registry_falls_back_from_date_to_datetime() -> None:
 
 def test_default_registry_converts_enums() -> None:
     """Converts enums by name first, then by enum value."""
-    assert DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
-        "ACTIVE",
-        Status,
-    ) is Status.ACTIVE
-    assert DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
-        "inactive",
-        Status,
-    ) is Status.INACTIVE
+    assert (
+        DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
+            "ACTIVE",
+            Status,
+        )
+        is Status.ACTIVE
+    )
+    assert (
+        DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
+            "inactive",
+            Status,
+        )
+        is Status.INACTIVE
+    )
 
 
 def test_default_registry_uses_string_constructor_fallback() -> None:

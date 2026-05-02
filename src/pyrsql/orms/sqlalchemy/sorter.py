@@ -1,23 +1,28 @@
 """Sort translation for SQLAlchemy."""
 
-from typing import Any
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
+from pyrsql.core.options import SortOptions
 from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
 from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
-from pyrsql.orms.sqlalchemy.type_inference import infer_sql_function_python_type
-from pyrsql.orms.sqlalchemy.type_inference import is_string_python_type
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
-from pyrsql.core.options import SortOptions
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticLiteralSelector
-from pyrsql.selector.semantic import SemanticSelector
+from pyrsql.orms.sqlalchemy.type_inference import (
+    infer_sql_function_python_type,
+    is_string_python_type,
+)
+from pyrsql.orms.sqlalchemy.types import (
+    SQLAlchemyJoinPlan,
+    SQLAlchemyResolvedPath,
+)
+from pyrsql.selector.semantic import (
+    SemanticColumnSelector,
+    SemanticLiteralSelector,
+    SemanticSelector,
+)
 from pyrsql.sorting.ast import SortDirection
 from pyrsql.sorting.semantic import SemanticSortField
 
@@ -29,9 +34,7 @@ class SQLAlchemySortTranslator:
         self,
         *,
         path_resolver: SQLAlchemyPathResolver | None = None,
-        json_path_builder: (
-            SQLAlchemyJSONPathExpressionBuilder | None
-        ) = None,
+        json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._json_path_builder = (
@@ -92,9 +95,7 @@ class SQLAlchemySortTranslator:
             )
         if isinstance(selector, SemanticLiteralSelector):
             python_type = (
-                type(selector.value)
-                if selector.value is not None
-                else None
+                type(selector.value) if selector.value is not None else None
             )
             return (), sa.literal(selector.value), python_type
 

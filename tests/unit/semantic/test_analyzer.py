@@ -4,15 +4,18 @@ import pytest
 
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.parser import Parser
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticFunctionSelector
+from pyrsql.selector.semantic import (
+    SemanticColumnSelector,
+    SemanticFunctionSelector,
+)
 from pyrsql.semantic.analyzer import SemanticAnalyzer
-from pyrsql.semantic.ast import SemanticComparison
-from pyrsql.semantic.ast import SemanticLogical
-from pyrsql.semantic.errors import FieldBlacklistedError
-from pyrsql.semantic.errors import FieldNotWhitelistedError
-from pyrsql.semantic.errors import FunctionBlacklistedError
-from pyrsql.semantic.errors import FunctionNotWhitelistedError
+from pyrsql.semantic.ast import SemanticComparison, SemanticLogical
+from pyrsql.semantic.errors import (
+    FieldBlacklistedError,
+    FieldNotWhitelistedError,
+    FunctionBlacklistedError,
+    FunctionNotWhitelistedError,
+)
 
 
 def test_semantic_analyzer_applies_field_mapping() -> None:

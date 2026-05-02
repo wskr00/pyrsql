@@ -2,9 +2,11 @@
 
 import pytest
 
-from pyrsql.selector.ast import ColumnSelector
-from pyrsql.selector.ast import FunctionSelector
-from pyrsql.selector.ast import LiteralSelector
+from pyrsql.selector.ast import (
+    ColumnSelector,
+    FunctionSelector,
+    LiteralSelector,
+)
 from pyrsql.sorting.ast import SortDirection
 from pyrsql.sorting.errors import SortParseError
 from pyrsql.sorting.limits import SortLimits

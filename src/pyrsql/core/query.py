@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
+from pyrsql.orms.base import ORM
 from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.analyzer import SemanticAnalyzer

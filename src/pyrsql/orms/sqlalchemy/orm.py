@@ -1,15 +1,14 @@
 """SQLAlchemy ORM entry point."""
 
-from typing import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Mapping
 
 from pyrsql.orms import base
+from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_page import (
     SQLAlchemyCompiledPageRequest,
 )
-from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
-from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
+from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
 

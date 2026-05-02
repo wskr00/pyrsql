@@ -1,51 +1,61 @@
 """Semantic expression translation for SQLAlchemy."""
 
 from types import MappingProxyType
-from typing import Any
-from typing import Mapping
-from typing import cast
+from typing import Any, Mapping, cast
 
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
+from pyrsql.core.json.query import JSONPathComparison
+from pyrsql.core.options import QueryOptions
 from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
-from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
-from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicateInput
+from pyrsql.orms.sqlalchemy.custom import (
+    SQLAlchemyCustomPredicate,
+    SQLAlchemyCustomPredicateInput,
+)
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
 from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
-from pyrsql.orms.sqlalchemy.type_inference import infer_sql_function_python_type
-from pyrsql.orms.sqlalchemy.type_inference import is_string_python_type
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
-from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.core.options import QueryOptions
-from pyrsql.parsing.operators import BETWEEN
-from pyrsql.parsing.operators import EQUAL
-from pyrsql.parsing.operators import GREATER_THAN
-from pyrsql.parsing.operators import GREATER_THAN_OR_EQUAL
-from pyrsql.parsing.operators import IGNORE_CASE
-from pyrsql.parsing.operators import IGNORE_CASE_LIKE
-from pyrsql.parsing.operators import IGNORE_CASE_NOT_LIKE
-from pyrsql.parsing.operators import IN
-from pyrsql.parsing.operators import IS_NULL
-from pyrsql.parsing.operators import LESS_THAN
-from pyrsql.parsing.operators import LESS_THAN_OR_EQUAL
-from pyrsql.parsing.operators import LIKE
-from pyrsql.parsing.operators import NOT_BETWEEN
-from pyrsql.parsing.operators import NOT_EQUAL
-from pyrsql.parsing.operators import NOT_IN
-from pyrsql.parsing.operators import NOT_LIKE
-from pyrsql.parsing.operators import NOT_NULL
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticFunctionSelector
-from pyrsql.selector.semantic import SemanticLiteralSelector
-from pyrsql.selector.semantic import SemanticSelector
-from pyrsql.semantic.ast import SemanticComparison
-from pyrsql.semantic.ast import SemanticExpression
-from pyrsql.semantic.ast import SemanticLogical
+from pyrsql.orms.sqlalchemy.type_inference import (
+    infer_sql_function_python_type,
+    is_string_python_type,
+)
+from pyrsql.orms.sqlalchemy.types import (
+    SQLAlchemyJoinPlan,
+    SQLAlchemyResolvedPath,
+)
+from pyrsql.parsing.operators import (
+    BETWEEN,
+    EQUAL,
+    GREATER_THAN,
+    GREATER_THAN_OR_EQUAL,
+    IGNORE_CASE,
+    IGNORE_CASE_LIKE,
+    IGNORE_CASE_NOT_LIKE,
+    IN,
+    IS_NULL,
+    LESS_THAN,
+    LESS_THAN_OR_EQUAL,
+    LIKE,
+    NOT_BETWEEN,
+    NOT_EQUAL,
+    NOT_IN,
+    NOT_LIKE,
+    NOT_NULL,
+)
+from pyrsql.selector.semantic import (
+    SemanticColumnSelector,
+    SemanticFunctionSelector,
+    SemanticLiteralSelector,
+    SemanticSelector,
+)
+from pyrsql.semantic.ast import (
+    SemanticComparison,
+    SemanticExpression,
+    SemanticLogical,
+)
 
 
 class SQLAlchemyExpressionTranslator:
@@ -59,9 +69,7 @@ class SQLAlchemyExpressionTranslator:
         custom_predicates: (
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
-        json_path_builder: (
-            SQLAlchemyJSONPathExpressionBuilder | None
-        ) = None,
+        json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._value_coercer = value_coercer or SQLAlchemyValueCoercer()
@@ -78,7 +86,7 @@ class SQLAlchemyExpressionTranslator:
         expression: SemanticExpression,
         *,
         options: QueryOptions,
-        ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
+    ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
         """Translates a semantic expression for a mapped model."""
         if isinstance(expression, SemanticComparison):
             return self._translate_comparison(
@@ -226,9 +234,7 @@ class SQLAlchemyExpressionTranslator:
             )
         if isinstance(selector, SemanticLiteralSelector):
             python_type = (
-                type(selector.value)
-                if selector.value is not None
-                else None
+                type(selector.value) if selector.value is not None else None
             )
             return (), sa.literal(selector.value), python_type
 

@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
+from pyrsql.orms.base import ORM
 from pyrsql.sorting.analyzer import SortAnalyzer
 from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.parser import SortParser

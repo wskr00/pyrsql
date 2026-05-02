@@ -18,9 +18,7 @@ class SQLAlchemyCompiledPageRequest:
         """Applies the compiled page request to a SQLAlchemy Select."""
         del model
         if not isinstance(target, Select):
-            raise TypeError(
-                "SQLAlchemy ORM expects a sqlalchemy.sql.Select."
-            )
+            raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
         return target.limit(self.page_request.limit).offset(
             self.page_request.offset
         )

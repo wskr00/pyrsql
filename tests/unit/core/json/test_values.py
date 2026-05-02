@@ -16,6 +16,6 @@ def test_json_scalar_normalizer_parses_quoted_json_structures() -> None:
     """Quoted JSON arrays and objects are parsed as JSON values."""
     normalizer = JSONScalarNormalizer()
     assert normalizer.normalize("[1, 2]", quoted=True).value == [1, 2]
-    assert normalizer.normalize("{\"id\": 1}", quoted=True).value == {
+    assert normalizer.normalize('{"id": 1}', quoted=True).value == {
         "id": 1,
     }

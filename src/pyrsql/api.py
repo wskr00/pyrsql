@@ -4,10 +4,10 @@
 
 from typing import Any
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
+from pyrsql.orms.base import ORM
 
 
 def parse(query_text: str, *, options: QueryOptions | None = None) -> Query:

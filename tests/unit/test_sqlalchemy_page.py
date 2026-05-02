@@ -6,16 +6,11 @@ import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy import select
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey, String, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.core.page import PageRequest
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 
 class Base(DeclarativeBase):

@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import PageCompilationResult
+from pyrsql.orms.base import ORM
 
 
 @dataclass(frozen=True, slots=True)

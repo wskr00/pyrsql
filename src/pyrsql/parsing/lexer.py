@@ -5,11 +5,8 @@ from collections.abc import Mapping
 from pyrsql.parsing.errors import LexError
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import OPERATOR_SPELLINGS
-from pyrsql.parsing.source import SourcePosition
-from pyrsql.parsing.source import SourceSpan
-from pyrsql.parsing.source import SourceText
-from pyrsql.parsing.tokens import Token
-from pyrsql.parsing.tokens import TokenKind
+from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
+from pyrsql.parsing.tokens import Token, TokenKind
 
 
 class Lexer:

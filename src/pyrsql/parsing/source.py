@@ -1,7 +1,6 @@
 """Source location models for parsing."""
 
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)

@@ -5,10 +5,12 @@ from pyrsql.selector.analyzer import SelectorSemanticAnalyzer
 from pyrsql.selector.ast import Selector
 from pyrsql.selector.semantic import SemanticSelector
 from pyrsql.sorting.ast import SortField
-from pyrsql.sorting.errors import SortFieldBlacklistedError
-from pyrsql.sorting.errors import SortFieldNotWhitelistedError
-from pyrsql.sorting.errors import SortFunctionBlacklistedError
-from pyrsql.sorting.errors import SortFunctionNotWhitelistedError
+from pyrsql.sorting.errors import (
+    SortFieldBlacklistedError,
+    SortFieldNotWhitelistedError,
+    SortFunctionBlacklistedError,
+    SortFunctionNotWhitelistedError,
+)
 from pyrsql.sorting.semantic import SemanticSortField
 
 

@@ -1,16 +1,19 @@
 """Shared semantic normalization for pyrsql selectors."""
 
-from collections.abc import Callable
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
-from pyrsql.selector.ast import ColumnSelector
-from pyrsql.selector.ast import FunctionSelector
-from pyrsql.selector.ast import LiteralSelector
-from pyrsql.selector.ast import Selector
-from pyrsql.selector.semantic import SemanticColumnSelector
-from pyrsql.selector.semantic import SemanticFunctionSelector
-from pyrsql.selector.semantic import SemanticLiteralSelector
-from pyrsql.selector.semantic import SemanticSelector
+from pyrsql.selector.ast import (
+    ColumnSelector,
+    FunctionSelector,
+    LiteralSelector,
+    Selector,
+)
+from pyrsql.selector.semantic import (
+    SemanticColumnSelector,
+    SemanticFunctionSelector,
+    SemanticLiteralSelector,
+    SemanticSelector,
+)
 
 
 class SelectorSemanticAnalyzer:

@@ -5,12 +5,13 @@ import pytest
 from pyrsql.core.conversion import ValueConverterRegistry
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.joins import JoinHint
-from pyrsql.core.options import QueryOptions
-from pyrsql.core.options import SortOptions
+from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.procedure_policy import ProcedureAccessPolicy
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
-from pyrsql.parsing.operators import OperatorRegistry
+from pyrsql.parsing.operators import (
+    DEFAULT_OPERATOR_REGISTRY,
+    ComparisonOperator,
+    OperatorRegistry,
+)
 
 
 def test_query_options_validate_like_escape_character() -> None:
@@ -115,19 +116,19 @@ def test_sort_options_cache_derived_policy_objects() -> None:
     assert options.field_policy.is_empty is True
 
 
-def test_query_options_field_policy_is_not_empty_when_restrictions_exist(
-) -> None:
+def test_query_options_field_policy_is_not_empty_when_restrictions_exist() -> (
+    None
+):
     """Marks field policy as non-empty for configured query restrictions."""
     options = QueryOptions(field_mapping={"alias": "name"})
     assert options.field_policy.is_empty is False
 
 
-def test_sort_options_field_policy_is_not_empty_when_restrictions_exist(
-) -> None:
+def test_sort_options_field_policy_is_not_empty_when_restrictions_exist() -> (
+    None
+):
     """Marks field policy as non-empty when sort restrictions are configured."""
-    options = SortOptions(
-        model_field_whitelist={str: frozenset({"name"})}
-    )
+    options = SortOptions(model_field_whitelist={str: frozenset({"name"})})
     assert options.field_policy.is_empty is False
 
 
