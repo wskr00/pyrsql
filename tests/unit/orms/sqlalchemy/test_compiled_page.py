@@ -4,6 +4,8 @@
 
 import pytest
 
+pytestmark = [pytest.mark.unit, pytest.mark.sqlalchemy]
+
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from sqlalchemy import ForeignKey, String, select
