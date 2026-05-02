@@ -8,6 +8,11 @@ from pyrsql.core.conversion import ValueConverter
 from pyrsql.core.conversion import ValueConverterRegistry
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.path import JSONPath
+from pyrsql.core.json.query import JSONPathComparison
+from pyrsql.core.json.values import JSONScalarNormalizer
+from pyrsql.core.json.values import JSONScalarValue
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.options import SortOptions
 from pyrsql.core.page import PageRequest
@@ -19,6 +24,11 @@ __all__ = [
     "CustomPredicateDefinition",
     "FieldPolicySet",
     "FieldValueConverterSet",
+    "JSONOptions",
+    "JSONPath",
+    "JSONPathComparison",
+    "JSONScalarNormalizer",
+    "JSONScalarValue",
     "PageCompilationResult",
     "PageRequest",
     "Query",

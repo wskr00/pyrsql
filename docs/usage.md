@@ -110,8 +110,8 @@ Sort.parse("payload.user.id,asc")
 Current behavior:
 
 - `JSON` columns are cast to `JSONB`
-- filter translation uses `jsonb_path_exists(...)`
-- sort translation uses `jsonb_extract_path_text(...)`
+- filter translation uses PostgreSQL JSON path predicates via SQLAlchemy
+- sort translation uses PostgreSQL JSON path extraction operators via SQLAlchemy
 
 Current scope:
 

@@ -13,6 +13,7 @@ from pyrsql.core.conversion import ValueConverter
 from pyrsql.core.conversion import ValueConverterRegistry
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.joins import JoinHint
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
@@ -58,6 +59,7 @@ class QueryOptions:
     model_field_value_converters: Mapping[
         type[Any], Mapping[str, ValueConverter]
     ] = field(default_factory=dict)
+    json_options: JSONOptions = field(default_factory=JSONOptions)
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
@@ -201,6 +203,7 @@ class SortOptions:
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = field(default_factory=SortLimits)
+    json_options: JSONOptions = field(default_factory=JSONOptions)
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
