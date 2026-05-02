@@ -1,6 +1,7 @@
 """High-level query object."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from pyrsql.backends.base import Backend
 from pyrsql.core.compiler import CompilationResult
@@ -73,3 +74,13 @@ class Query:
             backend_name=backend.name,
             compiled_query=compiled_query,
         )
+
+    def apply(
+        self,
+        target: Any,
+        model: type[Any],
+        *,
+        backend: Backend,
+    ) -> Any:
+        """Compiles and applies the query using the provided backend."""
+        return self.compile(backend=backend).apply(target=target, model=model)
