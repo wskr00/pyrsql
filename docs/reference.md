@@ -21,6 +21,7 @@
 - `FieldValueConverterSet`
 - `FieldPolicySet`
 - `CustomPredicateDefinition`
+- `JSONOptions`
 
 ## Subpackages
 
@@ -33,6 +34,8 @@ Useful subpackages:
 - `pyrsql.selector`
 - `pyrsql.semantic`
 - `pyrsql.sorting`
+- `pyrsql.adapters`
+- `pyrsql.adapters.fastapi`
 
 ## Query Operators
 
@@ -107,3 +110,56 @@ Not currently supported:
 
 - framework adapters
 - non-SQLAlchemy ORMs
+
+## FastAPI Adapter
+
+`pyrsql.adapters.fastapi` exports:
+
+- `FastAPICriteriaConfig`
+- `RequestCriteria`
+- `CriteriaDependency`
+- `criteria_dependency(...)`
+
+### FastAPICriteriaConfig
+
+Supported configuration:
+
+- `filter_parameter`
+- `sort_parameter`
+- `page_parameter`
+- `size_parameter`
+- `default_page_size`
+- `max_page_size`
+- `one_based_paging`
+- `query_options`
+- `sort_options`
+
+Derived properties:
+
+- `minimum_page_number`
+- `default_page_number`
+
+### RequestCriteria
+
+Carries:
+
+- `query`
+- `sort`
+- `page_request`
+
+Methods:
+
+- `apply(target, model, orm=...)`
+
+Properties:
+
+- `is_empty`
+
+### CriteriaDependency
+
+A callable FastAPI dependency object that exposes a generated request
+signature and returns `RequestCriteria`.
+
+### criteria_dependency(...)
+
+Convenience factory that returns `CriteriaDependency`.

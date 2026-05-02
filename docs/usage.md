@@ -14,6 +14,18 @@ With SQLAlchemy support:
 pip install pyrsql[sqlalchemy]
 ```
 
+With FastAPI support:
+
+```bash
+pip install pyrsql[fastapi]
+```
+
+With FastAPI and SQLAlchemy support:
+
+```bash
+pip install pyrsql[fastapi,sqlalchemy]
+```
+
 ## Core Objects
 
 The main public objects are:
@@ -89,6 +101,89 @@ stmt = PageRequest.of(0, 20).apply(
     orm=orm,
 )
 ```
+
+## FastAPI Adapter
+
+The FastAPI adapter extracts request parameters and returns a `RequestCriteria`
+object that can later be applied to any configured ORM.
+
+Basic usage with the dependency factory:
+
+```python
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+
+from pyrsql.adapters.fastapi import criteria_dependency
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+
+router = APIRouter()
+orm = SQLAlchemyORM()
+criteria_dep = criteria_dependency()
+
+@router.get("/users")
+def list_users(criteria: Annotated[object, Depends(criteria_dep)]):
+    stmt = select(User)
+    return criteria.apply(stmt, User, orm=orm)
+```
+
+The adapter also supports the class-based FastAPI dependency style:
+
+```python
+from typing import Annotated
+
+from fastapi import Depends
+
+from pyrsql.adapters.fastapi import CriteriaDependency, FastAPICriteriaConfig
+
+dependency = CriteriaDependency(FastAPICriteriaConfig(default_page_size=25))
+
+async def endpoint(criteria: Annotated[object, Depends(dependency)]):
+    ...
+```
+
+Supported query parameters by default:
+
+- `filter`
+- `sort`
+- `page`
+- `size`
+
+Configuration options include:
+
+- custom parameter names
+- `default_page_size`
+- `max_page_size`
+- zero-based or one-based paging
+- `QueryOptions`
+- `SortOptions`
+
+Example:
+
+```python
+from pyrsql.adapters.fastapi import FastAPICriteriaConfig, criteria_dependency
+from pyrsql.core.options import QueryOptions
+
+criteria_dep = criteria_dependency(
+    FastAPICriteriaConfig(
+        filter_parameter="where",
+        sort_parameter="order",
+        page_parameter="p",
+        size_parameter="per_page",
+        default_page_size=20,
+        one_based_paging=True,
+        query_options=QueryOptions(strict_equality=True),
+    )
+)
+```
+
+The adapter translates pyrsql parse and semantic failures into `HTTP 422`
+responses using FastAPI `HTTPException`. The error payload includes:
+
+- `parameter`
+- `type`
+- `message`
 
 ## JSON / JSONB
 

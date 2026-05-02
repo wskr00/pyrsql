@@ -10,6 +10,9 @@ dependencies = []
 sqlalchemy = [
     "sqlalchemy>=2.0,<3.0",
 ]
+fastapi = [
+    "fastapi>=0.110,<1.0",
+]
 
 [dependency-groups]
 dev = [
@@ -28,6 +31,7 @@ lint = [
 ]
 test = [
     "pytest>=8.2.0",
+    "httpx>=0.27.0",
 ]
 typing = [
     "mypy>=1.10.0",
@@ -86,6 +90,7 @@ markers = [
     "functional: tests that validate user-visible library behavior",
     "performance: performance and benchmark-oriented regression tests",
     "sqlalchemy: tests that exercise the SQLAlchemy ORM",
+    "fastapi: tests that exercise the FastAPI adapter",
 ]
 
 [tool.mypy]

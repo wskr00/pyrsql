@@ -17,6 +17,13 @@ Current `SQLAlchemy` support includes:
 - PostgreSQL-style JSON / JSONB path support
 - temporal JSON path semantics via `JSONOptions(use_datetime=True)`
 
+Current adapter support includes:
+
+- `FastAPI` request extraction via dependencies
+- configurable `filter`, `sort`, `page`, and `size` parameters
+- class-based and factory-based FastAPI dependencies
+- `HTTP 422` translation for pyrsql parse and semantic failures
+
 ## Development Principles
 
 - Object-oriented design
@@ -30,6 +37,7 @@ Current `SQLAlchemy` support includes:
 - [Architecture](docs/architecture.md)
 - [Usage](docs/usage.md)
 - [Reference](docs/reference.md)
+- [FastAPI Adapter Usage](docs/usage.md#fastapi-adapter)
 - [Google Python Style Guide](docs/pyguide.md)
 - [Quality and Tooling](docs/quality.md)
 - [Testing](docs/testing.md)
