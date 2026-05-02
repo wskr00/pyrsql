@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from pyrsql.core.json.values import DEFAULT_JSON_SCALAR_NORMALIZER
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.values import JSONScalarNormalizer
 from pyrsql.core.json.values import JSONScalarValue
@@ -25,7 +26,7 @@ class JSONPathComparison:
         normalizer: JSONScalarNormalizer | None = None,
     ) -> "JSONPathComparison":
         """Builds a normalized JSON comparison from raw RSQL arguments."""
-        value_normalizer = normalizer or JSONScalarNormalizer()
+        value_normalizer = normalizer or DEFAULT_JSON_SCALAR_NORMALIZER
         return cls(
             path=path,
             operator_name=operator_name,

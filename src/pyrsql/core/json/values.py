@@ -34,13 +34,15 @@ class JSONScalarNormalizer:
                 return self._from_python_value(parsed_json)
             return self._from_python_value(raw_value)
 
-        lowered = raw_value.lower()
-        if lowered == "true":
-            return self._from_python_value(True)
-        if lowered == "false":
-            return self._from_python_value(False)
-        if lowered == "null":
-            return self._from_python_value(None)
+        match raw_value.lower():
+            case "true":
+                return self._from_python_value(True)
+            case "false":
+                return self._from_python_value(False)
+            case "null":
+                return self._from_python_value(None)
+            case _:
+                pass
         if _INTEGER_PATTERN.fullmatch(raw_value):
             return self._from_python_value(int(raw_value))
         if _FLOAT_PATTERN.fullmatch(raw_value):
@@ -64,3 +66,6 @@ class JSONScalarNormalizer:
         if isinstance(parsed, str):
             return None
         return parsed
+
+
+DEFAULT_JSON_SCALAR_NORMALIZER = JSONScalarNormalizer()

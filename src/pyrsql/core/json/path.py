@@ -1,6 +1,7 @@
 """Immutable JSON path primitives."""
 
 from dataclasses import dataclass
+from dataclasses import field
 
 
 @dataclass(frozen=True, slots=True)
@@ -8,11 +9,14 @@ class JSONPath:
     """Represents a backend-neutral JSON path."""
 
     segments: tuple[str, ...] = ()
+    _dot_path: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Validates path segments."""
-        if any(not segment for segment in self.segments):
-            raise ValueError("JSON path segments cannot be empty.")
+        for segment in self.segments:
+            if not segment:
+                raise ValueError("JSON path segments cannot be empty.")
+        object.__setattr__(self, "_dot_path", ".".join(self.segments))
 
     @property
     def is_root(self) -> bool:
@@ -21,5 +25,4 @@ class JSONPath:
 
     def to_dot_path(self) -> str:
         """Returns the path as a dotted string."""
-        return ".".join(self.segments)
-
+        return self._dot_path
