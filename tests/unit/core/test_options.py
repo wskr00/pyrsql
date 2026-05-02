@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral core options and policies."""
+"""Unit tests for orm-neutral core options and policies."""
 
 import pytest
 

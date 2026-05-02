@@ -1,15 +1,15 @@
-"""Backend-neutral pagination request objects."""
+"""ORM-neutral pagination request objects."""
 
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import PageCompilationResult
 
 
 @dataclass(frozen=True, slots=True)
 class PageRequest:
-    """Represents a backend-neutral pagination request."""
+    """Represents an ORM-neutral pagination request."""
 
     page_number: int
     page_size: int
@@ -59,11 +59,11 @@ class PageRequest:
         """Returns the maximum number of rows for this request."""
         return self.page_size
 
-    def compile(self, *, backend: Backend) -> PageCompilationResult:
-        """Compiles the page request using the provided backend."""
-        compiled_page = backend.compile_page_request(self)
+    def compile(self, *, orm: ORM) -> PageCompilationResult:
+        """Compiles the page request using the provided orm."""
+        compiled_page = orm.compile_page_request(self)
         return PageCompilationResult(
-            backend_name=backend.name,
+            orm_name=orm.name,
             compiled_page=compiled_page,
         )
 
@@ -72,7 +72,7 @@ class PageRequest:
         target: Any,
         model: type[Any],
         *,
-        backend: Backend,
+        orm: ORM,
     ) -> Any:
-        """Compiles and applies the page request using the backend."""
-        return self.compile(backend=backend).apply(target=target, model=model)
+        """Compiles and applies the page request using the orm."""
+        return self.compile(orm=orm).apply(target=target, model=model)

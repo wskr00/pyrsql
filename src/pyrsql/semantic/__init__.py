@@ -1,4 +1,4 @@
-"""Backend-neutral semantic analysis primitives."""
+"""ORM-neutral semantic analysis primitives."""
 
 from pyrsql.semantic.analyzer import SemanticAnalyzer
 from pyrsql.semantic.ast import SemanticComparison

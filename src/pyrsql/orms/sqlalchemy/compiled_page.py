@@ -19,7 +19,7 @@ class SQLAlchemyCompiledPageRequest:
         del model
         if not isinstance(target, Select):
             raise TypeError(
-                "SQLAlchemy backend expects a sqlalchemy.sql.Select."
+                "SQLAlchemy ORM expects a sqlalchemy.sql.Select."
             )
         return target.limit(self.page_request.limit).offset(
             self.page_request.offset

@@ -20,7 +20,7 @@ Rules:
 
 - unit tests mirror `src/pyrsql`
 - each test module should map clearly to one implementation module
-- avoid real database or end-to-end backend flows
+- avoid real database or end-to-end ORM flows
 - prefer direct construction of objects over full public API orchestration
 
 Examples:
@@ -39,13 +39,13 @@ Rules:
 
 - organize by pipeline or subsystem, not by source file
 - allow multiple project layers to participate in one test
-- backend-specific integration tests may use real SQLAlchemy models or
+- ORM-specific integration tests may use real SQLAlchemy models or
   in-memory database setup
 
 Examples:
 
-- parser -> semantic analyzer -> backend compiler
-- query object -> SQLAlchemy backend -> `Select`
+- parser -> semantic analyzer -> ORM compiler
+- query object -> SQLAlchemy ORM -> `Select`
 - JSON path resolution -> SQLAlchemy translation
 
 ### `functional`
@@ -92,7 +92,7 @@ tests/
   conftest.py
   fixtures/
     __init__.py
-    backends.py
+    ORMs.py
     query_samples.py
     sqlalchemy_models.py
 
@@ -102,7 +102,7 @@ tests/
     selector/
     semantic/
     sorting/
-    backends/sqlalchemy/
+    orms/sqlalchemy/
 
   integration/
     api/
@@ -125,8 +125,8 @@ Examples:
   -> `tests/unit/core/test_options.py`
 - `src/pyrsql/parsing/parser.py`
   -> `tests/unit/parsing/test_parser.py`
-- `src/pyrsql/backends/sqlalchemy/translator.py`
-  -> `tests/unit/backends/sqlalchemy/test_translator.py`
+- `src/pyrsql/orms/sqlalchemy/translator.py`
+  -> `tests/unit/orms/sqlalchemy/test_translator.py`
 
 ### Integration tests
 
@@ -175,9 +175,9 @@ Use for:
 
 Use for reusable domain-specific fixtures such as:
 
-- SQLAlchemy models for backend tests
+- SQLAlchemy models for ORM tests
 - sample query and sort payloads
-- backend factory helpers
+- ORM factory helpers
 
 Avoid hiding important fixture setup in unrelated test modules.
 
@@ -200,7 +200,7 @@ The migration should happen incrementally.
 1. Keep the current suite green at all times.
 2. Create the new top-level test infrastructure first.
 3. Move unit tests into a mirrored `tests/unit/...` layout.
-4. Split current mixed backend tests into:
+4. Split current mixed ORM tests into:
    - unit tests
    - integration tests
    - functional tests

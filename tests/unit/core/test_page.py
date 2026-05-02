@@ -1,11 +1,11 @@
-"""Unit tests for backend-neutral pagination objects."""
+"""Unit tests for orm-neutral pagination objects."""
 
 from dataclasses import dataclass
 from typing import Any
 
 import pytest
 
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.page import PageRequest
 
 
@@ -21,8 +21,8 @@ class _FakeCompiledPageRequest:
         }
 
 
-class _FakeBackend(Backend):
-    """Minimal backend double for page-request unit tests."""
+class _FakeORM(ORM):
+    """Minimal ORM double for page-request unit tests."""
 
     @property
     def name(self) -> str:
@@ -75,18 +75,18 @@ def test_page_request_rejects_non_aligned_offset() -> None:
         PageRequest.from_offset(offset=15, limit=10)
 
 
-def test_page_request_compile_uses_backend_name() -> None:
-    """Ensures page compilation returns the selected backend metadata."""
-    compilation = PageRequest.of(0, 10).compile(backend=_FakeBackend())
-    assert compilation.backend_name == "fake"
+def test_page_request_compile_uses_orm_name() -> None:
+    """Ensures page compilation returns the selected ORM metadata."""
+    compilation = PageRequest.of(0, 10).compile(orm=_FakeORM())
+    assert compilation.orm_name == "fake"
 
 
-def test_page_request_apply_uses_backend() -> None:
-    """Compiles and applies a page request through the selected backend."""
+def test_page_request_apply_uses_orm() -> None:
+    """Compiles and applies a page request through the selected orm."""
     applied = PageRequest.of(0, 10).apply(
         target="statement",
         model=str,
-        backend=_FakeBackend(),
+        orm=_FakeORM(),
     )
     assert applied["result"] == 0
     assert applied["target"] == "statement"

@@ -1,4 +1,4 @@
-"""Unit tests for SQLAlchemy backend translation and application."""
+"""Unit tests for SQLAlchemy ORM translation and application."""
 
 # pylint: disable=wrong-import-position,unsubscriptable-object
 
@@ -20,8 +20,8 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 import pyrsql
-from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.options import QueryOptions
@@ -30,7 +30,7 @@ from pyrsql.parsing.operators import ComparisonOperator
 
 
 class Base(DeclarativeBase):
-    """Base declarative class for backend tests."""
+    """Base declarative class for ORM tests."""
 
 
 class Company(Base):
@@ -92,162 +92,162 @@ class JsonDocument(Base):
     payload: Mapped[dict[str, object]] = mapped_column(postgresql.JSON)
 
 
-def test_backend_applies_simple_where_clause() -> None:
+def test_orm_applies_simple_where_clause() -> None:
     """Applies a simple comparison to a Select."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("name==demo")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "WHERE" in sql
     assert "user_account.name =" in sql
 
 
-def test_backend_applies_joined_where_clause() -> None:
+def test_orm_applies_joined_where_clause() -> None:
     """Applies a joined comparison to a Select."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("company.name==demo")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "JOIN company" in sql
     assert "company.name =" in sql
 
 
-def test_backend_uses_exists_for_collection_relationship_filter() -> None:
+def test_orm_uses_exists_for_collection_relationship_filter() -> None:
     """Uses any()/has() semantics for collection relationship filters."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("addresses.city==belem")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "EXISTS" in sql
     assert "FROM address" in sql
     assert "JOIN address" not in sql
 
 
-def test_backend_applies_like_operator() -> None:
+def test_orm_applies_like_operator() -> None:
     """Applies contains-like semantics for LIKE."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("name=like=dem")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "LIKE" in sql
 
 
-def test_backend_applies_in_operator() -> None:
+def test_orm_applies_in_operator() -> None:
     """Applies IN against a list of values."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("id=in=(1,2,3)")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert " IN " in sql
 
 
-def test_backend_applies_null_check() -> None:
+def test_orm_applies_null_check() -> None:
     """Applies a null-check operator."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("name=nn=")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "IS NOT NULL" in sql
 
 
-def test_backend_interprets_equality_wildcards_by_default() -> None:
+def test_orm_interprets_equality_wildcards_by_default() -> None:
     """Uses LIKE semantics for '*' in equality when strict mode is disabled."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("name==*demo*")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
     assert "LIKE" in sql
     assert "%demo%" in sql
 
 
-def test_backend_respects_strict_equality_option() -> None:
+def test_orm_respects_strict_equality_option() -> None:
     """Keeps equality literal when strict equality is enabled."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "name=='*demo*'",
         options=QueryOptions(strict_equality=True),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "LIKE" not in sql
     assert "user_account.name =" in sql
 
 
-def test_backend_applies_case_insensitive_equality_marker() -> None:
+def test_orm_applies_case_insensitive_equality_marker() -> None:
     """Uses case-insensitive equality when '^' is present."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("name==^demo")
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "lower(" in sql.lower()
     assert "=" in sql
 
 
-def test_backend_uses_escape_character_for_like_queries() -> None:
+def test_orm_uses_escape_character_for_like_queries() -> None:
     """Propagates the configured escape character to LIKE expressions."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "name=like='$%'",
         options=QueryOptions(like_escape_character="$"),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "ESCAPE '$'" in sql
 
 
-def test_backend_applies_function_selector_where_clause() -> None:
+def test_orm_applies_function_selector_where_clause() -> None:
     """Applies a whitelisted SQL function in WHERE."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "@upper[name]==DEMO",
         options=QueryOptions(procedure_whitelist=("upper",)),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "upper(user_account.name) =" in sql
 
 
-def test_backend_applies_distinct_option() -> None:
+def test_orm_applies_distinct_option() -> None:
     """Applies SELECT DISTINCT when query options request it."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.name==demo",
         options=QueryOptions(distinct=True),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "SELECT DISTINCT" in sql
 
 
-def test_backend_applies_left_join_hint_in_where_clause() -> None:
+def test_orm_applies_left_join_hint_in_where_clause() -> None:
     """Applies LEFT OUTER JOIN when requested by query options."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.name==demo",
         options=QueryOptions(
             join_hints={"User.company": JoinHint.LEFT},
         ),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "LEFT OUTER JOIN company" in sql
 
 
-def test_backend_rejects_right_join_hint() -> None:
+def test_orm_rejects_right_join_hint() -> None:
     """Rejects unsupported RIGHT join hints in SQLAlchemy."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.name==demo",
         options=QueryOptions(
             join_hints={"User.company": JoinHint.RIGHT},
         ),
     )
-    with pytest.raises(SQLAlchemyBackendError):
-        backend.compile_query(query).apply(select(User), User)
+    with pytest.raises(SQLAlchemyORMError):
+        orm.compile_query(query).apply(select(User), User)
 
 
-def test_backend_applies_custom_operator_predicate() -> None:
-    """Delegates custom operators to backend-specific predicates."""
+def test_orm_applies_custom_operator_predicate() -> None:
+    """Delegates custom operators to ORM-specific predicates."""
     all_match = ComparisonOperator(
         name="all_match",
         spellings=("=all=",),
@@ -262,7 +262,7 @@ def test_backend_applies_custom_operator_predicate() -> None:
             )
         }
     )
-    backend = SQLAlchemyBackend(
+    orm = SQLAlchemyORM(
         custom_predicates={
             "all_match": lambda payload: func.lower(
                 payload.expression
@@ -271,50 +271,50 @@ def test_backend_applies_custom_operator_predicate() -> None:
         }
     )
     query = pyrsql.parse("name=all=DEMO", options=options)
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "lower(user_account.name) =" in sql
 
 
-def test_backend_uses_core_datetime_conversion_fallback() -> None:
+def test_orm_uses_core_datetime_conversion_fallback() -> None:
     """Converts plain dates into midnight datetimes via the core registry."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("created_at==2026-05-02")
-    statement = backend.compile_query(query).apply(select(Event), Event)
+    statement = orm.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
     assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
 
 
-def test_backend_applies_model_field_mapping_in_where_clause() -> None:
+def test_orm_applies_model_field_mapping_in_where_clause() -> None:
     """Applies model-scoped field aliases during query resolution."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.companyName==demo",
         options=QueryOptions(
             model_field_mapping={Company: {"companyName": "name"}},
         ),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     sql = str(statement)
     assert "company.name =" in sql
 
 
-def test_backend_enforces_model_field_whitelist() -> None:
+def test_orm_enforces_model_field_whitelist() -> None:
     """Rejects fields not listed in a model-specific whitelist."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.name==demo",
         options=QueryOptions(
             model_field_whitelist={Company: frozenset({"id"})},
         ),
     )
-    with pytest.raises(SQLAlchemyBackendError):
-        backend.compile_query(query).apply(select(User), User)
+    with pytest.raises(SQLAlchemyORMError):
+        orm.compile_query(query).apply(select(User), User)
 
 
-def test_backend_applies_field_specific_converter() -> None:
+def test_orm_applies_field_specific_converter() -> None:
     """Uses field-path converters before falling back to type converters."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "created_at==02/05/2026",
         options=QueryOptions(
@@ -326,14 +326,14 @@ def test_backend_applies_field_specific_converter() -> None:
             }
         ),
     )
-    statement = backend.compile_query(query).apply(select(Event), Event)
+    statement = orm.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
     assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
 
 
-def test_backend_applies_model_field_specific_converter() -> None:
+def test_orm_applies_model_field_specific_converter() -> None:
     """Uses model-scoped field converters on resolved leaf models."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "company.name==demo",
         options=QueryOptions(
@@ -342,27 +342,27 @@ def test_backend_applies_model_field_specific_converter() -> None:
             }
         ),
     )
-    statement = backend.compile_query(query).apply(select(User), User)
+    statement = orm.compile_query(query).apply(select(User), User)
     compiled = statement.compile()
     assert compiled.params["name_1"] == "DEMO"
 
 
-def test_backend_applies_jsonb_where_clause() -> None:
+def test_orm_applies_jsonb_where_clause() -> None:
     """Builds JSONB path predicates for nested JSONB selectors."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.user.id==1")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
     assert " @? " in sql
     assert "CAST(json_event.payload AS JSONB)" in sql
 
 
-def test_backend_applies_json_where_clause_via_jsonb_cast() -> None:
+def test_orm_applies_json_where_clause_via_jsonb_cast() -> None:
     """Builds JSON filters by casting JSON columns to JSONB."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.name==demo")
-    statement = backend.compile_query(query).apply(
+    statement = orm.compile_query(query).apply(
         select(JsonDocument),
         JsonDocument,
     )
@@ -372,11 +372,11 @@ def test_backend_applies_json_where_clause_via_jsonb_cast() -> None:
     assert "CAST(json_document.payload AS JSONB)" in sql
 
 
-def test_backend_applies_json_array_path_predicate() -> None:
+def test_orm_applies_json_array_path_predicate() -> None:
     """Supports nested array element paths through PostgreSQL jsonpath."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.roles.id==1")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -385,11 +385,11 @@ def test_backend_applies_json_array_path_predicate() -> None:
     )
 
 
-def test_backend_applies_json_boolean_predicate() -> None:
+def test_orm_applies_json_boolean_predicate() -> None:
     """Normalizes boolean JSON comparisons correctly."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.active==true")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -398,11 +398,11 @@ def test_backend_applies_json_boolean_predicate() -> None:
     )
 
 
-def test_backend_applies_json_null_predicate() -> None:
+def test_orm_applies_json_null_predicate() -> None:
     """Normalizes null JSON comparisons correctly."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.deleted_at==null")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -411,11 +411,11 @@ def test_backend_applies_json_null_predicate() -> None:
     )
 
 
-def test_backend_applies_json_in_predicate() -> None:
+def test_orm_applies_json_in_predicate() -> None:
     """Builds OR-chained jsonpath comparisons for IN."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.status=in=(1,2,3)")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -424,11 +424,11 @@ def test_backend_applies_json_in_predicate() -> None:
     )
 
 
-def test_backend_applies_json_between_predicate() -> None:
+def test_orm_applies_json_between_predicate() -> None:
     """Builds range jsonpath comparisons for BETWEEN."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.score=bt=(10,20)")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -437,11 +437,11 @@ def test_backend_applies_json_between_predicate() -> None:
     )
 
 
-def test_backend_applies_json_quoted_array_predicate() -> None:
+def test_orm_applies_json_quoted_array_predicate() -> None:
     """Parses quoted JSON arrays as structured JSON values."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.tags=='[1,2]'")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -450,11 +450,11 @@ def test_backend_applies_json_quoted_array_predicate() -> None:
     )
 
 
-def test_backend_applies_json_quoted_object_predicate() -> None:
+def test_orm_applies_json_quoted_object_predicate() -> None:
     """Parses quoted JSON objects as structured JSON values."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse("payload.meta=='{\"id\":1}'")
-    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
@@ -463,16 +463,16 @@ def test_backend_applies_json_quoted_object_predicate() -> None:
     )
 
 
-def test_backend_applies_json_datetime_path_predicate() -> None:
+def test_orm_applies_json_datetime_path_predicate() -> None:
     """Builds PostgreSQL datetime jsonpath expressions when enabled."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "payload.created_at=gt=2026-05-02T10:30:00",
         options=QueryOptions(
             json_options=JSONOptions(use_datetime=True),
         ),
     )
-    statement = backend.compile_query(query).apply(
+    statement = orm.compile_query(query).apply(
         select(JsonEvent),
         JsonEvent,
     )
@@ -484,16 +484,16 @@ def test_backend_applies_json_datetime_path_predicate() -> None:
     assert " @? " in sql
 
 
-def test_backend_applies_json_datetime_tz_path_predicate() -> None:
+def test_orm_applies_json_datetime_tz_path_predicate() -> None:
     """Uses the timezone-aware PostgreSQL function for zoned datetimes."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "payload.created_at=gt=2026-05-02T10:30:00Z",
         options=QueryOptions(
             json_options=JSONOptions(use_datetime=True),
         ),
     )
-    statement = backend.compile_query(query).apply(
+    statement = orm.compile_query(query).apply(
         select(JsonEvent),
         JsonEvent,
     )
@@ -507,9 +507,9 @@ def test_backend_applies_json_datetime_tz_path_predicate() -> None:
     )
 
 
-def test_backend_uses_custom_json_path_function_names() -> None:
+def test_orm_uses_custom_json_path_function_names() -> None:
     """Uses custom PostgreSQL JSON path function names from JSONOptions."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     query = pyrsql.parse(
         "payload.user.id==1",
         options=QueryOptions(
@@ -518,7 +518,7 @@ def test_backend_uses_custom_json_path_function_names() -> None:
             ),
         ),
     )
-    statement = backend.compile_query(query).apply(
+    statement = orm.compile_query(query).apply(
         select(JsonEvent),
         JsonEvent,
     )

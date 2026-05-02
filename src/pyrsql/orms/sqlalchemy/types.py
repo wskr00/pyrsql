@@ -1,4 +1,4 @@
-"""Shared SQLAlchemy backend value objects."""
+"""Shared SQLAlchemy ORM value objects."""
 
 from dataclasses import dataclass
 from enum import Enum

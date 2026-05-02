@@ -6,7 +6,7 @@ from dataclasses import field
 
 @dataclass(frozen=True, slots=True)
 class JSONPath:
-    """Represents a backend-neutral JSON path."""
+    """Represents a orm-neutral JSON path."""
 
     segments: tuple[str, ...] = ()
     _dot_path: str = field(init=False, repr=False, compare=False)

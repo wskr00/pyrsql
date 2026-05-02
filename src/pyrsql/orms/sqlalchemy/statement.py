@@ -5,8 +5,8 @@ from typing import Mapping
 
 from sqlalchemy.sql import Select
 
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.joins import JoinHint
 
 
@@ -30,7 +30,7 @@ def apply_relationship_joins(
                 join_plan.attribute
             )
             continue
-        raise SQLAlchemyBackendError(
-            "SQLAlchemy backend does not support RIGHT joins via join_hints."
+        raise SQLAlchemyORMError(
+            "SQLAlchemy ORM does not support RIGHT joins via join_hints."
         )
     return updated_statement

@@ -5,12 +5,12 @@ from typing import cast
 
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
-from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyAttributeKind
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyMappedAttribute
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyResolvedPath
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
+from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyAttributeKind
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyMappedAttribute
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyResolvedPath
 from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint

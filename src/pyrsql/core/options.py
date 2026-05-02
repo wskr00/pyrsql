@@ -73,7 +73,7 @@ def _build_procedure_policy(
 
 @dataclass(frozen=True, slots=True)
 class QueryOptions:
-    """Backend-neutral query options."""
+    """ORM-neutral query options."""
 
     strict_equality: bool = False
     distinct: bool = False
@@ -279,7 +279,7 @@ class QueryOptions:
 
 @dataclass(frozen=True, slots=True)
 class SortOptions:
-    """Backend-neutral sort options."""
+    """ORM-neutral sort options."""
 
     field_mapping: Mapping[str, str] = field(default_factory=dict)
     model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(

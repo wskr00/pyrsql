@@ -1,4 +1,4 @@
-"""JSON path expression building for the SQLAlchemy backend."""
+"""JSON path expression building for the SQLAlchemy orm."""
 
 import json
 import re
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
@@ -236,7 +236,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 f" || {value_reference} > {upper_literal})"
             )
         else:
-            raise SQLAlchemyBackendError(
+            raise SQLAlchemyORMError(
                 f"Unsupported JSON operator {comparison.operator_name!r}."
             )
         return _JSONPathFilterCall(
@@ -275,7 +275,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
     ) -> str:
         """Builds a jsonpath like_regex comparison."""
         if value.python_type is not str:
-            raise SQLAlchemyBackendError(
+            raise SQLAlchemyORMError(
                 "LIKE-style JSON operators require string values."
             )
         normalized = str(value.value)

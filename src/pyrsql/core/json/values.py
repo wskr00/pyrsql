@@ -1,4 +1,4 @@
-"""Backend-neutral JSON value normalization."""
+"""ORM-neutral JSON value normalization."""
 
 import json
 import re

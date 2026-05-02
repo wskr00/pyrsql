@@ -68,31 +68,31 @@ page = PageRequest.of(0, 25)
 from sqlalchemy import select
 
 from pyrsql import Query, Sort, PageRequest
-from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
-backend = SQLAlchemyBackend()
+orm = SQLAlchemyORM()
 
 stmt = select(User)
 stmt = Query.parse("company.name==acme").apply(
     stmt,
     User,
-    backend=backend,
+    orm=orm,
 )
 stmt = Sort.parse("name,asc").apply(
     stmt,
     User,
-    backend=backend,
+    orm=orm,
 )
 stmt = PageRequest.of(0, 20).apply(
     stmt,
     User,
-    backend=backend,
+    orm=orm,
 )
 ```
 
 ## JSON / JSONB
 
-The current `SQLAlchemy` backend supports PostgreSQL-style JSON filtering and
+The current `SQLAlchemy` ORM supports PostgreSQL-style JSON filtering and
 sorting on `JSON` and `JSONB` columns.
 
 Filter by nested JSON path:
@@ -120,7 +120,7 @@ Current scope:
 - string, boolean, numeric, and `null` JSON scalar comparisons
 - quoted JSON arrays and objects in filter arguments
 - `in`, `out`, `between`, `like`, and ignore-case JSON predicates
-- JSON and JSONB column support in the `SQLAlchemy` backend
+- JSON and JSONB column support in the `SQLAlchemy` ORM
 
 ## JSON Options
 
@@ -168,7 +168,7 @@ Query.parse("payload.meta=='{\"id\":1}'")
 Current limitations:
 
 - framework adapters
-- non-SQLAlchemy backends for JSON compilation
+- non-SQLAlchemy ORMs for JSON compilation
 
 ## Selector Functions
 
@@ -284,7 +284,7 @@ Current SQLAlchemy support:
 - `JoinHint.INNER`
 - `JoinHint.LEFT`
 
-`JoinHint.RIGHT` is not supported by the current SQLAlchemy backend.
+`JoinHint.RIGHT` is not supported by the current SQLAlchemy orm.
 
 ## Field Mapping
 
@@ -406,7 +406,7 @@ query = Query.parse(
 Custom predicates have two parts:
 
 1. core definition in `QueryOptions`
-2. backend implementation in the backend instance
+2. ORM implementation in the ORM instance
 
 ```python
 from pyrsql import QueryOptions, CustomPredicateDefinition
@@ -433,9 +433,9 @@ For SQLAlchemy:
 
 ```python
 from sqlalchemy import func
-from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
-backend = SQLAlchemyBackend(
+orm = SQLAlchemyORM(
     custom_predicates={
         "all_match": lambda payload: func.lower(payload.expression)
         == str(payload.values[0]).lower()

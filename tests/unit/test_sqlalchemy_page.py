@@ -14,7 +14,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
-from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.core.page import PageRequest
 
 
@@ -42,26 +42,26 @@ class User(Base):
     company: Mapped[Company] = relationship()
 
 
-def test_backend_applies_limit_and_offset() -> None:
+def test_orm_applies_limit_and_offset() -> None:
     """Applies LIMIT/OFFSET for a page request."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     statement = PageRequest.of(2, 25).apply(
         select(User),
         User,
-        backend=backend,
+        orm=orm,
     )
     sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
     assert "LIMIT 25" in sql
     assert "OFFSET 50" in sql
 
 
-def test_backend_applies_zero_offset_for_first_page() -> None:
+def test_orm_applies_zero_offset_for_first_page() -> None:
     """Applies zero offset for the first page."""
-    backend = SQLAlchemyBackend()
+    orm = SQLAlchemyORM()
     statement = PageRequest.of(0, 10).apply(
         select(User),
         User,
-        backend=backend,
+        orm=orm,
     )
     sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
     assert "LIMIT 10" in sql

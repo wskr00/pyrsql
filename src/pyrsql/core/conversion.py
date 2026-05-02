@@ -1,4 +1,4 @@
-"""Backend-neutral value conversion support."""
+"""ORM-neutral value conversion support."""
 
 import datetime as dt
 from collections.abc import Callable
@@ -30,7 +30,7 @@ def _convert_bool(raw_value: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class ValueConverterRegistry:
-    """Immutable registry of backend-neutral string-to-type converters."""
+    """Immutable registry of orm-neutral string-to-type converters."""
 
     converters: Mapping[type[Any], ValueConverter]
 

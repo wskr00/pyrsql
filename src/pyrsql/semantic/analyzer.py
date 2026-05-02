@@ -1,4 +1,4 @@
-"""Backend-neutral semantic analysis."""
+"""ORM-neutral semantic analysis."""
 
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.ast import ComparisonNode
@@ -17,7 +17,7 @@ from pyrsql.semantic.errors import FunctionNotWhitelistedError
 
 
 class SemanticAnalyzer:
-    """Applies backend-neutral semantic rules to parsed expressions."""
+    """Applies orm-neutral semantic rules to parsed expressions."""
 
     def __init__(self, options: QueryOptions) -> None:
         self._options = options

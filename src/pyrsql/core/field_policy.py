@@ -7,7 +7,7 @@ from typing import Mapping
 
 @dataclass(frozen=True, slots=True)
 class FieldPolicySet:
-    """Backend-neutral field mapping and access-policy configuration."""
+    """ORM-neutral field mapping and access-policy configuration."""
 
     field_mapping: Mapping[str, str]
     field_whitelist: frozenset[str]

@@ -3,7 +3,7 @@
 # pylint: disable=redefined-builtin
 
 import pyrsql.api as api
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.compiler import PageCompilationResult
 from pyrsql.core.compiler import SortCompilationResult
@@ -29,7 +29,7 @@ compile = api.compile
 apply = api.apply
 
 __all__ = [
-    "Backend",
+    "ORM",
     "CompilationResult",
     "CustomPredicateDefinition",
     "FieldPolicySet",

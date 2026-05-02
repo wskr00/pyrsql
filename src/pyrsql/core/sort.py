@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
 from pyrsql.sorting.analyzer import SortAnalyzer
@@ -44,7 +44,7 @@ def _analyze_sort_fields(
 
 @dataclass(frozen=True, slots=True)
 class Sort:
-    """Represents a backend-neutral parsed sort request."""
+    """Represents an ORM-neutral parsed sort request."""
 
     text: str | None
     options: SortOptions
@@ -87,11 +87,11 @@ class Sort:
         """Analyzes sort fields into semantic sort fields."""
         return _analyze_sort_fields(fields, options=options)
 
-    def compile(self, *, backend: Backend) -> SortCompilationResult:
-        """Compiles the sort using the provided backend."""
-        compiled_sort = backend.compile_sort(self)
+    def compile(self, *, orm: ORM) -> SortCompilationResult:
+        """Compiles the sort using the provided orm."""
+        compiled_sort = orm.compile_sort(self)
         return SortCompilationResult(
-            backend_name=backend.name,
+            orm_name=orm.name,
             compiled_sort=compiled_sort,
         )
 
@@ -100,7 +100,7 @@ class Sort:
         target: Any,
         model: type[Any],
         *,
-        backend: Backend,
+        orm: ORM,
     ) -> Any:
-        """Compiles and applies the sort using the provided backend."""
-        return self.compile(backend=backend).apply(target=target, model=model)
+        """Compiles and applies the sort using the provided orm."""
+        return self.compile(orm=orm).apply(target=target, model=model)

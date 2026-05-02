@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
 from pyrsql.parsing.operators import ComparisonOperator
@@ -23,8 +23,8 @@ class _FakeCompiledQuery:
         }
 
 
-class _FakeBackend(Backend):
-    """Minimal backend double for query unit tests."""
+class _FakeORM(ORM):
+    """Minimal ORM double for query unit tests."""
 
     @property
     def name(self) -> str:
@@ -67,18 +67,18 @@ def test_query_parse_uses_custom_operator_registry() -> None:
     assert query.expression.operator.name == "all_match"
 
 
-def test_query_compile_uses_backend_name() -> None:
-    """Compiles the query with the selected backend metadata."""
-    compilation = Query.parse("name==demo").compile(backend=_FakeBackend())
-    assert compilation.backend_name == "fake"
+def test_query_compile_uses_orm_name() -> None:
+    """Compiles the query with the selected ORM metadata."""
+    compilation = Query.parse("name==demo").compile(orm=_FakeORM())
+    assert compilation.orm_name == "fake"
 
 
-def test_query_apply_uses_backend() -> None:
-    """Compiles and applies the query using the selected backend."""
+def test_query_apply_uses_orm() -> None:
+    """Compiles and applies the query using the selected orm."""
     applied = Query.parse("name==demo").apply(
         target="statement",
         model=str,
-        backend=_FakeBackend(),
+        orm=_FakeORM(),
     )
     assert applied["result"] == "name==demo"
     assert applied["target"] == "statement"

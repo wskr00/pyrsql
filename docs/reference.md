@@ -12,7 +12,7 @@
 - `PageRequest`
 - `QueryOptions`
 - `SortOptions`
-- `Backend`
+- `ORM`
 - `CompilationResult`
 - `SortCompilationResult`
 - `PageCompilationResult`
@@ -26,8 +26,8 @@
 
 Useful subpackages:
 
-- `pyrsql.backends`
-- `pyrsql.backends.sqlalchemy`
+- `pyrsql.orms`
+- `pyrsql.orms.sqlalchemy`
 - `pyrsql.core`
 - `pyrsql.parsing`
 - `pyrsql.selector`
@@ -80,11 +80,11 @@ Supported forms:
 - `company.name,desc`
 - `@upper[name],asc`
 
-## Current Backend Notes
+## Current ORM Notes
 
 ### SQLAlchemy
 
-Current backend target:
+Current ORM target:
 
 - `SQLAlchemy 2.0`
 - `select(...)` API
@@ -106,4 +106,4 @@ Supported:
 Not currently supported:
 
 - framework adapters
-- non-SQLAlchemy backends
+- non-SQLAlchemy ORMs

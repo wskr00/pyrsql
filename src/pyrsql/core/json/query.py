@@ -1,4 +1,4 @@
-"""Backend-neutral JSON query models."""
+"""ORM-neutral JSON query models."""
 
 from dataclasses import dataclass
 

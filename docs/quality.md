@@ -15,10 +15,10 @@
 - Use package imports instead of importing individual functions into modules
   when module scoping communicates ownership more clearly.
 - Keep public APIs small and explicit.
-- Prefer immutable value objects for backend-neutral domain concepts.
-- Use `Protocol` and `ABC` for stable contracts where backends plug into the
+- Prefer immutable value objects for orm-neutral domain concepts.
+- Use `Protocol` and `ABC` for stable contracts where ORMs plug into the
   core.
-- Keep the backend-neutral core free from ORM-specific dependencies.
+- Keep the orm-neutral core free from ORM-specific dependencies.
 
 ## Initial Commands
 

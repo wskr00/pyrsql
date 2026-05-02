@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral JSON query models."""
+"""Unit tests for orm-neutral JSON query models."""
 
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison

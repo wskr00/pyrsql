@@ -15,7 +15,7 @@ _EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
 
 
 class SortParser:
-    """Parses sort expressions into backend-neutral field descriptors."""
+    """Parses sort expressions into orm-neutral field descriptors."""
 
     def __init__(
         self,

@@ -1,7 +1,7 @@
 [project]
 name = "pyrsql"
 version = "0.1.0"
-description = "Backend-agnostic RSQL support for Python applications."
+description = "ORM-oriented RSQL support for Python applications."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
@@ -54,7 +54,7 @@ markers = [
     "integration: tests that validate interaction between components",
     "functional: tests that validate user-visible library behavior",
     "performance: performance and benchmark-oriented regression tests",
-    "sqlalchemy: tests that exercise the SQLAlchemy backend",
+    "sqlalchemy: tests that exercise the SQLAlchemy ORM",
 ]
 
 [tool.mypy]

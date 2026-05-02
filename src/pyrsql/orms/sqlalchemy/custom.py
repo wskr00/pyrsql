@@ -1,4 +1,4 @@
-"""Custom predicate extension points for the SQLAlchemy backend."""
+"""Custom predicate extension points for the SQLAlchemy orm."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ from pyrsql.core.options import QueryOptions
 
 @dataclass(frozen=True, slots=True)
 class SQLAlchemyCustomPredicateInput:
-    """Structured input for backend-specific custom predicate builders."""
+    """Structured input for ORM-specific custom predicate builders."""
 
     expression: ColumnElement[Any]
     python_type: type[Any] | None

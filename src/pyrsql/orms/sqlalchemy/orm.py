@@ -1,17 +1,17 @@
-"""SQLAlchemy backend entry point."""
+"""SQLAlchemy ORM entry point."""
 
 from typing import Mapping
 from typing import TYPE_CHECKING
 
-from pyrsql.backends import base
-from pyrsql.backends.sqlalchemy.compiled_page import (
+from pyrsql.orms import base
+from pyrsql.orms.sqlalchemy.compiled_page import (
     SQLAlchemyCompiledPageRequest,
 )
-from pyrsql.backends.sqlalchemy.compiled import SQLAlchemyCompiledQuery
-from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicate
-from pyrsql.backends.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
-from pyrsql.backends.sqlalchemy.sorter import SQLAlchemySortTranslator
-from pyrsql.backends.sqlalchemy.translator import SQLAlchemyExpressionTranslator
+from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
+from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
+from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
+from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
+from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
 
 if TYPE_CHECKING:
     from pyrsql.core.page import PageRequest
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from pyrsql.core.sort import Sort
 
 
-class SQLAlchemyBackend(base.Backend):
-    """Backend adapter for SQLAlchemy 2.0 integration."""
+class SQLAlchemyORM(base.ORM):
+    """ORM adapter for SQLAlchemy 2.0 integration."""
 
     def __init__(
         self,
@@ -38,7 +38,7 @@ class SQLAlchemyBackend(base.Backend):
 
     @property
     def name(self) -> str:
-        """Returns the backend name."""
+        """Returns the ORM name."""
         return "sqlalchemy"
 
     def compile_query(self, query: "Query") -> base.CompiledQuery:

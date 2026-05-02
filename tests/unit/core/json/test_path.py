@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral JSON path primitives."""
+"""Unit tests for orm-neutral JSON path primitives."""
 
 import pytest
 

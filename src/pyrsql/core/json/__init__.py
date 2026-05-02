@@ -1,4 +1,4 @@
-"""Backend-neutral JSON query primitives."""
+"""ORM-neutral JSON query primitives."""
 
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.json.path import JSONPath

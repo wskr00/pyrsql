@@ -1,11 +1,11 @@
-"""SQLAlchemy backend value coercion."""
+"""SQLAlchemy ORM value coercion."""
 
 from typing import Any
 
 from pyrsql.core.conversion import FieldValueConverterSet
 from pyrsql.core.conversion import ValueConversionError
 from pyrsql.core.conversion import ValueConverterRegistry
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 
 
 class SQLAlchemyValueCoercer:
@@ -40,16 +40,16 @@ class SQLAlchemyValueCoercer:
                 try:
                     return field_converter(raw_value)
                 except Exception as error:
-                    raise SQLAlchemyBackendError(
+                    raise SQLAlchemyORMError(
                         f"Failed to convert {raw_value!r} for field "
                         f"{field_path or field_name!r}."
                     ) from error
         active_registry = registry or self._registry
         if active_registry is None:
-            raise SQLAlchemyBackendError(
+            raise SQLAlchemyORMError(
                 "SQLAlchemyValueCoercer requires a conversion registry."
             )
         try:
             return active_registry.convert(raw_value, python_type)
         except ValueConversionError as error:
-            raise SQLAlchemyBackendError(str(error)) from error
+            raise SQLAlchemyORMError(str(error)) from error

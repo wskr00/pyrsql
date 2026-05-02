@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral JSON value normalization."""
+"""Unit tests for orm-neutral JSON value normalization."""
 
 from pyrsql.core.json.values import JSONScalarNormalizer
 

@@ -1,1 +1,1 @@
-"""Shared SQLAlchemy models for backend-oriented test scenarios."""
+"""Shared SQLAlchemy models for ORM-oriented test scenarios."""

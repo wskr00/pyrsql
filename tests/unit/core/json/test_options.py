@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral JSON options."""
+"""Unit tests for orm-neutral JSON options."""
 
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.options import QueryOptions

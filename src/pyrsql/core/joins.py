@@ -1,10 +1,10 @@
-"""Backend-neutral join hint definitions."""
+"""ORM-neutral join hint definitions."""
 
 from enum import Enum
 
 
 class JoinHint(Enum):
-    """Supported backend-neutral join hint kinds."""
+    """Supported orm-neutral join hint kinds."""
 
     INNER = "inner"
     LEFT = "left"

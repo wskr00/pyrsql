@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pyrsql.backends.base import Backend
+from pyrsql.orms.base import ORM
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.ast import Expression
@@ -45,10 +45,10 @@ def _analyze_query_expression(
 
 @dataclass(frozen=True, slots=True)
 class Query:
-    """Represents a backend-neutral parsed query request.
+    """Represents an ORM-neutral parsed query request.
 
     The query preserves the raw text, the parsed expression tree, and the
-    backend-neutral semantic representation used by later compilation steps.
+    ORM-neutral semantic representation used by later compilation steps.
     """
 
     text: str
@@ -95,11 +95,11 @@ class Query:
         """Analyzes a syntax tree into a semantic expression."""
         return _analyze_query_expression(expression, options=options)
 
-    def compile(self, *, backend: Backend) -> CompilationResult:
-        """Compiles the query using the provided backend."""
-        compiled_query = backend.compile_query(self)
+    def compile(self, *, orm: ORM) -> CompilationResult:
+        """Compiles the query using the provided orm."""
+        compiled_query = orm.compile_query(self)
         return CompilationResult(
-            backend_name=backend.name,
+            orm_name=orm.name,
             compiled_query=compiled_query,
         )
 
@@ -108,7 +108,7 @@ class Query:
         target: Any,
         model: type[Any],
         *,
-        backend: Backend,
+        orm: ORM,
     ) -> Any:
-        """Compiles and applies the query using the provided backend."""
-        return self.compile(backend=backend).apply(target=target, model=model)
+        """Compiles and applies the query using the provided orm."""
+        return self.compile(orm=orm).apply(target=target, model=model)

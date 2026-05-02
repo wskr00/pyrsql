@@ -8,15 +8,15 @@ from typing import cast
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.backends.sqlalchemy.coercion import SQLAlchemyValueCoercer
-from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicate
-from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicateInput
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
-from pyrsql.backends.sqlalchemy.json_path import (
+from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
+from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
+from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicateInput
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
+from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
-from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.operators import BETWEEN
@@ -369,7 +369,7 @@ class SQLAlchemyExpressionTranslator:
                 ColumnElement[bool],
                 sa.not_(expression.between(values[0], values[1])),
             )
-        raise SQLAlchemyBackendError(
+        raise SQLAlchemyORMError(
             f"Unsupported SQLAlchemy operator {operator_name!r}."
         )
 

@@ -6,11 +6,11 @@ from typing import cast
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.backends.sqlalchemy.json_path import (
+from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
-from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.options import SortOptions
 from pyrsql.selector.semantic import SemanticColumnSelector
 from pyrsql.selector.semantic import SemanticLiteralSelector

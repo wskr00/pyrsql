@@ -8,9 +8,9 @@ from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.sql.sqltypes import JSON
 
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyModelInspectionError
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyAttributeKind
-from pyrsql.backends.sqlalchemy.types import SQLAlchemyMappedAttribute
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyModelInspectionError
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyAttributeKind
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyMappedAttribute
 
 
 class SQLAlchemyModelInspector:

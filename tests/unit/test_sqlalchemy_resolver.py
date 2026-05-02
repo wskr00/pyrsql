@@ -14,16 +14,16 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
-from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
-from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
-from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
+from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
+from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
+from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint
 
 
 class Base(DeclarativeBase):
-    """Base declarative class for backend tests."""
+    """Base declarative class for ORM tests."""
 
 
 class Company(Base):

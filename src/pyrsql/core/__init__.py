@@ -1,4 +1,4 @@
-"""Core backend-agnostic pyrsql types."""
+"""Core ORM-agnostic pyrsql types."""
 
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.compiler import PageCompilationResult

@@ -1,4 +1,4 @@
-"""Unit tests for backend-neutral value conversion."""
+"""Unit tests for orm-neutral value conversion."""
 
 import datetime as dt
 from decimal import Decimal

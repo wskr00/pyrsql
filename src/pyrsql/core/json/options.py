@@ -1,11 +1,11 @@
-"""Backend-neutral JSON options."""
+"""ORM-neutral JSON options."""
 
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
 class JSONOptions:
-    """Backend-neutral JSON behavior flags."""
+    """ORM-neutral JSON behavior flags."""
 
     path_exists_function: str = "jsonb_path_exists"
     path_exists_tz_function: str = "jsonb_path_exists_tz"
