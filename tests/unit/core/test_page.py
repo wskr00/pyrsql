@@ -1,9 +1,44 @@
 """Unit tests for backend-neutral pagination objects."""
 
+from dataclasses import dataclass
+from typing import Any
+
 import pytest
 
-from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
+from pyrsql.backends.base import Backend
 from pyrsql.core.page import PageRequest
+
+
+@dataclass(frozen=True, slots=True)
+class _FakeCompiledPageRequest:
+    result: Any
+
+    def apply(self, target: Any, model: type[Any]) -> Any:
+        return {
+            "result": self.result,
+            "target": target,
+            "model": model,
+        }
+
+
+class _FakeBackend(Backend):
+    """Minimal backend double for page-request unit tests."""
+
+    @property
+    def name(self) -> str:
+        return "fake"
+
+    def compile_query(self, query: Any) -> Any:
+        raise NotImplementedError
+
+    def compile_sort(self, sort: Any) -> Any:
+        raise NotImplementedError
+
+    def compile_page_request(
+        self,
+        page_request: PageRequest,
+    ) -> _FakeCompiledPageRequest:
+        return _FakeCompiledPageRequest(result=page_request.page_number)
 
 
 def test_page_request_of_builds_offset_and_limit() -> None:
@@ -42,5 +77,17 @@ def test_page_request_rejects_non_aligned_offset() -> None:
 
 def test_page_request_compile_uses_backend_name() -> None:
     """Ensures page compilation returns the selected backend metadata."""
-    compilation = PageRequest.of(0, 10).compile(backend=SQLAlchemyBackend())
-    assert compilation.backend_name == "sqlalchemy"
+    compilation = PageRequest.of(0, 10).compile(backend=_FakeBackend())
+    assert compilation.backend_name == "fake"
+
+
+def test_page_request_apply_uses_backend() -> None:
+    """Compiles and applies a page request through the selected backend."""
+    applied = PageRequest.of(0, 10).apply(
+        target="statement",
+        model=str,
+        backend=_FakeBackend(),
+    )
+    assert applied["result"] == 0
+    assert applied["target"] == "statement"
+    assert applied["model"] is str
