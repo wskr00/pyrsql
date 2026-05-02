@@ -1,4 +1,4 @@
-"""Sanity tests for the package-level public API."""
+"""Functional tests for the package-level public API."""
 
 import pytest
 
@@ -10,6 +10,8 @@ from pyrsql.parsing.operators import (
     ComparisonOperator,
     OperatorRegistry,
 )
+
+pytestmark = [pytest.mark.functional]
 
 
 def test_parse_returns_query_object() -> None:

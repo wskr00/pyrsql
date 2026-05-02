@@ -1,10 +1,10 @@
-"""Unit tests for SQLAlchemy pagination compilation and application."""
+"""Integration tests for the SQLAlchemy page pipeline."""
 
 # pylint: disable=wrong-import-position,unsubscriptable-object
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.sqlalchemy]
+pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 

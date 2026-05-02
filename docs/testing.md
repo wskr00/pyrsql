@@ -85,33 +85,50 @@ Examples:
 - semantic normalization throughput
 - SQLAlchemy translation throughput
 
-## Planned Directory Layout
+## Current Directory Layout
 
 ```text
 tests/
   conftest.py
   fixtures/
     __init__.py
-    ORMs.py
+    orms.py
     query_samples.py
     sqlalchemy_models.py
 
   unit/
     core/
+      json/
+    orms/
+      sqlalchemy/
     parsing/
     selector/
     semantic/
     sorting/
-    orms/sqlalchemy/
 
   integration/
-    api/
     sqlalchemy/
 
   functional/
+    test_public_api.py
 
   performance/
+    test_parser_bench.py
+    test_selector_bench.py
+    test_semantic_bench.py
+    test_sqlalchemy_translation_bench.py
 ```
+
+Current notable mappings:
+
+- `tests/unit/core/...` mirrors the `core` package
+- `tests/unit/parsing/...` mirrors the `parsing` package
+- `tests/unit/orms/sqlalchemy/test_resolver.py` covers isolated path
+  resolution and model inspection
+- `tests/integration/sqlalchemy/...` covers public pipeline interaction with
+  `SQLAlchemy`
+- `tests/functional/test_public_api.py` covers package-level public API
+- `tests/performance/...` covers regression-oriented hotspot benchmarks
 
 ## Mapping Rules
 
@@ -132,30 +149,29 @@ Examples:
 
 Integration tests should be grouped by interaction boundary.
 
-Examples:
+Current examples:
 
-- `tests/integration/api/test_query_to_sqlalchemy.py`
-- `tests/integration/sqlalchemy/test_json_pipeline.py`
-- `tests/integration/sqlalchemy/test_value_conversion_pipeline.py`
+- `tests/integration/sqlalchemy/test_query_pipeline.py`
+- `tests/integration/sqlalchemy/test_sort_pipeline.py`
+- `tests/integration/sqlalchemy/test_page_pipeline.py`
 
 ### Functional tests
 
 Functional tests should be grouped by capability.
 
-Examples:
+Current example:
 
-- `tests/functional/test_rsql_filtering.py`
-- `tests/functional/test_sorting_behavior.py`
-- `tests/functional/test_json_behavior.py`
+- `tests/functional/test_public_api.py`
 
 ### Performance tests
 
 Performance tests should be grouped by hotspot.
 
-Examples:
+Current examples:
 
-- `tests/performance/test_lexer_bench.py`
 - `tests/performance/test_parser_bench.py`
+- `tests/performance/test_selector_bench.py`
+- `tests/performance/test_semantic_bench.py`
 - `tests/performance/test_sqlalchemy_translation_bench.py`
 
 ## Fixtures
@@ -193,18 +209,20 @@ The suite should use explicit markers:
 
 `performance` tests should not be part of the default quick test loop.
 
-## Migration Plan
+They are skipped by default and must be requested explicitly with:
 
-The migration should happen incrementally.
+```bash
+pytest tests/performance --run-performance
+```
 
-1. Keep the current suite green at all times.
-2. Create the new top-level test infrastructure first.
-3. Move unit tests into a mirrored `tests/unit/...` layout.
-4. Split current mixed ORM tests into:
-   - unit tests
-   - integration tests
-   - functional tests
-5. Add a dedicated performance layer last.
+## Status
 
-During migration, temporary coexistence between old and new file layout is
-acceptable if it avoids risky large-batch moves.
+The suite now has all four layers in place:
+
+1. `unit`
+2. `integration`
+3. `functional`
+4. `performance`
+
+Further work should focus on refining boundaries within those layers rather
+than changing the top-level testing model.

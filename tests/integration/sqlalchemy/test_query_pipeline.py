@@ -1,4 +1,4 @@
-"""Unit tests for SQLAlchemy ORM translation and application."""
+"""Integration tests for the SQLAlchemy query pipeline."""
 
 # pylint: disable=wrong-import-position,unsubscriptable-object
 
@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-pytestmark = [pytest.mark.unit, pytest.mark.sqlalchemy]
+pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
