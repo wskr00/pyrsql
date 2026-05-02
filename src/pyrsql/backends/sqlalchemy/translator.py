@@ -17,6 +17,7 @@ from pyrsql.backends.sqlalchemy.json_path import (
 )
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
+from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.operators import BETWEEN
 from pyrsql.parsing.operators import EQUAL
@@ -130,15 +131,27 @@ class SQLAlchemyExpressionTranslator:
             field_name = getattr(resolved_path.leaf_attribute, "key", None)
             field_path = resolved_path.field_path
             if resolved_path.is_json:
-                predicate = self._json_path_builder.build_filter_expression(
-                    selector_expression,
-                    resolved_path.json_path,
-                    expression.operator.name,
-                    tuple(
+                json_comparison = JSONPathComparison.from_raw_arguments(
+                    path=resolved_path.json_path,
+                    operator_name=expression.operator.name,
+                    raw_arguments=tuple(
                         (argument.text, argument.quoted)
                         for argument in expression.arguments
                     ),
                 )
+                predicate = self._json_path_builder.build_filter_expression(
+                    selector_expression,
+                    json_comparison,
+                    options=options.json_options,
+                )
+                if self._should_use_exists_predicate(
+                    selector_joins,
+                    options=options,
+                ):
+                    return (), self._wrap_exists_predicate(
+                        selector_joins,
+                        predicate,
+                    )
                 return selector_joins, predicate
         else:
             selector_joins, selector_expression, python_type = (
@@ -175,6 +188,14 @@ class SQLAlchemyExpressionTranslator:
             coerced_values,
             options=options,
         )
+        if self._should_use_exists_predicate(
+            selector_joins,
+            options=options,
+        ):
+            return (), self._wrap_exists_predicate(
+                selector_joins,
+                predicate,
+            )
         return selector_joins, predicate
 
     def _translate_selector(
@@ -473,6 +494,31 @@ class SQLAlchemyExpressionTranslator:
         if python_type is None:
             return False
         return issubclass(python_type, str)
+
+    def _should_use_exists_predicate(
+        self,
+        joins: tuple[SQLAlchemyJoinPlan, ...],
+        *,
+        options: QueryOptions,
+    ) -> bool:
+        """Returns whether a filter should use relationship EXISTS forms."""
+        if options.join_hints:
+            return False
+        return any(join_plan.is_collection for join_plan in joins)
+
+    def _wrap_exists_predicate(
+        self,
+        joins: tuple[SQLAlchemyJoinPlan, ...],
+        predicate: ColumnElement[bool],
+    ) -> ColumnElement[bool]:
+        """Wraps a leaf predicate using relationship any()/has()."""
+        wrapped_predicate = predicate
+        for join_plan in reversed(joins):
+            if join_plan.is_collection:
+                wrapped_predicate = join_plan.attribute.any(wrapped_predicate)
+                continue
+            wrapped_predicate = join_plan.attribute.has(wrapped_predicate)
+        return wrapped_predicate
 
     def _infer_function_python_type(
         self,

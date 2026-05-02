@@ -46,6 +46,7 @@ class SQLAlchemyModelInspector:
                 attribute=getattr(model, attribute_name),
                 mapper=relationship.mapper,
                 python_type=relationship.mapper.class_,
+                is_collection=bool(relationship.uselist),
             )
         if attribute_name in mapper.column_attrs:
             column_property = mapper.column_attrs[attribute_name]

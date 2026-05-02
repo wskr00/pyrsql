@@ -9,6 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
+from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint
 
 
@@ -26,6 +27,7 @@ class SQLAlchemyJoinPlan:
     key: str
     attribute: InstrumentedAttribute[Any]
     default_hint: JoinHint
+    is_collection: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +40,7 @@ class SQLAlchemyResolvedPath:
     joins: tuple[SQLAlchemyJoinPlan, ...]
     leaf_attribute: ColumnElement[Any]
     python_type: type[Any] | None
-    json_path: tuple[str, ...] = ()
+    json_path: JSONPath = JSONPath()
     is_json: bool = False
 
 
@@ -52,4 +54,5 @@ class SQLAlchemyMappedAttribute:
     attribute: InstrumentedAttribute[Any]
     mapper: Mapper[Any] | None
     python_type: type[Any] | None
+    is_collection: bool = False
     is_json: bool = False

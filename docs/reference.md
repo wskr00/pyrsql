@@ -100,10 +100,9 @@ Supported:
 - field mapping and ACL
 - field-specific and type-specific conversion
 - PostgreSQL-style JSON / JSONB path filtering and sorting
+- `JSONOptions(use_datetime=...)` for temporal JSON path semantics
 
 Not currently supported:
 
 - framework adapters
 - non-SQLAlchemy backends
-- backend-neutral JSON configuration
-- advanced temporal JSON semantics

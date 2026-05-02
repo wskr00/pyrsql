@@ -112,18 +112,57 @@ Current behavior:
 - `JSON` columns are cast to `JSONB`
 - filter translation uses PostgreSQL JSON path predicates via SQLAlchemy
 - sort translation uses PostgreSQL JSON path extraction operators via SQLAlchemy
+- arrays can be traversed with dotted paths such as `payload.roles.id==1`
 
 Current scope:
 
 - nested path filters such as `payload.user.id==1`
 - string, boolean, numeric, and `null` JSON scalar comparisons
+- quoted JSON arrays and objects in filter arguments
+- `in`, `out`, `between`, `like`, and ignore-case JSON predicates
 - JSON and JSONB column support in the `SQLAlchemy` backend
 
-Not yet implemented:
+## JSON Options
+
+`QueryOptions` and `SortOptions` expose `json_options`.
+
+Current options:
+
+- `use_datetime`
+
+Example:
+
+```python
+from pyrsql import QueryOptions
+from pyrsql.core.json.options import JSONOptions
+
+query = Query.parse(
+    "payload.created_at=gt=2026-05-02T10:30:00",
+    options=QueryOptions(
+        json_options=JSONOptions(use_datetime=True),
+    ),
+)
+```
+
+When `use_datetime=True`:
+
+- ISO date/time strings use PostgreSQL `datetime()` jsonpath semantics
+- timezone-aware values use `jsonb_path_exists_tz`
+
+Examples:
+
+```python
+Query.parse("payload.roles.id==1")
+Query.parse("payload.active==true")
+Query.parse("payload.score=bt=(10,20)")
+Query.parse("payload.tags=='[1,2]'")
+Query.parse("payload.meta=='{\"id\":1}'")
+```
+
+Current limitations:
 
 - framework adapters
-- backend-neutral JSON configuration
-- advanced temporal JSON semantics
+- non-SQLAlchemy backends for JSON compilation
 
 ## Selector Functions
 

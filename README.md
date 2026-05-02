@@ -15,6 +15,7 @@ Current `SQLAlchemy` support includes:
 - `distinct`
 - `join_hints`
 - PostgreSQL-style JSON / JSONB path support
+- temporal JSON path semantics via `JSONOptions(use_datetime=True)`
 
 ## Development Principles
 

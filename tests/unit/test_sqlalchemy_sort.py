@@ -167,7 +167,7 @@ def test_backend_applies_model_field_mapping_in_sort() -> None:
 
 
 def test_backend_applies_json_sort_clause() -> None:
-    """Builds jsonb_extract_path_text for JSON sort expressions."""
+    """Builds JSON path extraction operators for JSON sort expressions."""
     backend = SQLAlchemyBackend()
     statement = Sort.parse("payload.user.id,asc").apply(
         select(JsonEvent),
@@ -176,5 +176,5 @@ def test_backend_applies_json_sort_clause() -> None:
     )
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
-    assert "jsonb_extract_path_text" in sql
+    assert "#>>" in sql
     assert "payload" in sql

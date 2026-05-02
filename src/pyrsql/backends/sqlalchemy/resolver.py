@@ -12,6 +12,7 @@ from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyMappedAttribute
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyResolvedPath
 from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint
 
 
@@ -96,6 +97,7 @@ class SQLAlchemyPathResolver:
                         key=self._make_join_key(current_model, segment),
                         attribute=mapped_attribute.attribute,
                         default_hint=JoinHint.INNER,
+                        is_collection=mapped_attribute.is_collection,
                     )
                 )
                 assert mapped_attribute.mapper is not None
@@ -115,8 +117,10 @@ class SQLAlchemyPathResolver:
                             mapped_attribute.attribute,
                         ),
                         python_type=None,
-                        json_path=tuple(
-                            segments_to_resolve[segment_index + 1 :]
+                        json_path=JSONPath(
+                            tuple(
+                                segments_to_resolve[segment_index + 1 :]
+                            )
                         ),
                         is_json=True,
                     )

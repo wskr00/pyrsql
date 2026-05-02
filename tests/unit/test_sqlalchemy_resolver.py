@@ -18,6 +18,7 @@ from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.json.path import JSONPath
 from pyrsql.core.joins import JoinHint
 
 
@@ -43,6 +44,18 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     company: Mapped[Company] = relationship()
+    addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+
+
+class Address(Base):
+    """Test address model for collection relationships."""
+
+    __tablename__ = "address"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    city: Mapped[str] = mapped_column(String(255))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+    user: Mapped[User] = relationship(back_populates="addresses")
 
 
 class Event(Base):
@@ -73,6 +86,15 @@ def test_model_inspector_reads_relationship_metadata() -> None:
     assert mapped_attribute.mapper.class_ is Company
 
 
+def test_model_inspector_marks_collection_relationships() -> None:
+    """Inspects whether a relationship is collection-based."""
+    inspector = SQLAlchemyModelInspector()
+    mapped_attribute = inspector.get_mapped_attribute(User, "addresses")
+    assert mapped_attribute.is_collection is True
+    assert mapped_attribute.mapper is not None
+    assert mapped_attribute.mapper.class_ is Address
+
+
 def test_path_resolver_resolves_direct_column() -> None:
     """Resolves a direct column path without joins."""
     resolver = SQLAlchemyPathResolver()
@@ -91,8 +113,20 @@ def test_path_resolver_resolves_relationship_path() -> None:
     assert resolved.joins[0].attribute is User.company
     assert resolved.joins[0].key == "User.company"
     assert resolved.joins[0].default_hint is JoinHint.INNER
+    assert resolved.joins[0].is_collection is False
     assert resolved.python_type is str
     assert resolved.leaf_model is Company
+
+
+def test_path_resolver_marks_collection_relationship_joins() -> None:
+    """Resolves collection relationships with collection metadata."""
+    resolver = SQLAlchemyPathResolver()
+    resolved = resolver.resolve(User, "addresses.city")
+    assert len(resolved.joins) == 1
+    assert resolved.joins[0].attribute is User.addresses
+    assert resolved.joins[0].is_collection is True
+    assert resolved.python_type is str
+    assert resolved.leaf_model is Address
 
 
 def test_path_resolver_rejects_terminal_relationship() -> None:
@@ -151,5 +185,5 @@ def test_path_resolver_resolves_json_path() -> None:
     resolver = SQLAlchemyPathResolver()
     resolved = resolver.resolve(Event, "payload.user.id")
     assert resolved.is_json is True
-    assert resolved.json_path == ("user", "id")
+    assert resolved.json_path == JSONPath(("user", "id"))
     assert resolved.leaf_model is Event

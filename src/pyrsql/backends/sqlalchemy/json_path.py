@@ -11,6 +11,10 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.path import JSONPath
+from pyrsql.core.json.query import JSONPathComparison
+from pyrsql.core.json.values import JSONScalarValue
 from pyrsql.parsing.operators import BETWEEN
 from pyrsql.parsing.operators import EQUAL
 from pyrsql.parsing.operators import GREATER_THAN
@@ -29,142 +33,255 @@ from pyrsql.parsing.operators import NOT_IN
 from pyrsql.parsing.operators import NOT_LIKE
 from pyrsql.parsing.operators import NOT_NULL
 
-_INTEGER_PATTERN = re.compile(r"^-?\d+$")
-_FLOAT_PATTERN = re.compile(r"^-?\d+\.\d+$")
+_ISO_DATE_TIME_PATTERN_TZ = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+)
+_ISO_TIME_PATTERN_TZ = re.compile(
+    r"^\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+)
+_ISO_DATE_TIME_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$"
+)
+_ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
 
 
 @dataclass(frozen=True, slots=True)
-class JSONScalarValue:
-    """Represents one inferred JSON scalar value."""
+class SQLAlchemyJSONPathFunctionNames:
+    """PostgreSQL JSON path function names used by the backend."""
 
-    value: Any
-    json_path_literal: str
-    python_type: type[Any] | None
+    path_exists_tz: str = "jsonb_path_exists_tz"
 
 
 class SQLAlchemyJSONPathExpressionBuilder:
     """Builds PostgreSQL JSON path expressions for SQLAlchemy."""
 
+    def __init__(
+        self,
+        *,
+        function_names: (
+            SQLAlchemyJSONPathFunctionNames | None
+        ) = None,
+    ) -> None:
+        self._function_names = (
+            function_names or SQLAlchemyJSONPathFunctionNames()
+        )
+
     def build_filter_expression(
         self,
         column: ColumnElement[Any],
-        json_path: tuple[str, ...],
-        operator_name: str,
-        raw_arguments: tuple[tuple[str, bool], ...],
+        comparison: JSONPathComparison,
+        *,
+        options: JSONOptions | None = None,
     ) -> ColumnElement[bool]:
-        """Builds a PostgreSQL jsonb_path_exists predicate."""
-        normalized_values = tuple(
-            self._normalize_argument(raw_value, quoted=quoted)
-            for raw_value, quoted in raw_arguments
-        )
-        json_path_expression = self._build_json_path_expression(
-            json_path,
-            operator_name,
-            normalized_values,
+        """Builds a PostgreSQL JSONB path-exists predicate."""
+        function_call = self._build_filter_call(
+            comparison,
+            options=options or JSONOptions(),
         )
         jsonb_column = cast(
             ColumnElement[Any],
             sa.cast(column, postgresql.JSONB),
         )
+        if function_call.use_timezone_function:
+            function_expression = getattr(
+                sa.func,
+                self._function_names.path_exists_tz,
+            )(
+                jsonb_column,
+                sa.literal(function_call.json_path_expression),
+            )
+            return cast(ColumnElement[bool], function_expression)
         return cast(
             ColumnElement[bool],
-            sa.func.jsonb_path_exists(
-                jsonb_column,
-                sa.literal(json_path_expression),
+            jsonb_column.path_exists(
+                sa.literal(function_call.json_path_expression)
             ),
         )
 
     def build_sort_expression(
         self,
         column: ColumnElement[Any],
-        json_path: tuple[str, ...],
+        json_path: JSONPath,
     ) -> ColumnElement[Any]:
-        """Builds a PostgreSQL text extraction expression for sort."""
+        """Builds a PostgreSQL JSON path extraction expression for sort."""
         jsonb_column = cast(
             ColumnElement[Any],
             sa.cast(column, postgresql.JSONB),
         )
-        if not json_path:
+        if json_path.is_root:
             return jsonb_column
-        arguments: list[ColumnElement[Any]] = [jsonb_column]
-        arguments.extend(sa.literal(segment) for segment in json_path)
         return cast(
             ColumnElement[Any],
-            sa.func.jsonb_extract_path_text(*arguments),
+            jsonb_column[json_path.segments].as_string(),
         )
 
-    def _build_json_path_expression(
+    def _build_filter_call(
         self,
-        json_path: tuple[str, ...],
-        operator_name: str,
-        values: tuple[JSONScalarValue, ...],
-    ) -> str:
-        """Builds one jsonpath predicate expression."""
-        target_path = "$" if not json_path else "$." + ".".join(json_path)
+        comparison: JSONPathComparison,
+        *,
+        options: JSONOptions,
+    ) -> "_JSONPathFilterCall":
+        """Builds the function call payload for one jsonpath predicate."""
+        target_path = (
+            "$"
+            if comparison.path.is_root
+            else "$." + comparison.path.to_dot_path()
+        )
+        use_datetime = options.use_datetime
+        use_timezone_function = use_datetime and any(
+            self._is_timezone_datetime_value(value)
+            for value in comparison.values
+        )
         value_reference = "@"
-        if operator_name == NOT_NULL.name:
-            comparison = "(@ != null)"
-        elif operator_name == EQUAL.name:
-            comparison = self._equality_comparison(values[0])
-        elif operator_name == NOT_EQUAL.name:
-            comparison = f"!{self._equality_comparison(values[0])}"
-        elif operator_name == GREATER_THAN.name:
-            comparison = f"(@ > {values[0].json_path_literal})"
-        elif operator_name == GREATER_THAN_OR_EQUAL.name:
-            comparison = f"(@ >= {values[0].json_path_literal})"
-        elif operator_name == LESS_THAN.name:
-            comparison = f"(@ < {values[0].json_path_literal})"
-        elif operator_name == LESS_THAN_OR_EQUAL.name:
-            comparison = f"(@ <= {values[0].json_path_literal})"
-        elif operator_name == IN.name:
-            comparison = "(" + " || ".join(
-                f"(@ == {value.json_path_literal})"
-                for value in values
+        if use_datetime and any(
+            self._is_datetime_value(value) for value in comparison.values
+        ):
+            value_reference = "@.datetime()"
+        if comparison.operator_name == NOT_NULL.name:
+            comparison_clause = "(@ != null)"
+        elif comparison.operator_name == EQUAL.name:
+            comparison_clause = self._equality_comparison(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+        elif comparison.operator_name == NOT_EQUAL.name:
+            equality_clause = self._equality_comparison(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = f"!{equality_clause}"
+        elif comparison.operator_name == GREATER_THAN.name:
+            value_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} > {value_literal})"
+            )
+        elif comparison.operator_name == GREATER_THAN_OR_EQUAL.name:
+            value_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} >= {value_literal})"
+            )
+        elif comparison.operator_name == LESS_THAN.name:
+            value_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} < {value_literal})"
+            )
+        elif comparison.operator_name == LESS_THAN_OR_EQUAL.name:
+            value_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} <= {value_literal})"
+            )
+        elif comparison.operator_name == IN.name:
+            comparison_clause = "(" + " || ".join(
+                (
+                    f"({value_reference} == "
+                    f"{self._print_value(value, use_datetime=use_datetime)})"
+                )
+                for value in comparison.values
             ) + ")"
-        elif operator_name == NOT_IN.name:
-            comparison = "(" + " && ".join(
-                f"(@ != {value.json_path_literal})"
-                for value in values
+        elif comparison.operator_name == NOT_IN.name:
+            comparison_clause = "(" + " && ".join(
+                (
+                    f"({value_reference} != "
+                    f"{self._print_value(value, use_datetime=use_datetime)})"
+                )
+                for value in comparison.values
             ) + ")"
-        elif operator_name == IS_NULL.name:
-            comparison = "(@ == null)"
-        elif operator_name == LIKE.name:
-            comparison = self._regex_comparison(values[0], ignore_case=False)
-        elif operator_name == NOT_LIKE.name:
-            comparison = "!" + self._regex_comparison(
-                values[0],
+        elif comparison.operator_name == IS_NULL.name:
+            comparison_clause = "(@ == null)"
+        elif comparison.operator_name == LIKE.name:
+            comparison_clause = self._regex_comparison(
+                comparison.values[0],
                 ignore_case=False,
             )
-        elif operator_name == IGNORE_CASE.name:
-            comparison = self._regex_comparison(values[0], ignore_case=True)
-        elif operator_name == IGNORE_CASE_LIKE.name:
-            comparison = self._regex_comparison(values[0], ignore_case=True)
-        elif operator_name == IGNORE_CASE_NOT_LIKE.name:
-            comparison = "!" + self._regex_comparison(
-                values[0],
+        elif comparison.operator_name == NOT_LIKE.name:
+            comparison_clause = "!" + self._regex_comparison(
+                comparison.values[0],
+                ignore_case=False,
+            )
+        elif comparison.operator_name == IGNORE_CASE.name:
+            comparison_clause = self._regex_comparison(
+                comparison.values[0],
                 ignore_case=True,
             )
-        elif operator_name == BETWEEN.name:
-            comparison = (
-                f"({value_reference} >= {values[0].json_path_literal} && "
-                f"{value_reference} <= {values[1].json_path_literal})"
+        elif comparison.operator_name == IGNORE_CASE_LIKE.name:
+            comparison_clause = self._regex_comparison(
+                comparison.values[0],
+                ignore_case=True,
             )
-        elif operator_name == NOT_BETWEEN.name:
-            comparison = (
-                f"({value_reference} < {values[0].json_path_literal} || "
-                f"{value_reference} > {values[1].json_path_literal})"
+        elif comparison.operator_name == IGNORE_CASE_NOT_LIKE.name:
+            comparison_clause = "!" + self._regex_comparison(
+                comparison.values[0],
+                ignore_case=True,
+            )
+        elif comparison.operator_name == BETWEEN.name:
+            lower_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            upper_literal = self._print_value(
+                comparison.values[1],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} >= {lower_literal}"
+                f" && {value_reference} <= {upper_literal})"
+            )
+        elif comparison.operator_name == NOT_BETWEEN.name:
+            lower_literal = self._print_value(
+                comparison.values[0],
+                use_datetime=use_datetime,
+            )
+            upper_literal = self._print_value(
+                comparison.values[1],
+                use_datetime=use_datetime,
+            )
+            comparison_clause = (
+                f"({value_reference} < {lower_literal}"
+                f" || {value_reference} > {upper_literal})"
             )
         else:
             raise SQLAlchemyBackendError(
-                f"Unsupported JSON operator {operator_name!r}."
+                f"Unsupported JSON operator {comparison.operator_name!r}."
             )
-        return f"{target_path} ? {comparison}"
+        return _JSONPathFilterCall(
+            json_path_expression=f"{target_path} ? {comparison_clause}",
+            use_timezone_function=use_timezone_function,
+        )
 
-    def _equality_comparison(self, value: JSONScalarValue) -> str:
+    def _equality_comparison(
+        self,
+        value: JSONScalarValue,
+        *,
+        use_datetime: bool,
+    ) -> str:
         """Builds equality or wildcard comparison for JSON values."""
         if value.python_type is str and "*" in str(value.value):
-            return self._regex_comparison(value, ignore_case=False)
-        return f"(@ == {value.json_path_literal})"
+            return self._regex_comparison(
+                value,
+                ignore_case=False,
+            )
+        value_reference = (
+            "@.datetime()"
+            if use_datetime and self._is_datetime_value(value)
+            else "@"
+        )
+        return (
+            f"({value_reference} == "
+            f"{self._print_value(value, use_datetime=use_datetime)})"
+        )
 
     def _regex_comparison(
         self,
@@ -186,45 +303,43 @@ class SQLAlchemyJSONPathExpressionBuilder:
             return f"(@ like_regex {literal} flag \"i\")"
         return f"(@ like_regex {literal})"
 
-    def _normalize_argument(
+    def _print_value(
         self,
-        raw_value: str,
+        value: JSONScalarValue,
         *,
-        quoted: bool,
-    ) -> JSONScalarValue:
-        """Infers one JSON scalar literal from an RSQL argument."""
-        if quoted:
-            parsed_json = self._try_parse_json(raw_value)
-            if parsed_json is not None:
-                return self._from_python_value(parsed_json)
-            return self._from_python_value(raw_value)
-        lowered = raw_value.lower()
-        if lowered == "true":
-            return self._from_python_value(True)
-        if lowered == "false":
-            return self._from_python_value(False)
-        if lowered == "null":
-            return self._from_python_value(None)
-        if _INTEGER_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(int(raw_value))
-        if _FLOAT_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(float(raw_value))
-        return self._from_python_value(raw_value)
+        use_datetime: bool,
+    ) -> str:
+        """Prints one JSON value for PostgreSQL jsonpath expressions."""
+        if use_datetime and self._is_datetime_value(value):
+            return f"\"{value.value}\".datetime()"
+        return value.json_literal
 
-    def _from_python_value(self, value: Any) -> JSONScalarValue:
-        """Creates a JSONScalarValue from a Python value."""
-        return JSONScalarValue(
-            value=value,
-            json_path_literal=json.dumps(value),
-            python_type=type(value) if value is not None else None,
+    def _is_datetime_value(self, value: JSONScalarValue) -> bool:
+        """Returns whether a value is a supported ISO temporal string."""
+        if value.python_type is not str:
+            return False
+        normalized = str(value.value)
+        return (
+            _ISO_DATE_TIME_PATTERN.fullmatch(normalized) is not None
+            or _ISO_DATE_PATTERN.fullmatch(normalized) is not None
+            or _ISO_TIME_PATTERN.fullmatch(normalized) is not None
+            or self._is_timezone_datetime_value(value)
         )
 
-    def _try_parse_json(self, raw_value: str) -> Any | None:
-        """Parses JSON structures from quoted RSQL arguments when possible."""
-        try:
-            parsed = json.loads(raw_value)
-        except json.JSONDecodeError:
-            return None
-        if isinstance(parsed, str):
-            return None
-        return parsed
+    def _is_timezone_datetime_value(self, value: JSONScalarValue) -> bool:
+        """Returns whether a value is a timezone-aware ISO temporal string."""
+        if value.python_type is not str:
+            return False
+        normalized = str(value.value)
+        return (
+            _ISO_DATE_TIME_PATTERN_TZ.fullmatch(normalized) is not None
+            or _ISO_TIME_PATTERN_TZ.fullmatch(normalized) is not None
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class _JSONPathFilterCall:
+    """Represents one PostgreSQL JSON path filter call."""
+
+    json_path_expression: str
+    use_timezone_function: bool

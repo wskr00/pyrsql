@@ -22,6 +22,7 @@ from sqlalchemy.orm import relationship
 import pyrsql
 from pyrsql.backends.sqlalchemy import SQLAlchemyBackend
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
+from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.custom import CustomPredicateDefinition
@@ -50,6 +51,18 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     company: Mapped[Company] = relationship()
+    addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+
+
+class Address(Base):
+    """Test address model for collection relationship filters."""
+
+    __tablename__ = "address"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    city: Mapped[str] = mapped_column(String(255))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+    user: Mapped[User] = relationship(back_populates="addresses")
 
 
 class Event(Base):
@@ -97,6 +110,17 @@ def test_backend_applies_joined_where_clause() -> None:
     sql = str(statement)
     assert "JOIN company" in sql
     assert "company.name =" in sql
+
+
+def test_backend_uses_exists_for_collection_relationship_filter() -> None:
+    """Uses any()/has() semantics for collection relationship filters."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("addresses.city==belem")
+    statement = backend.compile_query(query).apply(select(User), User)
+    sql = str(statement)
+    assert "EXISTS" in sql
+    assert "FROM address" in sql
+    assert "JOIN address" not in sql
 
 
 def test_backend_applies_like_operator() -> None:
@@ -324,13 +348,13 @@ def test_backend_applies_model_field_specific_converter() -> None:
 
 
 def test_backend_applies_jsonb_where_clause() -> None:
-    """Builds jsonb_path_exists for nested JSONB selectors."""
+    """Builds JSONB path predicates for nested JSONB selectors."""
     backend = SQLAlchemyBackend()
     query = pyrsql.parse("payload.user.id==1")
     statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
-    assert "jsonb_path_exists" in sql
+    assert " @? " in sql
     assert "CAST(json_event.payload AS JSONB)" in sql
 
 
@@ -344,5 +368,140 @@ def test_backend_applies_json_where_clause_via_jsonb_cast() -> None:
     )
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
-    assert "jsonb_path_exists" in sql
+    assert " @? " in sql
     assert "CAST(json_document.payload AS JSONB)" in sql
+
+
+def test_backend_applies_json_array_path_predicate() -> None:
+    """Supports nested array element paths through PostgreSQL jsonpath."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.roles.id==1")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.roles.id ? (@ == 1)" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_boolean_predicate() -> None:
+    """Normalizes boolean JSON comparisons correctly."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.active==true")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.active ? (@ == true)" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_null_predicate() -> None:
+    """Normalizes null JSON comparisons correctly."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.deleted_at==null")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.deleted_at ? (@ == null)" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_in_predicate() -> None:
+    """Builds OR-chained jsonpath comparisons for IN."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.status=in=(1,2,3)")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.status ? ((@ == 1) || (@ == 2) || (@ == 3))" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_between_predicate() -> None:
+    """Builds range jsonpath comparisons for BETWEEN."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.score=bt=(10,20)")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.score ? (@ >= 10 && @ <= 20)" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_quoted_array_predicate() -> None:
+    """Parses quoted JSON arrays as structured JSON values."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.tags=='[1,2]'")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.tags ? (@ == [1, 2])" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_quoted_object_predicate() -> None:
+    """Parses quoted JSON objects as structured JSON values."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse("payload.meta=='{\"id\":1}'")
+    statement = backend.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert any(
+        "$.meta ? (@ == {\"id\": 1})" == str(value)
+        for value in compiled.params.values()
+    )
+
+
+def test_backend_applies_json_datetime_path_predicate() -> None:
+    """Builds PostgreSQL datetime jsonpath expressions when enabled."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "payload.created_at=gt=2026-05-02T10:30:00",
+        options=QueryOptions(
+            json_options=JSONOptions(use_datetime=True),
+        ),
+    )
+    statement = backend.compile_query(query).apply(
+        select(JsonEvent),
+        JsonEvent,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    sql = str(compiled)
+    assert "@.datetime()" in compiled.params["param_1"]
+    assert ".datetime()" in compiled.params["param_1"]
+    assert " @? " in sql
+
+
+def test_backend_applies_json_datetime_tz_path_predicate() -> None:
+    """Uses the timezone-aware PostgreSQL function for zoned datetimes."""
+    backend = SQLAlchemyBackend()
+    query = pyrsql.parse(
+        "payload.created_at=gt=2026-05-02T10:30:00Z",
+        options=QueryOptions(
+            json_options=JSONOptions(use_datetime=True),
+        ),
+    )
+    statement = backend.compile_query(query).apply(
+        select(JsonEvent),
+        JsonEvent,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    sql = str(compiled)
+    assert "jsonb_path_exists_tz" in sql
+    assert any(
+        "@.datetime()" in str(value)
+        for value in compiled.params.values()
+    )
