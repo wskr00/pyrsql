@@ -49,6 +49,13 @@ src_paths = ["src", "tests"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = ["--import-mode=importlib"]
+markers = [
+    "unit: isolated tests for one module or class",
+    "integration: tests that validate interaction between components",
+    "functional: tests that validate user-visible library behavior",
+    "performance: performance and benchmark-oriented regression tests",
+    "sqlalchemy: tests that exercise the SQLAlchemy backend",
+]
 
 [tool.mypy]
 python_version = "3.12"

@@ -32,3 +32,4 @@ Current `SQLAlchemy` support includes:
 - [Reference](docs/reference.md)
 - [Google Python Style Guide](docs/pyguide.md)
 - [Quality and Tooling](docs/quality.md)
+- [Testing](docs/testing.md)
