@@ -1,4 +1,4 @@
-"""JSON and JSONB support for the SQLAlchemy backend."""
+"""JSON path expression building for the SQLAlchemy backend."""
 
 import json
 import re
@@ -42,8 +42,8 @@ class JSONScalarValue:
     python_type: type[Any] | None
 
 
-class SQLAlchemyJSONSupport:
-    """Builds JSON/JSONB expressions for SQLAlchemy."""
+class SQLAlchemyJSONPathExpressionBuilder:
+    """Builds PostgreSQL JSON path expressions for SQLAlchemy."""
 
     def build_filter_expression(
         self,

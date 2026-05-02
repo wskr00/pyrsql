@@ -12,7 +12,9 @@ from pyrsql.backends.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.backends.sqlalchemy.custom import SQLAlchemyCustomPredicateInput
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyBackendError
-from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
+from pyrsql.backends.sqlalchemy.json_path import (
+    SQLAlchemyJSONPathExpressionBuilder,
+)
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.options import QueryOptions
@@ -53,11 +55,15 @@ class SQLAlchemyExpressionTranslator:
         custom_predicates: (
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
-        json_support: SQLAlchemyJSONSupport | None = None,
+        json_path_builder: (
+            SQLAlchemyJSONPathExpressionBuilder | None
+        ) = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._value_coercer = value_coercer or SQLAlchemyValueCoercer()
-        self._json_support = json_support or SQLAlchemyJSONSupport()
+        self._json_path_builder = (
+            json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
+        )
         self._custom_predicates = MappingProxyType(
             dict(custom_predicates or {})
         )
@@ -124,7 +130,7 @@ class SQLAlchemyExpressionTranslator:
             field_name = getattr(resolved_path.leaf_attribute, "key", None)
             field_path = resolved_path.field_path
             if resolved_path.is_json:
-                predicate = self._json_support.build_filter_expression(
+                predicate = self._json_path_builder.build_filter_expression(
                     selector_expression,
                     resolved_path.json_path,
                     expression.operator.name,
@@ -237,7 +243,7 @@ class SQLAlchemyExpressionTranslator:
         base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
         if not resolved_path.is_json:
             return base_expression
-        return self._json_support.build_sort_expression(
+        return self._json_path_builder.build_sort_expression(
             base_expression,
             resolved_path.json_path,
         )

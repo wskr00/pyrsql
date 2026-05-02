@@ -12,7 +12,9 @@ from pyrsql.backends.sqlalchemy.errors import SQLAlchemyJSONSupportError
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyModelInspectionError
 from pyrsql.backends.sqlalchemy.errors import SQLAlchemyPathResolutionError
 from pyrsql.backends.sqlalchemy.introspection import SQLAlchemyModelInspector
-from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
+from pyrsql.backends.sqlalchemy.json_path import (
+    SQLAlchemyJSONPathExpressionBuilder,
+)
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.backends.sqlalchemy.translator import SQLAlchemyExpressionTranslator
@@ -23,7 +25,7 @@ __all__ = [
     "SQLAlchemyCompiledPageRequest",
     "SQLAlchemyCompiledQuery",
     "SQLAlchemyCompiledSort",
-    "SQLAlchemyJSONSupport",
+    "SQLAlchemyJSONPathExpressionBuilder",
     "SQLAlchemyJSONSupportError",
     "SQLAlchemyModelInspector",
     "SQLAlchemyModelInspectionError",

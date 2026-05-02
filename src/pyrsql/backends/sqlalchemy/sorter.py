@@ -6,7 +6,9 @@ from typing import cast
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.backends.sqlalchemy.json_support import SQLAlchemyJSONSupport
+from pyrsql.backends.sqlalchemy.json_path import (
+    SQLAlchemyJSONPathExpressionBuilder,
+)
 from pyrsql.backends.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.backends.sqlalchemy.types import SQLAlchemyJoinPlan
 from pyrsql.core.options import SortOptions
@@ -24,10 +26,14 @@ class SQLAlchemySortTranslator:
         self,
         *,
         path_resolver: SQLAlchemyPathResolver | None = None,
-        json_support: SQLAlchemyJSONSupport | None = None,
+        json_path_builder: (
+            SQLAlchemyJSONPathExpressionBuilder | None
+        ) = None,
     ) -> None:
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
-        self._json_support = json_support or SQLAlchemyJSONSupport()
+        self._json_path_builder = (
+            json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
+        )
 
     def translate(
         self,
@@ -123,7 +129,7 @@ class SQLAlchemySortTranslator:
         base_expression = cast(ColumnElement[Any], resolved_path.leaf_attribute)
         if not resolved_path.is_json:
             return base_expression
-        return self._json_support.build_sort_expression(
+        return self._json_path_builder.build_sort_expression(
             base_expression,
             resolved_path.json_path,
         )
