@@ -4,14 +4,14 @@ import sys
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 
+from pyrsql.parsing.operators import ComparisonOperator
+from pyrsql.parsing.source import SourceSpan
+from pyrsql.selector.ast import Selector
+
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
-
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.source import SourceSpan
-from pyrsql.selector.ast import Selector
 
 
 @dataclass(frozen=True, slots=True)
