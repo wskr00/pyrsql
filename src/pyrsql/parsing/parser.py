@@ -22,7 +22,11 @@ from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
 
 
 class Parser:
-    """Builds an AST from a pyrsql query string."""
+    """Parses pyrsql query strings into AST nodes.
+
+    The parser consumes a token stream and builds a syntax tree that later
+    semantic analysis and ORM compilation stages can consume.
+    """
 
     def __init__(
         self,
@@ -43,7 +47,11 @@ class Parser:
         self._node_count = 0
 
     def parse(self) -> Expression:
-        """Parses the configured query into an AST."""
+        """Parses the configured query into an AST.
+
+        Returns:
+            The parsed expression tree.
+        """
         node = self._parse_or_expression(depth=1)
         self._expect(TokenKind.EOF, message="Unexpected trailing tokens")
         return node
@@ -275,7 +283,7 @@ class Parser:
             )
 
     def _current(self) -> Token:
-        """Returns the current token."""
+        """The current token."""
         return self._tokens[self._index]
 
     def _advance(self) -> None:

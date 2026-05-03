@@ -59,7 +59,11 @@ from pyrsql.semantic.ast import (
 
 
 class SQLAlchemyExpressionTranslator:
-    """Translates semantic expressions to SQLAlchemy predicates."""
+    """Translates semantic expressions to SQLAlchemy predicates.
+
+    The translator resolves ORM paths, coerces values, and produces SQLAlchemy
+    join plans and predicates from semantic expressions.
+    """
 
     def __init__(
         self,
@@ -87,7 +91,16 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Translates a semantic expression for a mapped model."""
+        """Translates a semantic expression for a mapped model.
+
+        Args:
+            model: SQLAlchemy mapped class used to resolve fields.
+            expression: Semantic expression to translate.
+            options: Query configuration used during translation.
+
+        Returns:
+            A tuple containing join plans and the SQLAlchemy predicate.
+        """
         if isinstance(expression, SemanticComparison):
             return self._translate_comparison(
                 model,

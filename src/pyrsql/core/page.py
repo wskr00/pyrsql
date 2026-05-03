@@ -9,7 +9,12 @@ from pyrsql.orms.base import ORM
 
 @dataclass(frozen=True, slots=True)
 class PageRequest:
-    """Represents an ORM-neutral pagination request."""
+    """Represents an ORM-neutral pagination request.
+
+    Attributes:
+        page_number: Zero-based page number.
+        page_size: Number of rows requested per page.
+    """
 
     page_number: int
     page_size: int
@@ -27,7 +32,15 @@ class PageRequest:
         page_number: int,
         page_size: int,
     ) -> "PageRequest":
-        """Builds a pagination request from page number and page size."""
+        """Builds a pagination request from page number and page size.
+
+        Args:
+            page_number: Zero-based page number.
+            page_size: Number of rows requested per page.
+
+        Returns:
+            A validated pagination request.
+        """
         return cls(page_number=page_number, page_size=page_size)
 
     @classmethod
@@ -37,7 +50,15 @@ class PageRequest:
         offset: int,
         limit: int,
     ) -> "PageRequest":
-        """Builds a pagination request from offset and limit."""
+        """Builds a pagination request from offset and limit.
+
+        Args:
+            offset: Zero-based row offset.
+            limit: Maximum number of rows requested.
+
+        Returns:
+            A validated pagination request.
+        """
         if offset < 0:
             raise ValueError("offset must be greater than or equal to 0.")
         if limit <= 0:
@@ -51,16 +72,23 @@ class PageRequest:
 
     @property
     def offset(self) -> int:
-        """Returns the zero-based row offset for this request."""
+        """The zero-based row offset for this request."""
         return self.page_number * self.page_size
 
     @property
     def limit(self) -> int:
-        """Returns the maximum number of rows for this request."""
+        """The maximum number of rows for this request."""
         return self.page_size
 
     def compile(self, *, orm: ORM) -> PageCompilationResult:
-        """Compiles the page request using the provided orm."""
+        """Compiles the page request using the provided ORM.
+
+        Args:
+            orm: ORM adapter used to compile the page request.
+
+        Returns:
+            The ORM-specific page compilation result.
+        """
         compiled_page = orm.compile_page_request(self)
         return PageCompilationResult(
             orm_name=orm.name,
@@ -74,5 +102,14 @@ class PageRequest:
         *,
         orm: ORM,
     ) -> Any:
-        """Compiles and applies the page request using the orm."""
+        """Compiles and applies the page request using the ORM.
+
+        Args:
+            target: ORM-specific target to mutate.
+            model: ORM model class used to resolve the page request.
+            orm: ORM adapter used to compile the page request.
+
+        Returns:
+            The value returned by the ORM-specific apply operation.
+        """
         return self.compile(orm=orm).apply(target=target, model=model)

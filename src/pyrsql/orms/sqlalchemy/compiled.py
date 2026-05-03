@@ -14,7 +14,13 @@ from pyrsql.semantic.ast import SemanticExpression
 
 @dataclass(frozen=True, slots=True)
 class SQLAlchemyCompiledQuery:
-    """Compiled SQLAlchemy query plan."""
+    """Compiled SQLAlchemy query plan.
+
+    Attributes:
+        expression: Semantic expression to translate into SQLAlchemy clauses.
+        options: Query configuration used during translation.
+        translator: Translator responsible for producing SQLAlchemy objects.
+    """
 
     expression: SemanticExpression
     options: QueryOptions
@@ -25,7 +31,15 @@ class SQLAlchemyCompiledQuery:
         target: SQLAlchemySelect | object,
         model: SQLAlchemyModel,
     ) -> SQLAlchemySelect:
-        """Applies the compiled query to a SQLAlchemy Select."""
+        """Applies the compiled query to a SQLAlchemy Select.
+
+        Args:
+            target: SQLAlchemy select statement to mutate.
+            model: SQLAlchemy mapped class used to resolve fields.
+
+        Returns:
+            A SQLAlchemy select with filters and joins applied.
+        """
         statement = require_sqlalchemy_select(target)
         joins, predicate = self.translator.translate(
             model,

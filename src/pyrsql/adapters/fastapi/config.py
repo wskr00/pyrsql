@@ -12,7 +12,19 @@ _DEFAULT_SIZE_PARAMETER = "size"
 
 @dataclass(frozen=True, slots=True)
 class FastAPICriteriaConfig:
-    """Configures FastAPI query parameter extraction for pyrsql."""
+    """Configures FastAPI query parameter extraction for pyrsql.
+
+    Attributes:
+        filter_parameter: Query parameter used for filtering expressions.
+        sort_parameter: Query parameter used for sort expressions.
+        page_parameter: Query parameter used for page numbers.
+        size_parameter: Query parameter used for page size.
+        default_page_size: Default size used when only a page number is given.
+        max_page_size: Maximum accepted page size.
+        one_based_paging: Whether page numbers start at 1 instead of 0.
+        query_options: Query parsing and semantic configuration.
+        sort_options: Sort parsing and semantic configuration.
+    """
 
     filter_parameter: str = _DEFAULT_FILTER_PARAMETER
     sort_parameter: str = _DEFAULT_SORT_PARAMETER
@@ -25,7 +37,12 @@ class FastAPICriteriaConfig:
     sort_options: SortOptions = field(default_factory=SortOptions)
 
     def __post_init__(self) -> None:
-        """Validates adapter configuration invariants."""
+        """Validates adapter configuration invariants.
+
+        Raises:
+            ValueError: If parameter names are empty, duplicated, or paging
+            limits are inconsistent.
+        """
         parameter_names = (
             self.filter_parameter,
             self.sort_parameter,
@@ -50,10 +67,10 @@ class FastAPICriteriaConfig:
 
     @property
     def minimum_page_number(self) -> int:
-        """Returns the minimum accepted page number for the adapter."""
+        """The minimum accepted page number for the adapter."""
         return 1 if self.one_based_paging else 0
 
     @property
     def default_page_number(self) -> int:
-        """Returns the page number used when only size is provided."""
+        """The page number used when only size is provided."""
         return 1 if self.one_based_paging else 0

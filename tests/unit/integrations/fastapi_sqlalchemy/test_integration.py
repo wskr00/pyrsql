@@ -50,21 +50,17 @@ def test_integration_reuses_cached_dependencies() -> None:
     integration = FastAPISQLAlchemyIntegration()
 
     assert (
-        integration.criteria_dependency()
-        is integration.criteria_dependency()
+        integration.criteria_dependency() is integration.criteria_dependency()
     )
-    assert (
-        integration.select_dependency(User)
-        is integration.select_dependency(User)
+    assert integration.select_dependency(User) is integration.select_dependency(
+        User
     )
-    assert (
-        integration.count_select_dependency(User)
-        is integration.count_select_dependency(User)
-    )
-    assert (
-        integration.paginated_select_dependency(User)
-        is integration.paginated_select_dependency(User)
-    )
+    assert integration.count_select_dependency(
+        User
+    ) is integration.count_select_dependency(User)
+    assert integration.paginated_select_dependency(
+        User
+    ) is integration.paginated_select_dependency(User)
 
 
 def test_integration_applies_request_criteria_to_existing_select() -> None:
@@ -132,9 +128,7 @@ def test_integration_builds_paginated_select_bundle() -> None:
         bundle.statement.compile(compile_kwargs={"literal_binds": True})
     )
     count_sql = str(
-        bundle.count_statement.compile(
-            compile_kwargs={"literal_binds": True}
-        )
+        bundle.count_statement.compile(compile_kwargs={"literal_binds": True})
     )
     assert "ORDER BY users.name DESC" in statement_sql
     assert " LIMIT 10" in statement_sql

@@ -70,7 +70,12 @@ def _build_procedure_policy(
 
 @dataclass(frozen=True, slots=True)
 class QueryOptions:
-    """ORM-neutral query options."""
+    """ORM-neutral configuration for parsing and compiling queries.
+
+    The options bundle parser limits, operator registries, field policies,
+    custom predicates, value converters, and JSON behavior in one immutable
+    object.
+    """
 
     strict_equality: bool = False
     distinct: bool = False
@@ -235,17 +240,17 @@ class QueryOptions:
 
     @property
     def field_policy(self) -> FieldPolicySet:
-        """Returns the normalized field mapping and access configuration."""
+        """The normalized field mapping and access configuration."""
         return self._field_policy
 
     @property
     def field_converter_set(self) -> FieldValueConverterSet:
-        """Returns the normalized field-scoped converter configuration."""
+        """The normalized field-scoped converter configuration."""
         return self._field_converter_set
 
     @property
     def procedure_policy(self) -> ProcedureAccessPolicy:
-        """Returns the compiled procedure access policy."""
+        """The compiled procedure access policy."""
         return self._procedure_policy
 
     def _build_field_policy(self) -> FieldPolicySet:

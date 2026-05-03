@@ -14,7 +14,14 @@ class SortDirection(Enum):
 
     @classmethod
     def from_raw(cls, raw_direction: str) -> "SortDirection | None":
-        """Returns the matching direction for a raw token, if supported."""
+        """Matches a raw token to a supported sort direction.
+
+        Args:
+            raw_direction: Raw direction token from the sort expression.
+
+        Returns:
+            The matching direction, or None when the token is unsupported.
+        """
         match raw_direction.lower():
             case "asc":
                 return cls.ASCENDING
@@ -26,7 +33,13 @@ class SortDirection(Enum):
 
 @dataclass(frozen=True, slots=True)
 class SortField:
-    """Single parsed sort field."""
+    """Single parsed sort field.
+
+    Attributes:
+        selector: Selector to sort by.
+        direction: Sort direction to apply.
+        ignore_case: Whether case should be ignored when sorting.
+    """
 
     selector: Selector
     direction: SortDirection

@@ -45,10 +45,16 @@ def _analyze_query_expression(
 
 @dataclass(frozen=True, slots=True)
 class Query:
-    """Represents an ORM-neutral parsed query request.
+    """Represents a parsed ORM-neutral query request.
 
     The query preserves the raw text, the parsed expression tree, and the
-    ORM-neutral semantic representation used by later compilation steps.
+    semantic representation used by later compilation steps.
+
+    Attributes:
+        text: Raw RSQL text that produced the query.
+        options: Normalized query configuration used during parsing.
+        expression: Parsed syntax tree, if parsing succeeded.
+        semantic_expression: Semantic expression tree, if analysis succeeded.
     """
 
     text: str
@@ -63,7 +69,15 @@ class Query:
         *,
         options: QueryOptions | None = None,
     ) -> "Query":
-        """Creates a query object from raw RSQL text."""
+        """Parses raw RSQL text into a query object.
+
+        Args:
+            query_text: Raw RSQL text to parse.
+            options: Optional query configuration.
+
+        Returns:
+            A parsed query object.
+        """
         resolved_options = _resolve_query_options(options)
         expression = cls.parse_expression(query_text, options=resolved_options)
         semantic_expression = cls.analyze_expression(
@@ -83,7 +97,15 @@ class Query:
         *,
         options: QueryOptions,
     ) -> Expression:
-        """Parses raw query text into a syntax tree."""
+        """Parses raw RSQL text into a syntax tree.
+
+        Args:
+            query_text: Raw RSQL text to parse.
+            options: Query configuration used by the parser.
+
+        Returns:
+            The parsed syntax tree.
+        """
         return _parse_query_expression(query_text, options=options)
 
     @staticmethod
@@ -92,11 +114,26 @@ class Query:
         *,
         options: QueryOptions,
     ) -> SemanticExpression:
-        """Analyzes a syntax tree into a semantic expression."""
+        """Analyzes a syntax tree into a semantic expression.
+
+        Args:
+            expression: Parsed syntax tree to analyze.
+            options: Query configuration used by semantic analysis.
+
+        Returns:
+            The semantic expression tree.
+        """
         return _analyze_query_expression(expression, options=options)
 
     def compile(self, *, orm: ORM) -> CompilationResult:
-        """Compiles the query using the provided orm."""
+        """Compiles the query using the provided ORM.
+
+        Args:
+            orm: ORM adapter used to compile the query.
+
+        Returns:
+            The ORM-specific compilation result.
+        """
         compiled_query = orm.compile_query(self)
         return CompilationResult(
             orm_name=orm.name,
@@ -110,5 +147,14 @@ class Query:
         *,
         orm: ORM,
     ) -> Any:
-        """Compiles and applies the query using the provided orm."""
+        """Compiles and applies the query using the provided ORM.
+
+        Args:
+            target: ORM-specific target to mutate.
+            model: ORM model class used to resolve the query.
+            orm: ORM adapter used to compile the query.
+
+        Returns:
+            The value returned by the ORM-specific apply operation.
+        """
         return self.compile(orm=orm).apply(target=target, model=model)

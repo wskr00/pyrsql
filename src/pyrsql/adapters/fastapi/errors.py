@@ -15,7 +15,13 @@ from pyrsql.sorting.errors import (
 
 @dataclass(frozen=True, slots=True)
 class FastAPIAdapterErrorPayload:
-    """Structured adapter error payload for HTTP translation."""
+    """Structured adapter error payload for HTTP translation.
+
+    Attributes:
+        parameter: Name of the query parameter associated with the failure.
+        error_type: Stable machine-readable error category.
+        message: Human-readable error message.
+    """
 
     parameter: str
     error_type: str
@@ -26,7 +32,15 @@ def build_query_error_payload(
     parameter_name: str,
     error: ParseError | SemanticError,
 ) -> FastAPIAdapterErrorPayload:
-    """Builds a payload for a filter/query parsing or semantic failure."""
+    """Builds a payload for a filter/query parsing or semantic failure.
+
+    Args:
+        parameter_name: Query parameter name associated with the failure.
+        error: Parsing or semantic error raised by pyrsql.
+
+    Returns:
+        A normalized FastAPI error payload.
+    """
     error_type = "query_parse_error"
     if isinstance(error, SemanticError):
         error_type = "query_semantic_error"
@@ -41,7 +55,15 @@ def build_sort_error_payload(
     parameter_name: str,
     error: Exception,
 ) -> FastAPIAdapterErrorPayload:
-    """Builds a payload for a sort parsing or semantic failure."""
+    """Builds a payload for a sort parsing or semantic failure.
+
+    Args:
+        parameter_name: Query parameter name associated with the failure.
+        error: Sorting error raised by pyrsql.
+
+    Returns:
+        A normalized FastAPI error payload.
+    """
     error_type = "sort_error"
     if isinstance(error, SortParseError):
         error_type = "sort_parse_error"
@@ -68,7 +90,16 @@ def build_page_error_payload(
     error_type: str,
     message: str,
 ) -> FastAPIAdapterErrorPayload:
-    """Builds a payload for page-related adapter validation failures."""
+    """Builds a payload for page-related adapter validation failures.
+
+    Args:
+        parameter_name: Query parameter name associated with the failure.
+        error_type: Machine-readable error category.
+        message: Human-readable error message.
+
+    Returns:
+        A normalized FastAPI error payload.
+    """
     return FastAPIAdapterErrorPayload(
         parameter=parameter_name,
         error_type=error_type,

@@ -14,7 +14,13 @@ from pyrsql.sorting.semantic import SemanticSortField
 
 @dataclass(frozen=True, slots=True)
 class SQLAlchemyCompiledSort:
-    """Compiled SQLAlchemy sort plan."""
+    """Compiled SQLAlchemy sort plan.
+
+    Attributes:
+        fields: Semantic sort fields to translate into order clauses.
+        options: Sort configuration used during translation.
+        translator: Translator responsible for producing SQLAlchemy objects.
+    """
 
     fields: tuple[SemanticSortField, ...]
     options: SortOptions
@@ -25,7 +31,15 @@ class SQLAlchemyCompiledSort:
         target: SQLAlchemySelect | object,
         model: SQLAlchemyModel,
     ) -> SQLAlchemySelect:
-        """Applies the compiled sort to a SQLAlchemy Select."""
+        """Applies the compiled sort to a SQLAlchemy Select.
+
+        Args:
+            target: SQLAlchemy select statement to mutate.
+            model: SQLAlchemy mapped class used to resolve fields.
+
+        Returns:
+            A SQLAlchemy select with joins and ordering applied.
+        """
         statement = require_sqlalchemy_select(target)
         joins, order_clauses = self.translator.translate(
             model,

@@ -7,7 +7,15 @@ from re import Pattern
 
 @dataclass(frozen=True, slots=True)
 class ProcedureAccessPolicy:
-    """Immutable regex-based access policy for selector procedures."""
+    """Regex-based access policy for selector procedures.
+
+    The policy stores compiled whitelist and blacklist patterns used to check
+    whether a procedure name is allowed.
+
+    Attributes:
+        whitelist_patterns: Compiled whitelist regular expressions.
+        blacklist_patterns: Compiled blacklist regular expressions.
+    """
 
     whitelist_patterns: tuple[Pattern[str], ...]
     blacklist_patterns: tuple[Pattern[str], ...]
@@ -18,7 +26,15 @@ class ProcedureAccessPolicy:
         whitelist: tuple[str, ...],
         blacklist: tuple[str, ...],
     ) -> "ProcedureAccessPolicy":
-        """Builds a policy from raw regex pattern strings."""
+        """Builds a policy from raw regex pattern strings.
+
+        Args:
+            whitelist: Raw regular expressions that allow procedures.
+            blacklist: Raw regular expressions that deny procedures.
+
+        Returns:
+            A compiled procedure access policy.
+        """
         return cls(
             whitelist_patterns=tuple(
                 re.compile(pattern) for pattern in whitelist
@@ -29,11 +45,11 @@ class ProcedureAccessPolicy:
         )
 
     def is_whitelisted(self, procedure_name: str) -> bool:
-        """Returns whether the procedure matches the whitelist."""
+        """Whether the procedure matches the whitelist."""
         return self._matches_any(procedure_name, self.whitelist_patterns)
 
     def is_blacklisted(self, procedure_name: str) -> bool:
-        """Returns whether the procedure matches the blacklist."""
+        """Whether the procedure matches the blacklist."""
         return self._matches_any(procedure_name, self.blacklist_patterns)
 
     def _matches_any(
@@ -41,5 +57,5 @@ class ProcedureAccessPolicy:
         procedure_name: str,
         patterns: tuple[Pattern[str], ...],
     ) -> bool:
-        """Returns whether a value fully matches at least one pattern."""
+        """Whether a value fully matches at least one pattern."""
         return any(pattern.fullmatch(procedure_name) for pattern in patterns)

@@ -174,24 +174,43 @@ def _build_criteria_callable(
 
 
 class CriteriaDependency:
-    """Callable FastAPI dependency object that resolves request criteria."""
+    """Callable FastAPI dependency object that resolves request criteria.
+
+    The generated signature exposes FastAPI query parameters and returns a
+    parsed RequestCriteria object.
+    """
 
     def __init__(
         self,
         config: FastAPICriteriaConfig | None = None,
     ) -> None:
-        """Creates a dependency object for the provided FastAPI config."""
+        """Creates a dependency object for the provided FastAPI config.
+
+        Args:
+            config: Optional FastAPI criteria configuration.
+        """
         self.config = config or _DEFAULT_FASTAPI_CRITERIA_CONFIG
         self._dependency = _build_criteria_callable(self.config)
         self.__signature__: Signature = signature(self._dependency)
 
     def __call__(self, *args: Any, **kwargs: Any) -> RequestCriteria:
-        """Delegates FastAPI dependency resolution to the generated callable."""
+        """Delegates FastAPI dependency resolution to the generated callable.
+
+        Returns:
+            Parsed request criteria for the incoming FastAPI query params.
+        """
         return self._dependency(*args, **kwargs)
 
 
 def criteria_dependency(
     config: FastAPICriteriaConfig | None = None,
 ) -> CriteriaDependency:
-    """Builds a FastAPI dependency object that returns parsed criteria."""
+    """Builds a FastAPI dependency object that returns parsed criteria.
+
+    Args:
+        config: Optional FastAPI criteria configuration.
+
+    Returns:
+        A callable FastAPI dependency object.
+    """
     return CriteriaDependency(config)
