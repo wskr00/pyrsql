@@ -7,7 +7,7 @@ from pyrsql.core.json.path import JSONPath
 
 def test_json_path_rejects_empty_segments() -> None:
     """JSON paths reject empty path segments."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)empty"):
         JSONPath(("user", ""))
 
 

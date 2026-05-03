@@ -1,8 +1,10 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [ main ]
+    tags:
+      - "v*"
   pull_request:
     branches: [ main ]
 
@@ -29,11 +31,40 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --group test --group format
+        run: uv sync --frozen --all-extras --group dev
 
       - name: Lint with Ruff
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: uv run ruff check src tests
 
+      - name: Lint with Pylint
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: uv run pylint src
+
       - name: Run tests
         run: uv run pytest -q
+
+  publish:
+    name: Publish to PyPI
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build and Publish
+        run: |
+          uv build
+          uv publish

@@ -42,7 +42,8 @@ class SelectorSemanticAnalyzer:
             )
         if isinstance(selector, LiteralSelector):
             return SemanticLiteralSelector(value=selector.value)
-        assert isinstance(selector, FunctionSelector)
+        if not isinstance(selector, FunctionSelector):
+            raise TypeError("Expected FunctionSelector")
         validate_function(selector.function_name)
         return SemanticFunctionSelector(
             function_name=selector.function_name,

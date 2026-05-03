@@ -1,12 +1,12 @@
 """ORM-neutral value conversion support."""
 
 import datetime as dt
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 from uuid import UUID
 
 import ciso8601

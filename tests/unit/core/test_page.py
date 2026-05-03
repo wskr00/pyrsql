@@ -59,19 +59,25 @@ def test_page_request_from_offset_builds_page_request() -> None:
 
 def test_page_request_rejects_negative_page_number() -> None:
     """Rejects negative page numbers."""
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="(?i)page[_ ]?number|negative|greater",
+    ):
         PageRequest.of(-1, 10)
 
 
 def test_page_request_rejects_non_positive_page_size() -> None:
     """Rejects non-positive page sizes."""
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="(?i)page[_ ]?size|positive|greater",
+    ):
         PageRequest.of(0, 0)
 
 
 def test_page_request_rejects_non_aligned_offset() -> None:
     """Rejects offsets that cannot map cleanly to page number and size."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)offset"):
         PageRequest.from_offset(offset=15, limit=10)
 
 

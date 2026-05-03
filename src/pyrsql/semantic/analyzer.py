@@ -34,7 +34,8 @@ class SemanticAnalyzer:
         """Analyzes a parsed AST into a semantic expression tree."""
         if isinstance(expression, ComparisonNode):
             return self._analyze_comparison(expression)
-        assert isinstance(expression, LogicalNode)
+        if not isinstance(expression, LogicalNode):
+            raise TypeError("Expected LogicalNode")
         return SemanticLogical(
             span=expression.span,
             operator=expression.operator,

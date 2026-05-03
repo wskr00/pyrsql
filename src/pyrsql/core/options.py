@@ -1,8 +1,9 @@
 """Shared query options."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Final, Mapping, TypeVar
+from typing import Any, Final, TypeVar
 
 from pyrsql.core.conversion import (
     DEFAULT_VALUE_CONVERTER_REGISTRY,

@@ -1,7 +1,8 @@
 """Semantic expression translation for SQLAlchemy."""
 
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Mapping, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
@@ -251,7 +252,8 @@ class SQLAlchemyExpressionTranslator:
             )
             return (), sa.literal(selector.value), python_type
 
-        assert isinstance(selector, SemanticFunctionSelector)
+        if not isinstance(selector, SemanticFunctionSelector):
+            raise TypeError("Expected SemanticFunctionSelector")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []

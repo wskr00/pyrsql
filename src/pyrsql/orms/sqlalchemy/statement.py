@@ -1,6 +1,6 @@
 """Helpers for mutating SQLAlchemy Select statements."""
 
-from typing import Mapping
+from collections.abc import Mapping
 
 from sqlalchemy.sql import Select
 

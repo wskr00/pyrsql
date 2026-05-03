@@ -45,24 +45,16 @@ def test_semantic_analyzer_enforces_whitelist() -> None:
     """Rejects fields outside the configured whitelist."""
     expression = Parser("name==demo").parse()
     options = QueryOptions(field_whitelist=frozenset({"city"}))
-    try:
+    with pytest.raises(FieldNotWhitelistedError, match="not allowed"):
         SemanticAnalyzer(options).analyze(expression)
-    except FieldNotWhitelistedError as error:
-        assert "not allowed" in str(error)
-    else:
-        raise AssertionError("Expected a FieldNotWhitelistedError.")
 
 
 def test_semantic_analyzer_enforces_blacklist() -> None:
     """Rejects fields inside the configured blacklist."""
     expression = Parser("name==demo").parse()
     options = QueryOptions(field_blacklist=frozenset({"name"}))
-    try:
+    with pytest.raises(FieldBlacklistedError, match="blocked"):
         SemanticAnalyzer(options).analyze(expression)
-    except FieldBlacklistedError as error:
-        assert "blocked" in str(error)
-    else:
-        raise AssertionError("Expected a FieldBlacklistedError.")
 
 
 def test_semantic_analyzer_maps_field_selectors_inside_functions() -> None:

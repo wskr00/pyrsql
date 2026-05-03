@@ -128,7 +128,8 @@ class SQLAlchemyPathResolver:
                         is_collection=mapped_attribute.is_collection,
                     )
                 )
-                assert mapped_attribute.mapper is not None
+                if mapped_attribute.mapper is None:
+                    raise RuntimeError("mapper cannot be None")
                 current_model = mapped_attribute.mapper.class_
                 segment_index += 1
                 continue
@@ -164,7 +165,8 @@ class SQLAlchemyPathResolver:
                 )
             segment_index += 1
 
-        assert leaf_attribute is not None
+        if leaf_attribute is None:
+            raise RuntimeError("leaf_attribute cannot be None")
         return SQLAlchemyResolvedPath(
             root_model=model,
             leaf_model=current_model,

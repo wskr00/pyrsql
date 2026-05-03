@@ -1,6 +1,7 @@
 """SQLAlchemy ORM entry point."""
 
-from typing import TYPE_CHECKING, Mapping
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from pyrsql.orms import base
 from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery

@@ -1,5 +1,7 @@
 """Unit tests for the pyrsql parser."""
 
+import pytest
+
 from pyrsql.parsing.ast import ComparisonNode, LogicalNode, LogicalOperator
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.limits import ParseLimits
@@ -95,20 +97,12 @@ def test_parser_accepts_custom_operator_registry() -> None:
 
 def test_parser_rejects_missing_required_argument() -> None:
     """Rejects operators that require arguments when none are given."""
-    try:
+    with pytest.raises(ParseError, match="expects at least"):
         Parser("name==").parse()
-    except ParseError as error:
-        assert "expects at least" in str(error)
-    else:
-        raise AssertionError("Expected a ParseError for missing arguments.")
 
 
 def test_parser_enforces_depth_limit() -> None:
     """Rejects overly deep expressions."""
     limits = ParseLimits(max_expression_depth=2)
-    try:
+    with pytest.raises(ParseError, match="maximum supported expression depth"):
         Parser("((name==demo))", limits=limits).parse()
-    except ParseError as error:
-        assert "maximum supported expression depth" in str(error)
-    else:
-        raise AssertionError("Expected a ParseError for excessive depth.")

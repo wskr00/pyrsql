@@ -16,7 +16,7 @@ from pyrsql.parsing.operators import (
 
 def test_query_options_validate_like_escape_character() -> None:
     """Rejects invalid escape-character configuration."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)escape"):
         QueryOptions(like_escape_character="too-long")
 
 
@@ -70,7 +70,7 @@ def test_query_options_cache_derived_policy_objects() -> None:
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
     """Rejects custom predicate definitions keyed by the wrong name."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)predicate"):
         QueryOptions(
             custom_predicates={
                 "wrong_name": CustomPredicateDefinition(

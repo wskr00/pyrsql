@@ -9,7 +9,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.fastapi]
 
 def test_config_rejects_duplicate_parameter_names() -> None:
     """Rejects duplicate FastAPI query parameter aliases."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)duplicate|parameter"):
         FastAPICriteriaConfig(
             filter_parameter="filter",
             sort_parameter="filter",
@@ -18,13 +18,16 @@ def test_config_rejects_duplicate_parameter_names() -> None:
 
 def test_config_rejects_non_positive_default_page_size() -> None:
     """Rejects invalid default page size values."""
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="(?i)default_page_size|page[_ ]?size|greater",
+    ):
         FastAPICriteriaConfig(default_page_size=0)
 
 
 def test_config_rejects_default_page_size_above_max() -> None:
     """Rejects inconsistent page size defaults and limits."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)max|page size"):
         FastAPICriteriaConfig(default_page_size=51, max_page_size=50)
 
 

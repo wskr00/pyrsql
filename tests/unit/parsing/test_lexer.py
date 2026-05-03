@@ -1,5 +1,7 @@
 """Unit tests for the pyrsql lexer."""
 
+import pytest
+
 from pyrsql.parsing.errors import LexError
 from pyrsql.parsing.lexer import Lexer
 from pyrsql.parsing.limits import ParseLimits
@@ -66,19 +68,11 @@ def test_lexer_tracks_source_positions() -> None:
 def test_lexer_enforces_query_length_limit() -> None:
     """Rejects oversized queries before tokenization starts."""
     limits = ParseLimits(max_query_length=4)
-    try:
+    with pytest.raises(LexError, match="maximum supported length"):
         Lexer("name==demo", limits=limits)
-    except LexError as error:
-        assert "maximum supported length" in str(error)
-    else:
-        raise AssertionError("Expected a LexError for an oversized query.")
 
 
 def test_lexer_rejects_unterminated_strings() -> None:
     """Raises a lexical error for unterminated quoted text."""
-    try:
+    with pytest.raises(LexError, match="Unterminated quoted string"):
         Lexer("name=='demo").tokenize()
-    except LexError as error:
-        assert "Unterminated quoted string" in str(error)
-    else:
-        raise AssertionError("Expected a LexError for unterminated strings.")

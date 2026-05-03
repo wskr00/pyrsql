@@ -1,7 +1,8 @@
 """Shared field mapping and access-policy helpers."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 
 @dataclass(frozen=True, slots=True)

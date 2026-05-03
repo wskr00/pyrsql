@@ -4,97 +4,89 @@ version = "0.0.1"
 description = "ORM-oriented RSQL support for Python applications."
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+keywords = ["rsql", "orm", "sqlalchemy", "fastapi", "query-language", "rest"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: FastAPI",
+    "Topic :: Database",
+]
 dependencies = [
     "ciso8601>=2.3,<3.0",
     "msgspec>=0.18,<1.0",
-    "typing-extensions>=4.0.0; python_version < '3.11'"
+    "typing-extensions>=4.10.0; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
-sqlalchemy = [
-    "sqlalchemy>=2.0,<3.0",
-]
-fastapi = [
-    "fastapi>=0.110,<1.0",
-]
+sqlalchemy = ["sqlalchemy>=2.0,<3.0"]
+fastapi = ["fastapi>=0.110,<1.0"]
+
+[project.urls]
+Homepage = "https://github.com/wskr00/pyrsql"
+Repository = "https://github.com/wskr00/pyrsql"
+Issues = "https://github.com/wskr00/pyrsql/issues"
+Documentation = "https://github.com/wskr00/pyrsql/blob/main/README.md"
 
 [dependency-groups]
 dev = [
-    {include-group = "format"},
-    {include-group = "lint"},
-    {include-group = "test"},
-    {include-group = "typing"},
+    { include-group = "lint" },
+    { include-group = "test" },
+    { include-group = "typing" },
 ]
-format = [
-    "black>=24.0.0",
-    "isort>=5.13.0",
-    "ruff>=0.11.0",
-]
-lint = [
-    "pylint>=3.2.0",
-]
+lint = ["ruff>=0.11.0", "pylint>=3.2.0"]
 test = [
     "pytest>=8.2.0",
     "httpx>=0.27.0",
+    "pytest-cov>=5.0.0",
 ]
-typing = [
-    "mypy>=1.10.0",
-]
+typing = ["mypy>=1.10.0"]
 
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
 build-backend = "uv_build"
 
-[tool.black]
-line-length = 80
-target-version = ["py310"]
-
-[tool.isort]
-profile = "black"
-line_length = 80
-src_paths = ["src", "tests"]
+[tool.uv]
+managed = true
 
 [tool.ruff]
 line-length = 80
-indent-width = 4
 target-version = "py310"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = [
-    "E4",
-    "E7",
-    "E9",
-    "F",
-    "I",
-]
-ignore = [
-    "E501",
-]
+select = ["E", "F", "I", "UP", "B", "S", "PT"]
+ignore = ["E501"]
 fixable = ["ALL"]
-unfixable = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["pyrsql"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["E402"]
+"tests/**/*.py" = ["E402", "S101"]
+"src/pyrsql/integrations/fastapi/*.py" = ["B008"]
+"tests/functional/fastapi_sqlalchemy/*.py" = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
-docstring-code-format = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = ["--import-mode=importlib"]
 markers = [
-    "unit: isolated tests for one module or class",
-    "integration: tests that validate interaction between components",
-    "functional: tests that validate user-visible library behavior",
-    "performance: performance and benchmark-oriented regression tests",
-    "sqlalchemy: tests that exercise the SQLAlchemy ORM",
-    "fastapi: tests that exercise the FastAPI adapter",
+    "unit: isolated tests",
+    "integration: interaction between components",
+    "functional: user-visible behavior",
+    "performance: benchmark tests",
+    "sqlalchemy: SQLAlchemy tests",
+    "fastapi: FastAPI tests",
 ]
 
 [tool.mypy]
@@ -104,9 +96,22 @@ strict = true
 warn_unused_configs = true
 show_error_codes = true
 
+[tool.coverage.run]
+source = ["pyrsql"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
 [tool.uv.build-backend]
 source-include = [
     "docs/**",
     "tests/**",
-    "pylintrc",
+    "src/pyrsql/py.typed",
+    ".pylintrc"
 ]

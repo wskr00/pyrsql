@@ -84,7 +84,8 @@ def _build_page_request(
             )
         )
 
-    assert resolved_page_size is not None
+    if resolved_page_size is None:
+        raise ValueError("resolved_page_size cannot be None")
 
     if config.one_based_paging:
         if resolved_page_number <= 0:

@@ -64,7 +64,7 @@ def test_parse_uses_custom_predicate_definition() -> None:
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
     """Rejects custom predicate definitions keyed by the wrong name."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="(?i)predicate"):
         QueryOptions(
             custom_predicates={
                 "wrong_name": CustomPredicateDefinition(
