@@ -39,6 +39,16 @@ class SQLAlchemyPaginatedSelect:
 class FastAPISQLAlchemyIntegration:
     """Composes the FastAPI adapter with the SQLAlchemy ORM integration."""
 
+    __slots__ = (
+        "orm",
+        "criteria_config",
+        "_criteria_dependency",
+        "_select_dependencies",
+        "_count_select_dependencies",
+        "_paginated_select_dependencies",
+        "_base_selects",
+    )
+
     def __init__(
         self,
         *,
@@ -60,6 +70,7 @@ class FastAPISQLAlchemyIntegration:
         self._paginated_select_dependencies: dict[
             SQLAlchemyModel, Callable[..., SQLAlchemyPaginatedSelect]
         ] = {}
+        self._base_selects: dict[SQLAlchemyModel, SQLAlchemySelect] = {}
 
     def criteria_dependency(self) -> CriteriaDependency:
         """Returns a configured FastAPI dependency for request criteria."""
@@ -109,7 +120,25 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds the common filtered select used by list and count flows."""
-        return self._apply_query(select(model), model, criteria)
+        return self._apply_query(self._base_select(model), model, criteria)
+
+    def _base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
+        """Returns a cached base select(model) statement."""
+        statement = self._base_selects.get(model)
+        if statement is not None:
+            return statement
+        statement = select(model)
+        self._base_selects[model] = statement
+        return statement
+
+    def _count_from_filtered_select(
+        self,
+        filtered_statement: SQLAlchemySelect,
+    ) -> SQLAlchemySelect:
+        """Builds a count statement from an already-filtered select."""
+        return select(func.count()).select_from(  # pylint: disable=not-callable
+            filtered_statement.order_by(None).subquery()
+        )
 
     def apply(
         self,
@@ -142,11 +171,8 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds a count statement from the filtered query semantics only."""
-        filtered_statement = self._filtered_select(model, criteria).order_by(
-            None
-        )
-        return select(func.count()).select_from(  # pylint: disable=not-callable
-            filtered_statement.subquery()
+        return self._count_from_filtered_select(
+            self._filtered_select(model, criteria)
         )
 
     def paginated_select(
@@ -162,8 +188,8 @@ class FastAPISQLAlchemyIntegration:
                 model,
                 criteria,
             ),
-            count_statement=select(func.count()).select_from(  # pylint: disable=not-callable
-                filtered_statement.order_by(None).subquery()
+            count_statement=self._count_from_filtered_select(
+                filtered_statement
             ),
         )
 
