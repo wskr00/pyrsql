@@ -1,6 +1,6 @@
 """ORM-neutral JSON value normalization."""
 
-import json
+import msgspec
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -53,15 +53,15 @@ class JSONScalarNormalizer:
         """Creates a normalized JSON value from a Python object."""
         return JSONScalarValue(
             value=value,
-            json_literal=json.dumps(value),
+            json_literal=msgspec.json.encode(value).decode("utf-8"),
             python_type=type(value) if value is not None else None,
         )
 
     def _try_parse_json(self, raw_value: str) -> Any | None:
         """Parses quoted JSON arguments when they contain JSON values."""
         try:
-            parsed = json.loads(raw_value)
-        except json.JSONDecodeError:
+            parsed = msgspec.json.decode(raw_value)
+        except msgspec.DecodeError:
             return None
         if isinstance(parsed, str):
             return None

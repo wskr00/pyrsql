@@ -440,7 +440,7 @@ def test_orm_applies_json_quoted_array_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.tags ? (@ == [1, 2])" == str(value)
+        "$.tags ? (@ == [1,2])" == str(value)
         for value in compiled.params.values()
     )
 
@@ -453,7 +453,7 @@ def test_orm_applies_json_quoted_object_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        '$.meta ? (@ == {"id": 1})' == str(value)
+        '$.meta ? (@ == {"id":1})' == str(value)
         for value in compiled.params.values()
     )
 

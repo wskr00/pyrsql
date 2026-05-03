@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "ORM-oriented RSQL support for Python applications."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "ciso8601>=2.3,<3.0",
+    "msgspec>=0.18,<1.0",
+]
 
 [project.optional-dependencies]
 sqlalchemy = [

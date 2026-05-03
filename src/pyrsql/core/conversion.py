@@ -1,6 +1,8 @@
 """ORM-neutral value conversion support."""
 
 import datetime as dt
+
+import ciso8601
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
@@ -115,15 +117,18 @@ class ValueConverterRegistry:
     def _convert_datetime(self, raw_value: str) -> dt.datetime:
         """Converts a string into datetime with LocalDate-style fallback."""
         try:
-            return dt.datetime.fromisoformat(raw_value)
+            parsed_datetime = ciso8601.parse_datetime(raw_value)
         except ValueError:
-            try:
-                parsed_date = dt.date.fromisoformat(raw_value)
-            except ValueError as date_error:
-                raise ValueConversionError(
-                    f"Failed to convert {raw_value!r} to datetime."
-                ) from date_error
-            return dt.datetime.combine(parsed_date, dt.time.min)
+            parsed_datetime = None
+        if parsed_datetime is not None:
+            return parsed_datetime
+        try:
+            parsed_date = dt.date.fromisoformat(raw_value)
+        except ValueError as date_error:
+            raise ValueConversionError(
+                f"Failed to convert {raw_value!r} to datetime."
+            ) from date_error
+        return dt.datetime.combine(parsed_date, dt.time.min)
 
     def _construct_from_string(
         self,
