@@ -1,8 +1,6 @@
 """ORM-neutral value conversion support."""
 
 import datetime as dt
-
-import ciso8601
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
@@ -10,6 +8,8 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any, Mapping
 from uuid import UUID
+
+import ciso8601
 
 ValueConverter = Callable[[str], Any]
 

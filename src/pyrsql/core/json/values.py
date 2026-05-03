@@ -1,9 +1,10 @@
 """ORM-neutral JSON value normalization."""
 
-import msgspec
 import re
 from dataclasses import dataclass
 from typing import Any
+
+import msgspec
 
 _INTEGER_PATTERN = re.compile(r"^-?\d+$")
 _FLOAT_PATTERN = re.compile(r"^-?\d+\.\d+$")
