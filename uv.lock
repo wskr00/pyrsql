@@ -752,6 +752,7 @@ source = { editable = "." }
 dependencies = [
     { name = "ciso8601" },
     { name = "msgspec" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -794,6 +795,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'fastapi'", specifier = ">=0.110,<1.0" },
     { name = "msgspec", specifier = ">=0.18,<1.0" },
     { name = "sqlalchemy", marker = "extra == 'sqlalchemy'", specifier = ">=2.0,<3.0" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'", specifier = ">=4.0.0" },
 ]
 provides-extras = ["sqlalchemy", "fastapi"]
 

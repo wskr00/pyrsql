@@ -1,8 +1,13 @@
 """AST node definitions for pyrsql parsing."""
 
+import sys
 from dataclasses import dataclass, replace
 from enum import Enum, auto
-from typing import Self
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 from pyrsql.parsing.operators import ComparisonOperator
 from pyrsql.parsing.source import SourceSpan

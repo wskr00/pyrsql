@@ -7,6 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "ciso8601>=2.3,<3.0",
     "msgspec>=0.18,<1.0",
+    "typing-extensions>=4.0.0; python_version < '3.11'"
 ]
 
 [project.optional-dependencies]
@@ -46,7 +47,7 @@ build-backend = "uv_build"
 
 [tool.black]
 line-length = 80
-target-version = ["py312"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
@@ -56,7 +57,7 @@ src_paths = ["src", "tests"]
 [tool.ruff]
 line-length = 80
 indent-width = 4
-target-version = "py312"
+target-version = "py310"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -97,7 +98,7 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 files = ["src", "tests"]
 strict = true
 warn_unused_configs = true
