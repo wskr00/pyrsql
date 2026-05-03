@@ -36,6 +36,8 @@ Useful subpackages:
 - `pyrsql.sorting`
 - `pyrsql.adapters`
 - `pyrsql.adapters.fastapi`
+- `pyrsql.integrations`
+- `pyrsql.integrations.fastapi`
 
 ## Query Operators
 
@@ -163,3 +165,35 @@ signature and returns `RequestCriteria`.
 ### criteria_dependency(...)
 
 Convenience factory that returns `CriteriaDependency`.
+
+## FastAPI + SQLAlchemy Integration
+
+`pyrsql.integrations.fastapi` exports:
+
+- `FastAPISQLAlchemyIntegration`
+- `SQLAlchemyPaginatedSelect`
+
+### FastAPISQLAlchemyIntegration
+
+Constructor arguments:
+
+- `orm`
+- `criteria_config`
+
+Methods:
+
+- `criteria_dependency()`
+- `apply(statement, model, criteria)`
+- `select(model, criteria)`
+- `select_dependency(model)`
+- `count_select(model, criteria)`
+- `count_select_dependency(model)`
+- `paginated_select(model, criteria)`
+- `paginated_select_dependency(model)`
+
+### SQLAlchemyPaginatedSelect
+
+Carries:
+
+- `statement`
+- `count_statement`

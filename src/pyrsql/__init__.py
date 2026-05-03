@@ -24,6 +24,10 @@ from pyrsql.core.page import PageRequest
 from pyrsql.core.procedure_policy import ProcedureAccessPolicy
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
+from pyrsql.integrations import (
+    FastAPISQLAlchemyIntegration,
+    SQLAlchemyPaginatedSelect,
+)
 from pyrsql.orms.base import ORM
 
 parse = api.parse
@@ -36,6 +40,7 @@ __all__ = [
     "CustomPredicateDefinition",
     "FieldPolicySet",
     "FieldValueConverterSet",
+    "FastAPISQLAlchemyIntegration",
     "JSONOptions",
     "JSONPath",
     "JSONPathComparison",
@@ -49,6 +54,7 @@ __all__ = [
     "Sort",
     "SortCompilationResult",
     "SortOptions",
+    "SQLAlchemyPaginatedSelect",
     "ValueConverter",
     "ValueConverterRegistry",
     "apply",

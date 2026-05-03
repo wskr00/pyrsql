@@ -185,6 +185,98 @@ responses using FastAPI `HTTPException`. The error payload includes:
 - `type`
 - `message`
 
+## FastAPI + SQLAlchemy Integration
+
+If you want less boilerplate for `FastAPI + SQLAlchemy`, use the integration
+helper.
+
+```python
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from pyrsql.adapters.fastapi import RequestCriteria
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+router = APIRouter()
+integration = FastAPISQLAlchemyIntegration()
+
+@router.get("/users")
+def list_users(
+    criteria: Annotated[
+        RequestCriteria,
+        Depends(integration.criteria_dependency()),
+    ],
+    session: Session,
+):
+    stmt = integration.select(User, criteria)
+    return session.execute(stmt)
+```
+
+You can also depend on a ready-to-use `Select` directly:
+
+```python
+from typing import Annotated, Any
+
+from fastapi import Depends
+
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+integration = FastAPISQLAlchemyIntegration()
+
+@router.get("/users")
+def list_users(
+    stmt: Annotated[Any, Depends(integration.select_dependency(User))],
+):
+    return session.execute(stmt)
+```
+
+Current scope:
+
+- compose the FastAPI adapter with `SQLAlchemyORM`
+- expose `criteria_dependency()`
+- expose `apply(...)`
+- expose `select(...)`
+- expose `select_dependency(...)`
+- expose `count_select(...)`
+- expose `count_select_dependency(...)`
+- expose `paginated_select(...)`
+- expose `paginated_select_dependency(...)`
+
+Out of scope:
+
+- executing queries automatically
+- serializing responses
+- repository abstractions
+- export and summarization helpers
+
+For pagination flows, the integration helper can also build a count query that
+preserves filter semantics while ignoring sort and page:
+
+```python
+count_stmt = integration.count_select(User, criteria)
+```
+
+And the dependency form:
+
+```python
+@router.get("/users/count")
+def count_users(
+    stmt = Depends(integration.count_select_dependency(User)),
+):
+    return session.execute(stmt).scalar_one()
+```
+
+If you want both statements together, use the paginated bundle:
+
+```python
+bundle = integration.paginated_select(User, criteria)
+
+items = session.execute(bundle.statement).all()
+total = session.execute(bundle.count_statement).scalar_one()
+```
+
 ## JSON / JSONB
 
 The current `SQLAlchemy` ORM supports PostgreSQL-style JSON filtering and
