@@ -2,7 +2,7 @@
 
 from typing import Final
 
-from pyrsql.selector.ast import Selector
+from pyrsql.selector.ast import SelectorNode
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
 from pyrsql.sorting.ast import SortDirection, SortField
 from pyrsql.sorting.errors import SortParseError
@@ -57,6 +57,9 @@ class SortParser:
         clause_index: int,
     ) -> SortField | None:
         """Parses a single semicolon-delimited sort clause."""
+        clause = clause.strip()
+        if not clause:
+            return None
         try:
             parts = list(
                 self._selector_parser.split_top_level(
@@ -68,6 +71,7 @@ class SortParser:
             raise SortParseError(str(error)) from error
         if not parts:
             return None
+        parts = [part.strip() for part in parts]
         if len(parts) > 3:
             raise SortParseError(
                 "Sort clause "
@@ -107,7 +111,7 @@ class SortParser:
         clause_index: int,
     ) -> SortDirection:
         """Parses the direction token for a sort clause."""
-        direction = SortDirection.from_raw(raw_direction)
+        direction = SortDirection.from_raw(raw_direction.strip())
         if direction is not None:
             return direction
         raise SortParseError(
@@ -123,7 +127,7 @@ class SortParser:
         clause_index: int,
     ) -> bool:
         """Parses the ignore-case modifier for a sort clause."""
-        match raw_flag.lower():
+        match raw_flag.strip().lower():
             case "ic":
                 return True
             case _:
@@ -138,7 +142,7 @@ class SortParser:
         raw_selector: str,
         *,
         clause_index: int,
-    ) -> Selector:
+    ) -> SelectorNode:
         """Parses a sort selector recursively."""
         try:
             return self._selector_parser.parse(

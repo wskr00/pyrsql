@@ -42,3 +42,13 @@ def test_bound_sort_supports_function_selectors() -> None:
     )
     assert isinstance(field.selector, BoundFunction)
     assert isinstance(field.selector.arguments[0], BoundField)
+
+
+def test_bound_sort_rejects_empty_field_list() -> None:
+    """Prevents invalid empty bound sort requests."""
+    try:
+        BoundSort(fields=())
+    except ValueError as error:
+        assert "at least one bound sort field" in str(error)
+    else:
+        raise AssertionError("BoundSort should reject an empty field list.")

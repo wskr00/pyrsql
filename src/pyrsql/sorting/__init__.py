@@ -1,20 +1,24 @@
 """Sorting primitives for pyrsql."""
 
 from pyrsql.sorting.ast import SortDirection, SortField
+from pyrsql.sorting.binder import SortBinder
+from pyrsql.sorting.diagnostics import SortDiagnostic
 from pyrsql.sorting.errors import (
     SortFieldBlacklistedError,
     SortFieldNotWhitelistedError,
     SortFunctionBlacklistedError,
     SortFunctionNotWhitelistedError,
+    SortError,
     SortParseError,
 )
 from pyrsql.sorting.limits import SortLimits
 from pyrsql.sorting.parser import SortParser
-from pyrsql.sorting.semantic import SemanticSortField
 
 __all__ = [
-    "SemanticSortField",
+    "SortBinder",
+    "SortDiagnostic",
     "SortDirection",
+    "SortError",
     "SortField",
     "SortFieldBlacklistedError",
     "SortFieldNotWhitelistedError",

@@ -1,21 +1,58 @@
-"""Errors raised while parsing or analyzing sort expressions."""
+"""Errors raised while parsing or binding sort expressions."""
+
+from dataclasses import dataclass
+from typing import ClassVar
+
+from pyrsql.sorting.diagnostics import SortDiagnostic
 
 
-class SortParseError(ValueError):
+@dataclass(frozen=True, slots=True)
+class SortError(ValueError):
+    """Base exception for sorting failures."""
+
+    message: str
+    code: ClassVar[str] = "sort_error"
+
+    @property
+    def diagnostic(self) -> SortDiagnostic:
+        """Returns the structured diagnostic for this error."""
+        return SortDiagnostic(code=self.code, message=self.message)
+
+    def __str__(self) -> str:
+        """Formats the sort error consistently."""
+        return str(self.diagnostic)
+
+
+@dataclass(frozen=True, slots=True)
+class SortParseError(SortError):
     """Raised when a sort expression is malformed."""
 
+    code: ClassVar[str] = "sort_parse_error"
 
-class SortFieldNotWhitelistedError(ValueError):
+
+@dataclass(frozen=True, slots=True)
+class SortFieldNotWhitelistedError(SortError):
     """Raised when a sort selector is not allowed by the whitelist."""
 
+    code: ClassVar[str] = "sort_field_not_whitelisted"
 
-class SortFieldBlacklistedError(ValueError):
+
+@dataclass(frozen=True, slots=True)
+class SortFieldBlacklistedError(SortError):
     """Raised when a sort selector is blocked by the blacklist."""
 
+    code: ClassVar[str] = "sort_field_blacklisted"
 
-class SortFunctionNotWhitelistedError(ValueError):
+
+@dataclass(frozen=True, slots=True)
+class SortFunctionNotWhitelistedError(SortError):
     """Raised when a sort function is not allowed by the whitelist."""
 
+    code: ClassVar[str] = "sort_function_not_whitelisted"
 
-class SortFunctionBlacklistedError(ValueError):
+
+@dataclass(frozen=True, slots=True)
+class SortFunctionBlacklistedError(SortError):
     """Raised when a sort function is blocked by the blacklist."""
+
+    code: ClassVar[str] = "sort_function_blacklisted"
