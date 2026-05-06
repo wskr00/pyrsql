@@ -1,6 +1,7 @@
 """Unit tests for semantic binding."""
 
 from collections.abc import Mapping
+import re
 
 import pytest
 
@@ -9,7 +10,6 @@ from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.parser import Parser
-from pyrsql.core.procedure_policy import ProcedureAccessPolicy
 from pyrsql.semantic.binder import SemanticBinder
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
@@ -17,6 +17,35 @@ from pyrsql.semantic.errors import (
     FunctionBlacklistedError,
     FunctionNotWhitelistedError,
 )
+
+
+class _ProcedurePolicy:
+    """Minimal procedure policy for semantic module tests."""
+
+    def __init__(
+        self,
+        *,
+        whitelist: tuple[str, ...] = (),
+        blacklist: tuple[str, ...] = (),
+    ) -> None:
+        self._whitelist = tuple(re.compile(pattern) for pattern in whitelist)
+        self._blacklist = tuple(re.compile(pattern) for pattern in blacklist)
+
+    def is_whitelisted(self, function_name: str) -> bool:
+        """Returns whether a function is allowed."""
+        if not self._whitelist:
+            return False
+        return any(
+            pattern.fullmatch(function_name) is not None
+            for pattern in self._whitelist
+        )
+
+    def is_blacklisted(self, function_name: str) -> bool:
+        """Returns whether a function is blocked."""
+        return any(
+            pattern.fullmatch(function_name) is not None
+            for pattern in self._blacklist
+        )
 
 
 class _SemanticOptions:
@@ -34,9 +63,9 @@ class _SemanticOptions:
         self.field_mapping = field_mapping or {}
         self.field_whitelist = field_whitelist
         self.field_blacklist = field_blacklist
-        self.procedure_policy = ProcedureAccessPolicy.from_patterns(
-            procedure_whitelist,
-            procedure_blacklist,
+        self.procedure_policy = _ProcedurePolicy(
+            whitelist=procedure_whitelist,
+            blacklist=procedure_blacklist,
         )
 
 

@@ -1,10 +1,8 @@
 """Single-pass lexer for pyrsql query strings."""
 
-from collections.abc import Mapping
-
 from pyrsql.parsing.errors import LexError
-from pyrsql.parsing.limits import ParseLimits
-from pyrsql.parsing.operators import OPERATOR_SPELLINGS
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
+from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY, OperatorRegistry
 from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
 from pyrsql.parsing.tokens import Token, TokenKind
 
@@ -17,20 +15,24 @@ class Lexer:
         source: str | SourceText,
         *,
         limits: ParseLimits | None = None,
-        operator_spellings: tuple[str, ...] = OPERATOR_SPELLINGS,
+        operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         self._source = (
-            source if isinstance(source, SourceText) else SourceText(source)
+            source
+            if isinstance(source, SourceText)
+            else SourceText(text=source)
         )
-        self._limits = limits or ParseLimits()
-        self._operator_spellings = operator_spellings
-        self._operator_spellings_by_prefix = self._index_operator_spellings(
-            operator_spellings
-        )
+        self._limits = limits or DEFAULT_PARSE_LIMITS
+        self._operator_registry = operator_registry
         self._index = 0
         self._line = 1
         self._column = 1
         self._validate_source_length()
+
+    @property
+    def limits(self) -> ParseLimits:
+        """Returns the configured parser safety limits."""
+        return self._limits
 
     def tokenize(self) -> tuple[Token, ...]:
         """Tokenizes the configured source."""
@@ -150,24 +152,7 @@ class Lexer:
 
     def _candidate_operator_spellings(self) -> tuple[str, ...]:
         """Returns spellings matching the current prefix character."""
-        current_char = self._peek()
-        return self._operator_spellings_by_prefix.get(
-            current_char,
-            self._operator_spellings,
-        )
-
-    def _index_operator_spellings(
-        self,
-        operator_spellings: tuple[str, ...],
-    ) -> Mapping[str, tuple[str, ...]]:
-        """Indexes operator spellings by their first character."""
-        spellings_by_prefix: dict[str, list[str]] = {}
-        for spelling in operator_spellings:
-            spellings_by_prefix.setdefault(spelling[0], []).append(spelling)
-        return {
-            prefix: tuple(spellings)
-            for prefix, spellings in spellings_by_prefix.items()
-        }
+        return self._operator_registry.match_candidates(self._peek())
 
     def _skip_whitespace(self) -> None:
         """Skips ASCII whitespace characters."""

@@ -9,7 +9,7 @@ from pyrsql.parsing.ast import (
 )
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.limits import ParseLimits
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
     ComparisonOperator,
@@ -17,8 +17,17 @@ from pyrsql.parsing.operators import (
 )
 from pyrsql.parsing.source import SourceSpan
 from pyrsql.parsing.tokens import Token, TokenKind
-from pyrsql.selector.ast import Selector
+from pyrsql.selector.ast import SelectorNode
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
+
+_EXPRESSION_TERMINATORS = (
+    TokenKind.EOF,
+    TokenKind.RPAREN,
+    TokenKind.AND,
+    TokenKind.OR,
+    TokenKind.SEMICOLON,
+    TokenKind.COMMA,
+)
 
 
 class Parser:
@@ -35,16 +44,21 @@ class Parser:
         limits: ParseLimits | None = None,
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
-        self._limits = limits or ParseLimits()
+        self._limits = limits or DEFAULT_PARSE_LIMITS
         self._operator_registry = operator_registry
         self._tokens = Lexer(
             source,
             limits=self._limits,
-            operator_spellings=operator_registry.operator_spellings,
+            operator_registry=operator_registry,
         ).tokenize()
         self._selector_parser = DEFAULT_SELECTOR_PARSER
         self._index = 0
         self._node_count = 0
+
+    @property
+    def limits(self) -> ParseLimits:
+        """Returns the configured parser safety limits."""
+        return self._limits
 
     def parse(self) -> Expression:
         """Parses the configured query into an AST.
@@ -127,14 +141,7 @@ class Parser:
         """Parses comparison arguments."""
         if self._current().kind is TokenKind.LPAREN:
             return self._parse_argument_list()
-        if self._current().kind in (
-            TokenKind.EOF,
-            TokenKind.RPAREN,
-            TokenKind.AND,
-            TokenKind.OR,
-            TokenKind.SEMICOLON,
-            TokenKind.COMMA,
-        ):
+        if self._current().kind in _EXPRESSION_TERMINATORS:
             return ()
         argument_token = self._expect_value("Expected a comparison argument")
         return (self._make_argument(argument_token),)
@@ -213,7 +220,7 @@ class Parser:
     def _make_comparison_node(
         self,
         selector_token: Token,
-        selector: Selector,
+        selector: SelectorNode,
         operator_token: Token,
         operator: ComparisonOperator,
         arguments: tuple[Argument, ...],

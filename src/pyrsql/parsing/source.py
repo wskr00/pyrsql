@@ -1,23 +1,35 @@
 """Source location models for parsing."""
 
-from dataclasses import dataclass, field
+import msgspec
 
 
-@dataclass(frozen=True, slots=True)
-class SourcePosition:
+class SourcePosition(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a single position in the input source."""
 
     index: int
     line: int
     column: int
 
+    def __post_init__(self) -> None:
+        """Validates source position invariants."""
+        if self.index < 0:
+            raise ValueError("Source position index cannot be negative.")
+        if self.line <= 0:
+            raise ValueError("Source position line must be greater than 0.")
+        if self.column <= 0:
+            raise ValueError("Source position column must be greater than 0.")
 
-@dataclass(frozen=True, slots=True)
-class SourceSpan:
+
+class SourceSpan(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a half-open span in the input source."""
 
     start: SourcePosition
     end: SourcePosition
+
+    def __post_init__(self) -> None:
+        """Validates span ordering invariants."""
+        if self.end.index < self.start.index:
+            raise ValueError("Source span end cannot precede start.")
 
     @classmethod
     def cover(cls, start: "SourceSpan", end: "SourceSpan") -> "SourceSpan":
@@ -25,23 +37,20 @@ class SourceSpan:
         return cls(start=start.start, end=end.end)
 
 
-@dataclass(frozen=True, slots=True)
-class SourceText:
+class SourceText(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Wraps immutable source text and exposes helper methods."""
 
     text: str
-    _length: int = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Validates the source text."""
         if not isinstance(self.text, str):
             raise TypeError("Source text must be a string.")
-        object.__setattr__(self, "_length", len(self.text))
 
     @property
     def length(self) -> int:
         """Returns the source length."""
-        return self._length
+        return len(self.text)
 
     def slice(self, start: int, end: int) -> str:
         """Returns a substring by raw indices."""

@@ -1,12 +1,12 @@
-"""Structured semantic diagnostics."""
+"""Structured parsing diagnostics."""
 
 import msgspec
 
 from pyrsql.parsing.source import SourceSpan
 
 
-class SemanticDiagnostic(msgspec.Struct, frozen=True, gc=False, kw_only=True):
-    """A structured semantic diagnostic."""
+class ParseDiagnostic(msgspec.Struct, frozen=True, gc=False, kw_only=True):
+    """A structured parsing diagnostic."""
 
     code: str
     message: str

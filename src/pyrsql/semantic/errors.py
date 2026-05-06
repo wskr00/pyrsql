@@ -4,9 +4,6 @@ from typing import ClassVar
 
 from dataclasses import dataclass
 
-# TODO(restructuring): semantic diagnostics still use parsing spans directly.
-# Revisit this import when parsing exposes the final compiler-facing source
-# range model.
 from pyrsql.parsing.source import SourceSpan
 from pyrsql.semantic.diagnostics import SemanticDiagnostic
 

@@ -4,9 +4,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
+import msgspec
 
-@dataclass(frozen=True, slots=True)
-class ComparisonOperator:
+
+class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a supported comparison operator."""
 
     name: str
@@ -20,6 +21,10 @@ class ComparisonOperator:
             raise ValueError("Operator name cannot be empty.")
         if not self.spellings:
             raise ValueError("Operator must define at least one spelling.")
+        if any(not spelling for spelling in self.spellings):
+            raise ValueError("Operator spellings cannot be empty.")
+        if len(set(self.spellings)) != len(self.spellings):
+            raise ValueError("Operator spellings must be unique.")
         if self.minimum_arguments < 0:
             raise ValueError("minimum_arguments cannot be negative.")
         if (
@@ -38,9 +43,14 @@ class OperatorRegistry:
     operators: tuple[ComparisonOperator, ...] = field(default_factory=tuple)
     operators_by_spelling: Mapping[str, ComparisonOperator] = field(init=False)
     operator_spellings: tuple[str, ...] = field(init=False)
+    operator_spellings_by_prefix: Mapping[str, tuple[str, ...]] = field(
+        init=False
+    )
 
     def __post_init__(self) -> None:
         """Builds lookup structures and validates uniqueness."""
+        if not self.operators:
+            raise ValueError("Operator registry must contain operators.")
         operators_by_spelling: dict[str, ComparisonOperator] = {}
         for operator in self.operators:
             for spelling in operator.spellings:
@@ -49,6 +59,9 @@ class OperatorRegistry:
                         f"Duplicate operator spelling registered: {spelling!r}."
                     )
                 operators_by_spelling[spelling] = operator
+        spellings_by_prefix: dict[str, list[str]] = {}
+        for spelling in operators_by_spelling:
+            spellings_by_prefix.setdefault(spelling[0], []).append(spelling)
         object.__setattr__(
             self,
             "operators_by_spelling",
@@ -65,10 +78,26 @@ class OperatorRegistry:
                 )
             ),
         )
+        object.__setattr__(
+            self,
+            "operator_spellings_by_prefix",
+            MappingProxyType(
+                {
+                    prefix: tuple(
+                        sorted(spellings, key=len, reverse=True)
+                    )
+                    for prefix, spellings in spellings_by_prefix.items()
+                }
+            ),
+        )
 
     def get(self, spelling: str) -> ComparisonOperator:
         """Returns the operator registered for the provided spelling."""
         return self.operators_by_spelling[spelling]
+
+    def match_candidates(self, prefix: str) -> tuple[str, ...]:
+        """Returns operator spellings that can start with the prefix."""
+        return self.operator_spellings_by_prefix.get(prefix, ())
 
 
 EQUAL = ComparisonOperator(

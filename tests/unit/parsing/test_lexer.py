@@ -4,7 +4,8 @@ import pytest
 
 from pyrsql.parsing.errors import LexError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.limits import ParseLimits
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
+from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.tokens import TokenKind
 
 
@@ -76,3 +77,25 @@ def test_lexer_rejects_unterminated_strings() -> None:
     """Raises a lexical error for unterminated quoted text."""
     with pytest.raises(LexError, match="Unterminated quoted string"):
         Lexer("name=='demo").tokenize()
+
+
+def test_lexer_error_exposes_structured_diagnostic() -> None:
+    """Exposes a structured diagnostic on lexical failures."""
+    with pytest.raises(LexError) as exc_info:
+        Lexer("name=='demo").tokenize()
+    assert exc_info.value.code == "lex_error"
+    assert exc_info.value.diagnostic.code == "lex_error"
+
+
+def test_lexer_uses_shared_default_limits_instance() -> None:
+    """Reuses the shared default limits on the common path."""
+    lexer = Lexer("name==demo")
+    assert lexer.limits is DEFAULT_PARSE_LIMITS
+
+
+def test_lexer_skips_operator_matching_for_non_prefix_characters() -> None:
+    """Avoids scanning every operator when the prefix cannot match any."""
+    assert (
+        DEFAULT_OPERATOR_REGISTRY.match_candidates("n")
+        == ()
+    )
