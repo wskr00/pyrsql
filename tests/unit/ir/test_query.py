@@ -53,6 +53,37 @@ def test_bound_function_walks_nested_selectors() -> None:
 
 def test_bound_logical_walks_descendants_depth_first() -> None:
     """Traverses the logical expression tree depth-first."""
+    first_child = BoundComparison(
+        span=_span(),
+        selector=BoundField(
+            raw_path="username",
+            field_path="user.name",
+            segments=("user", "name"),
+        ),
+        operator=EQUAL,
+        arguments=(BoundArgument(text="demo", quoted=False, span=_span()),),
+    )
+    second_child = BoundComparison(
+        span=_span(),
+        selector=BoundField(
+            raw_path="city",
+            field_path="city",
+            segments=("city",),
+        ),
+        operator=EQUAL,
+        arguments=(BoundArgument(text="sp", quoted=False, span=_span()),),
+    )
+    expression = BoundLogical(
+        span=_span(),
+        operator=LogicalOperator.AND,
+        children=(first_child, second_child),
+    )
+    walked = tuple(expression.walk())
+    assert walked == (expression, first_child, second_child)
+
+
+def test_bound_logical_rejects_single_child() -> None:
+    """Prevents invalid logical nodes from being created."""
     child = BoundComparison(
         span=_span(),
         selector=BoundField(
@@ -63,10 +94,13 @@ def test_bound_logical_walks_descendants_depth_first() -> None:
         operator=EQUAL,
         arguments=(BoundArgument(text="demo", quoted=False, span=_span()),),
     )
-    expression = BoundLogical(
-        span=_span(),
-        operator=LogicalOperator.AND,
-        children=(child,),
-    )
-    walked = tuple(expression.walk())
-    assert walked == (expression, child)
+    try:
+        BoundLogical(
+            span=_span(),
+            operator=LogicalOperator.AND,
+            children=(child,),
+        )
+    except ValueError as error:
+        assert "at least two children" in str(error)
+    else:
+        raise AssertionError("BoundLogical should reject a single child.")
