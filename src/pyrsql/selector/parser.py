@@ -2,7 +2,13 @@
 
 import re
 
-from pyrsql.selector import ast
+from pyrsql.selector.ast import (
+    FieldSelector,
+    FunctionSelector,
+    LiteralSelector,
+    SelectorLiteral,
+    SelectorNode,
+)
 
 
 class SelectorParseError(ValueError):
@@ -21,24 +27,32 @@ class SelectorParser:
         *,
         max_length: int,
         context: str,
-    ) -> ast.Selector:
+    ) -> SelectorNode:
         """Parses a selector recursively."""
-        if len(raw_selector) > max_length:
+        if not isinstance(raw_selector, str):
+            raise TypeError("Selector text must be a string.")
+        normalized_selector = raw_selector.strip()
+        if not normalized_selector:
+            raise SelectorParseError(f"{context} cannot be empty.")
+        if len(normalized_selector) > max_length:
             raise SelectorParseError(
                 f"{context} exceeds the maximum supported length of "
                 f"{max_length}."
             )
-        if raw_selector.startswith("@"):
+        if normalized_selector.startswith("@"):
             return self._parse_function_selector(
-                raw_selector,
+                normalized_selector,
                 max_length=max_length,
                 context=context,
             )
-        if raw_selector.startswith("#"):
-            return ast.LiteralSelector(
-                value=self._parse_literal_value(raw_selector[1:])
+        if normalized_selector.startswith("#"):
+            return LiteralSelector(
+                value=self._parse_literal_value(normalized_selector[1:])
             )
-        return ast.ColumnSelector(selector=raw_selector)
+        return FieldSelector(
+            raw_path=normalized_selector,
+            segments=tuple(normalized_selector.split(".")),
+        )
 
     def split_top_level(self, text: str, *, delimiter: str) -> tuple[str, ...]:
         """Splits text on a delimiter while respecting nested brackets."""
@@ -74,7 +88,7 @@ class SelectorParser:
         *,
         max_length: int,
         context: str,
-    ) -> ast.FunctionSelector:
+    ) -> FunctionSelector:
         """Parses a function selector recursively."""
         argument_start = raw_selector.find("[")
         argument_end = raw_selector.rfind("]")
@@ -96,7 +110,7 @@ class SelectorParser:
                 f"{context} function {function_name!r} must have at least one "
                 "argument."
             )
-        return ast.FunctionSelector(
+        return FunctionSelector(
             function_name=function_name,
             arguments=tuple(
                 self.parse(
@@ -108,7 +122,7 @@ class SelectorParser:
             ),
         )
 
-    def _parse_literal_value(self, raw_literal: str) -> ast.SelectorLiteral:
+    def _parse_literal_value(self, raw_literal: str) -> SelectorLiteral:
         """Parses a static literal selector value."""
         normalized_literal = raw_literal.replace("\t", " ")
         match normalized_literal.lower():

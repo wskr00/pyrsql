@@ -17,10 +17,10 @@ from pyrsql.ir.query import (
 # compiler-facing syntax model we actually want to bind from.
 from pyrsql.parsing.ast import ComparisonNode, Expression, LogicalNode
 from pyrsql.selector.ast import (
-    ColumnSelector,
+    FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    Selector,
+    SelectorNode,
 )
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
@@ -108,7 +108,7 @@ class SemanticBinder:
 
     def _bind_selector(
         self,
-        selector: Selector,
+        selector: SelectorNode,
         *,
         expression: ComparisonNode,
     ) -> BoundSelectorNode:
@@ -165,18 +165,18 @@ class SemanticBinder:
 
 
 def _bind_selector(
-    selector: Selector,
+    selector: SelectorNode,
     *,
     field_mapping: Mapping[str, str],
     validate_field: Callable[[str], None],
     validate_function: Callable[[str], None],
 ) -> BoundSelectorNode:
     """Binds one parsed selector recursively."""
-    if isinstance(selector, ColumnSelector):
-        field_path = field_mapping.get(selector.selector, selector.selector)
+    if isinstance(selector, FieldSelector):
+        field_path = field_mapping.get(selector.raw_path, selector.raw_path)
         validate_field(field_path)
         return BoundField(
-            raw_path=selector.selector,
+            raw_path=selector.raw_path,
             field_path=field_path,
             segments=tuple(field_path.split(".")),
         )
