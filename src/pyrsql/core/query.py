@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from pyrsql.core.compiler import CompilationResult
+from pyrsql.ir.query import BoundComparison, BoundLogical
 from pyrsql.core.options import QueryOptions
 from pyrsql.orms.base import ORM
 from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
-from pyrsql.semantic.analyzer import SemanticAnalyzer
-from pyrsql.semantic.ast import SemanticExpression
+from pyrsql.semantic.binder import SemanticBinder
 
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 
@@ -38,9 +38,9 @@ def _analyze_query_expression(
     expression: Expression,
     *,
     options: QueryOptions,
-) -> SemanticExpression:
-    """Analyzes a syntax tree into a semantic expression."""
-    return SemanticAnalyzer(options).analyze(expression)
+) -> BoundComparison | BoundLogical:
+    """Binds a syntax tree into logical query IR."""
+    return SemanticBinder(options).bind(expression)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,19 +48,19 @@ class Query:
     """Represents a parsed ORM-neutral query request.
 
     The query preserves the raw text, the parsed expression tree, and the
-    semantic representation used by later compilation steps.
+    bound logical representation used by later compilation stages.
 
     Attributes:
         text: Raw RSQL text that produced the query.
         options: Normalized query configuration used during parsing.
         expression: Parsed syntax tree, if parsing succeeded.
-        semantic_expression: Semantic expression tree, if analysis succeeded.
+        bound_expression: Bound logical expression tree.
     """
 
     text: str
     options: QueryOptions
-    expression: Expression | None = None
-    semantic_expression: SemanticExpression | None = None
+    expression: Expression
+    bound_expression: BoundComparison | BoundLogical
 
     @classmethod
     def parse(
@@ -80,7 +80,7 @@ class Query:
         """
         resolved_options = _resolve_query_options(options)
         expression = cls.parse_expression(query_text, options=resolved_options)
-        semantic_expression = cls.analyze_expression(
+        bound_expression = cls.bind_expression(
             expression,
             options=resolved_options,
         )
@@ -88,7 +88,7 @@ class Query:
             text=query_text,
             options=resolved_options,
             expression=expression,
-            semantic_expression=semantic_expression,
+            bound_expression=bound_expression,
         )
 
     @staticmethod
@@ -109,19 +109,19 @@ class Query:
         return _parse_query_expression(query_text, options=options)
 
     @staticmethod
-    def analyze_expression(
+    def bind_expression(
         expression: Expression,
         *,
         options: QueryOptions,
-    ) -> SemanticExpression:
-        """Analyzes a syntax tree into a semantic expression.
+    ) -> BoundComparison | BoundLogical:
+        """Binds a syntax tree into logical query IR.
 
         Args:
-            expression: Parsed syntax tree to analyze.
-            options: Query configuration used by semantic analysis.
+            expression: Parsed syntax tree to bind.
+            options: Query configuration used by semantic binding.
 
         Returns:
-            The semantic expression tree.
+            The bound logical query IR.
         """
         return _analyze_query_expression(expression, options=options)
 

@@ -43,12 +43,12 @@ class _FakeORM(ORM):
 
 
 def test_query_parse_builds_query_object() -> None:
-    """Builds a query with parsed and semantic expressions."""
+    """Builds a query with parsed syntax and bound logical IR."""
     query = Query.parse("name==demo")
     assert query.text == "name==demo"
     assert query.options.strict_equality is False
     assert query.expression is not None
-    assert query.semantic_expression is not None
+    assert query.bound_expression is not None
 
 
 def test_query_parse_uses_custom_operator_registry() -> None:
@@ -65,8 +65,8 @@ def test_query_parse_uses_custom_operator_registry() -> None:
         )
     )
     query = Query.parse("name=all=demo", options=options)
-    assert query.expression is not None
     assert query.expression.operator.name == "all_match"
+    assert query.bound_expression.operator.name == "all_match"
 
 
 def test_query_compile_uses_orm_name() -> None:

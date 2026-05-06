@@ -7,11 +7,13 @@ from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.procedure_policy import ProcedureAccessPolicy
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
     ComparisonOperator,
     OperatorRegistry,
 )
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
 
 
 def test_query_options_validate_like_escape_character() -> None:
@@ -66,6 +68,7 @@ def test_query_options_cache_derived_policy_objects() -> None:
     assert options.field_converter_set is options.field_converter_set
     assert options.procedure_policy is options.procedure_policy
     assert options.field_policy.is_empty is True
+    assert options.parse_limits is DEFAULT_PARSE_LIMITS
 
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
@@ -114,6 +117,7 @@ def test_sort_options_cache_derived_policy_objects() -> None:
     assert options.field_policy is options.field_policy
     assert options.procedure_policy is options.procedure_policy
     assert options.field_policy.is_empty is True
+    assert options.sort_limits is DEFAULT_SORT_LIMITS
 
 
 def test_query_options_field_policy_is_not_empty_when_restrictions_exist() -> (

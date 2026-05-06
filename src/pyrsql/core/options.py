@@ -16,12 +16,13 @@ from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.procedure_policy import ProcedureAccessPolicy
-from pyrsql.parsing.limits import ParseLimits
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY, OperatorRegistry
-from pyrsql.sorting.limits import SortLimits
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
 
 _NestedValueT = TypeVar("_NestedValueT")
 _EMPTY_TUPLE: Final[tuple[str, ...]] = ()
+_DEFAULT_JSON_OPTIONS: Final[JSONOptions] = JSONOptions()
 
 
 def _normalize_mapping(
@@ -96,7 +97,7 @@ class QueryOptions:
     )
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
-    parse_limits: ParseLimits = field(default_factory=ParseLimits)
+    parse_limits: ParseLimits = DEFAULT_PARSE_LIMITS
     operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY
     custom_predicates: Mapping[str, CustomPredicateDefinition] = field(
         default_factory=dict
@@ -110,7 +111,7 @@ class QueryOptions:
     model_field_value_converters: Mapping[
         type[Any], Mapping[str, ValueConverter]
     ] = field(default_factory=dict)
-    json_options: JSONOptions = field(default_factory=JSONOptions)
+    json_options: JSONOptions = _DEFAULT_JSON_OPTIONS
     _field_policy: FieldPolicySet = field(
         init=False,
         repr=False,
@@ -299,8 +300,8 @@ class SortOptions:
     )
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
-    sort_limits: SortLimits = field(default_factory=SortLimits)
-    json_options: JSONOptions = field(default_factory=JSONOptions)
+    sort_limits: SortLimits = DEFAULT_SORT_LIMITS
+    json_options: JSONOptions = _DEFAULT_JSON_OPTIONS
     _field_policy: FieldPolicySet = field(
         init=False,
         repr=False,
