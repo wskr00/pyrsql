@@ -4,7 +4,11 @@ from typing import Any
 
 import pytest
 
-from pyrsql.adapters.fastapi import CriteriaDependency, RequestCriteria
+from pyrsql.adapters.fastapi import (
+    CriteriaDependency,
+    RequestCriteria,
+    criteria_dependency,
+)
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
@@ -60,6 +64,12 @@ def test_request_criteria_reports_empty_state() -> None:
     assert RequestCriteria(query=Query.parse("name==demo")).is_empty is False
 
 
+def test_request_criteria_rejects_invalid_member_types() -> None:
+    """Rejects criteria payloads with invalid runtime types."""
+    with pytest.raises(TypeError, match="(?i)query"):
+        RequestCriteria(query="invalid")  # type: ignore[arg-type]
+
+
 def test_request_criteria_applies_query_sort_and_page_in_order() -> None:
     """Applies populated components in query, sort, page order."""
     orm = RecordingORM()
@@ -81,3 +91,8 @@ def test_criteria_dependency_exposes_a_fastapi_signature() -> None:
 
     assert "filter_value" in dependency.__signature__.parameters
     assert "sort_value" in dependency.__signature__.parameters
+
+
+def test_criteria_dependency_factory_reuses_default_dependency() -> None:
+    """Reuses the shared dependency instance for the default config."""
+    assert criteria_dependency() is criteria_dependency()

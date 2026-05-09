@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase
@@ -43,6 +45,17 @@ def test_integration_exposes_configured_criteria_dependency() -> None:
     dependency = integration.criteria_dependency()
 
     assert dependency.config.default_page_size == 20
+
+
+def test_integration_rejects_invalid_public_configuration() -> None:
+    """Rejects invalid ORM and criteria config objects."""
+    with pytest.raises(TypeError):
+        FastAPISQLAlchemyIntegration(orm="invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        FastAPISQLAlchemyIntegration(
+            criteria_config="invalid"  # type: ignore[arg-type]
+        )
 
 
 def test_integration_reuses_cached_dependencies() -> None:
@@ -134,3 +147,26 @@ def test_integration_builds_paginated_select_bundle() -> None:
     assert " LIMIT 10" in statement_sql
     assert "count(" in count_sql.lower()
     assert "ORDER BY" not in count_sql
+
+
+def test_integration_rejects_invalid_request_criteria() -> None:
+    """Rejects non-RequestCriteria values at public entrypoints."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+
+    with pytest.raises(TypeError):
+        integration.select(User, "invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        integration.count_select(User, "invalid")  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError):
+        integration.paginated_select(User, "invalid")  # type: ignore[arg-type]
+
+
+def test_paginated_select_rejects_invalid_statements() -> None:
+    """Rejects non-select statement payloads in the paginated bundle."""
+    with pytest.raises(TypeError):
+        SQLAlchemyPaginatedSelect(
+            statement=cast(Any, "invalid"),
+            count_statement=select(User),
+        )

@@ -5,4 +5,4 @@ from pyrsql.integrations.fastapi.sqlalchemy import (
     SQLAlchemyPaginatedSelect,
 )
 
-__all__ = ["FastAPISQLAlchemyIntegration", "SQLAlchemyPaginatedSelect"]
+__all__ = ("FastAPISQLAlchemyIntegration", "SQLAlchemyPaginatedSelect")

@@ -5,6 +5,7 @@ import pytest
 import pyrsql
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.custom import CustomPredicateDefinition
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
@@ -65,6 +66,16 @@ def test_parse_returns_query_object() -> None:
     assert query.options.strict_equality is False
     assert query.expression is not None
     assert query.bound_expression is not None
+
+
+def test_package_root_exports_default_json_options() -> None:
+    """Exposes the shared JSON options default at package level."""
+    assert pyrsql.DEFAULT_JSON_OPTIONS is DEFAULT_JSON_OPTIONS
+
+
+def test_package_root_does_not_export_optional_integrations() -> None:
+    """Keeps optional framework integrations out of the root surface."""
+    assert not hasattr(pyrsql, "FastAPISQLAlchemyIntegration")
 
 
 def test_parse_uses_custom_operator_registry() -> None:

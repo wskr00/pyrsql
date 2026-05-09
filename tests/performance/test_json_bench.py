@@ -45,7 +45,9 @@ def test_json_path_comparison_build_remains_fast() -> None:
     """Keeps JSON path comparison normalization within budget."""
     elapsed = timeit(
         lambda: JSONPathComparison.from_raw_arguments(
-            path=__import__("pyrsql").JSONPath(("payload", "user", "id")),
+            path=__import__("pyrsql").JSONPath(
+                segments=("payload", "user", "id")
+            ),
             operator_name="equal",
             raw_arguments=((_QUOTED_JSON_OBJECT, True),),
         ),

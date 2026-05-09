@@ -1,21 +1,39 @@
 """FastAPI request criteria objects."""
 
-from dataclasses import dataclass
 from typing import Any
 
+import msgspec
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.orms.base import ORM
 
 
-@dataclass(frozen=True, slots=True)
-class RequestCriteria:
+class RequestCriteria(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents request-derived pyrsql criteria for a FastAPI endpoint."""
 
     query: Query | None = None
     sort: Sort | None = None
     page_request: PageRequest | None = None
+
+    def __post_init__(self) -> None:
+        """Validates criteria payload types."""
+        if self.query is not None and not isinstance(self.query, Query):
+            raise TypeError("query must be a Query instance or None.")
+        if self.sort is not None and not isinstance(self.sort, Sort):
+            raise TypeError("sort must be a Sort instance or None.")
+        if self.page_request is not None and not isinstance(
+            self.page_request,
+            PageRequest,
+        ):
+            raise TypeError(
+                "page_request must be a PageRequest instance or None."
+            )
 
     @property
     def is_empty(self) -> bool:

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any, cast
+from typing import cast
+
+import msgspec
 
 try:
     from fastapi import Depends
@@ -22,18 +23,28 @@ from pyrsql.adapters.fastapi import (
     RequestCriteria,
 )
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 _DEFAULT_SQLALCHEMY_ORM = SQLAlchemyORM()
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyPaginatedSelect:
+class SQLAlchemyPaginatedSelect(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Carries the list and count statements for a paginated query flow."""
 
     statement: SQLAlchemySelect
     count_statement: SQLAlchemySelect
+
+    def __post_init__(self) -> None:
+        """Validates the carried SQLAlchemy statements."""
+        require_sqlalchemy_select(self.statement)
+        require_sqlalchemy_select(self.count_statement)
 
 
 class FastAPISQLAlchemyIntegration:
@@ -56,6 +67,15 @@ class FastAPISQLAlchemyIntegration:
         criteria_config: FastAPICriteriaConfig | None = None,
     ) -> None:
         """Creates an integration helper for FastAPI and SQLAlchemy."""
+        if orm is not None and not isinstance(orm, SQLAlchemyORM):
+            raise TypeError("orm must be a SQLAlchemyORM or None.")
+        if (
+            criteria_config is not None
+            and not isinstance(criteria_config, FastAPICriteriaConfig)
+        ):
+            raise TypeError(
+                "criteria_config must be a FastAPICriteriaConfig or None."
+            )
         self.orm = orm or _DEFAULT_SQLALCHEMY_ORM
         self.criteria_config = (
             criteria_config or _DEFAULT_FASTAPI_CRITERIA_CONFIG
@@ -75,6 +95,13 @@ class FastAPISQLAlchemyIntegration:
     def criteria_dependency(self) -> CriteriaDependency:
         """Returns a configured FastAPI dependency for request criteria."""
         return self._criteria_dependency
+
+    @staticmethod
+    def _require_request_criteria(criteria: RequestCriteria) -> RequestCriteria:
+        """Validates and returns request criteria objects."""
+        if not isinstance(criteria, RequestCriteria):
+            raise TypeError("criteria must be a RequestCriteria.")
+        return criteria
 
     def _apply_query(
         self,
@@ -147,6 +174,8 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Applies request criteria to an existing SQLAlchemy select."""
+        require_sqlalchemy_select(statement)
+        criteria = self._require_request_criteria(criteria)
         return cast(
             SQLAlchemySelect,
             criteria.apply(statement, model, orm=self.orm),
@@ -158,6 +187,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds a select statement for a model and applies criteria."""
+        criteria = self._require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return self._apply_sort_and_page(
             filtered_statement,
@@ -171,6 +201,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds a count statement from the filtered query semantics only."""
+        criteria = self._require_request_criteria(criteria)
         return self._count_from_filtered_select(
             self._filtered_select(model, criteria)
         )
@@ -181,6 +212,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemyPaginatedSelect:
         """Builds both list and count statements for a paginated flow."""
+        criteria = self._require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return SQLAlchemyPaginatedSelect(
             statement=self._apply_sort_and_page(
@@ -204,9 +236,9 @@ class FastAPISQLAlchemyIntegration:
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
-            criteria: Any = Depends(criteria_dependency),
+            criteria: RequestCriteria = Depends(criteria_dependency),
         ) -> SQLAlchemySelect:
-            return self.select(model, cast(RequestCriteria, criteria))
+            return self.select(model, criteria)
 
         self._select_dependencies[model] = dependency
         return dependency
@@ -222,9 +254,9 @@ class FastAPISQLAlchemyIntegration:
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
-            criteria: Any = Depends(criteria_dependency),
+            criteria: RequestCriteria = Depends(criteria_dependency),
         ) -> SQLAlchemySelect:
-            return self.count_select(model, cast(RequestCriteria, criteria))
+            return self.count_select(model, criteria)
 
         self._count_select_dependencies[model] = dependency
         return dependency
@@ -240,12 +272,9 @@ class FastAPISQLAlchemyIntegration:
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
-            criteria: Any = Depends(criteria_dependency),
+            criteria: RequestCriteria = Depends(criteria_dependency),
         ) -> SQLAlchemyPaginatedSelect:
-            return self.paginated_select(
-                model,
-                cast(RequestCriteria, criteria),
-            )
+            return self.paginated_select(model, criteria)
 
         self._paginated_select_dependencies[model] = dependency
         return dependency

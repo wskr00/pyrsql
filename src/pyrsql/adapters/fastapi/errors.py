@@ -1,6 +1,6 @@
 """FastAPI adapter error helpers."""
 
-from dataclasses import dataclass
+import msgspec
 
 from pyrsql.parsing.errors import ParseError
 from pyrsql.semantic.errors import SemanticError
@@ -13,8 +13,12 @@ from pyrsql.sorting.errors import (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class FastAPIAdapterErrorPayload:
+class FastAPIAdapterErrorPayload(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Structured adapter error payload for HTTP translation.
 
     Attributes:

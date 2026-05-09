@@ -16,6 +16,12 @@ def test_config_rejects_duplicate_parameter_names() -> None:
         )
 
 
+def test_config_rejects_outer_whitespace_in_parameter_names() -> None:
+    """Rejects query parameter aliases with leading/trailing whitespace."""
+    with pytest.raises(ValueError, match="(?i)whitespace|parameter"):
+        FastAPICriteriaConfig(filter_parameter=" filter ")
+
+
 def test_config_rejects_non_positive_default_page_size() -> None:
     """Rejects invalid default page size values."""
     with pytest.raises(

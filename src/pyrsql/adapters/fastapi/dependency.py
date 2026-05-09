@@ -84,9 +84,6 @@ def _build_page_request(
             )
         )
 
-    if resolved_page_size is None:
-        raise ValueError("resolved_page_size cannot be None")
-
     if config.one_based_paging:
         if resolved_page_number <= 0:
             _raise_http_error(
@@ -101,7 +98,10 @@ def _build_page_request(
             )
         resolved_page_number -= 1
 
-    return PageRequest.of(resolved_page_number, resolved_page_size)
+    page_size = resolved_page_size
+    if page_size is None:
+        raise ValueError("page_size cannot be None after page validation.")
+    return PageRequest.of(resolved_page_number, page_size)
 
 
 def _build_criteria_callable(
@@ -181,6 +181,8 @@ class CriteriaDependency:
     parsed RequestCriteria object.
     """
 
+    __slots__ = ("config", "_dependency", "__signature__")
+
     def __init__(
         self,
         config: FastAPICriteriaConfig | None = None,
@@ -214,4 +216,11 @@ def criteria_dependency(
     Returns:
         A callable FastAPI dependency object.
     """
+    if config is None:
+        return _DEFAULT_CRITERIA_DEPENDENCY
     return CriteriaDependency(config)
+
+
+_DEFAULT_CRITERIA_DEPENDENCY = CriteriaDependency(
+    _DEFAULT_FASTAPI_CRITERIA_CONFIG
+)
