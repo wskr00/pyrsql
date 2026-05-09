@@ -1,87 +1,101 @@
 """Unit tests for the high-level query object."""
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
+
+from collections.abc import Callable
+
+import pytest
 
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
 from pyrsql.orms.base import ORM
-from pyrsql.parsing.operators import (
-    DEFAULT_OPERATOR_REGISTRY,
-    ComparisonOperator,
-    OperatorRegistry,
-)
 
 
-@dataclass(frozen=True, slots=True)
-class _FakeCompiledQuery:
-    result: Any
+def test_query_parse_builds_query_object_from_parser_and_binder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Composes parsed syntax and bound IR into one Query object."""
+    options = QueryOptions(strict_equality=True)
+    expression = object()
+    bound_expression = object()
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
-        return {
-            "result": self.result,
-            "target": target,
-            "model": model,
-        }
+    monkeypatch.setattr(
+        Query,
+        "parse_expression",
+        staticmethod(lambda query_text, *, options: expression),
+    )
+    monkeypatch.setattr(
+        Query,
+        "bind_expression",
+        staticmethod(lambda parsed_expression, *, options: bound_expression),
+    )
 
+    query = Query.parse("name==demo", options=options)
 
-class _FakeORM(ORM):
-    """Minimal ORM double for query unit tests."""
-
-    @property
-    def name(self) -> str:
-        return "fake"
-
-    def compile_query(self, query: Query) -> _FakeCompiledQuery:
-        return _FakeCompiledQuery(result=query.text)
-
-    def compile_sort(self, sort: Any) -> Any:
-        raise NotImplementedError
-
-    def compile_page_request(self, page_request: Any) -> Any:
-        raise NotImplementedError
-
-
-def test_query_parse_builds_query_object() -> None:
-    """Builds a query with parsed syntax and bound logical IR."""
-    query = Query.parse("name==demo")
     assert query.text == "name==demo"
-    assert query.options.strict_equality is False
-    assert query.expression is not None
-    assert query.bound_expression is not None
+    assert query.options is options
+    assert query.expression is expression
+    assert query.bound_expression is bound_expression
 
 
-def test_query_parse_uses_custom_operator_registry() -> None:
-    """Honors custom operator configuration while parsing."""
-    all_match = ComparisonOperator(
-        name="all_match",
-        spellings=("=all=",),
-        minimum_arguments=1,
-        maximum_arguments=1,
+def test_query_parse_resolves_shared_default_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Uses the shared immutable default options when none are provided."""
+    captured_options: list[QueryOptions] = []
+    expression = object()
+    bound_expression = object()
+
+    def _parse_expression(query_text: str, *, options: QueryOptions) -> object:
+        del query_text
+        captured_options.append(options)
+        return expression
+
+    def _bind_expression(
+        parsed_expression: object,
+        *,
+        options: QueryOptions,
+    ) -> object:
+        assert parsed_expression is expression
+        captured_options.append(options)
+        return bound_expression
+
+    monkeypatch.setattr(
+        Query,
+        "parse_expression",
+        staticmethod(_parse_expression),
     )
-    options = QueryOptions(
-        operator_registry=OperatorRegistry(
-            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,)
-        )
+    monkeypatch.setattr(
+        Query,
+        "bind_expression",
+        staticmethod(_bind_expression),
     )
-    query = Query.parse("name=all=demo", options=options)
-    assert query.expression.operator.name == "all_match"
-    assert query.bound_expression.operator.name == "all_match"
+
+    query = Query.parse("name==demo")
+
+    assert query.options is captured_options[0]
+    assert captured_options[0] is captured_options[1]
 
 
-def test_query_compile_uses_orm_name() -> None:
+def test_query_compile_uses_orm_name(
+    fake_orm_factory: Callable[..., ORM],
+) -> None:
     """Compiles the query with the selected ORM metadata."""
-    compilation = Query.parse("name==demo").compile(orm=_FakeORM())
+    compilation = Query.parse("name==demo").compile(orm=fake_orm_factory())
+
     assert compilation.orm_name == "fake"
 
 
-def test_query_apply_uses_orm() -> None:
-    """Compiles and applies the query using the selected orm."""
+def test_query_apply_uses_orm(
+    fake_orm_factory: Callable[..., ORM],
+) -> None:
+    """Compiles and applies the query using the selected ORM."""
     applied = Query.parse("name==demo").apply(
         target="statement",
         model=str,
-        orm=_FakeORM(),
+        orm=fake_orm_factory(),
     )
+
     assert applied["result"] == "name==demo"
     assert applied["target"] == "statement"
     assert applied["model"] is str
