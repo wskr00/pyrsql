@@ -1,10 +1,9 @@
 """ORM-neutral JSON options."""
 
-from dataclasses import dataclass
+import msgspec
 
 
-@dataclass(frozen=True, slots=True)
-class JSONOptions:
+class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral JSON behavior flags.
 
     Attributes:
@@ -29,3 +28,6 @@ class JSONOptions:
             raise ValueError("path_exists_function cannot be empty.")
         if not self.path_exists_tz_function:
             raise ValueError("path_exists_tz_function cannot be empty.")
+
+
+DEFAULT_JSON_OPTIONS = JSONOptions()

@@ -1,7 +1,6 @@
 """ORM-neutral JSON value normalization."""
 
 import re
-from dataclasses import dataclass
 from typing import Any
 
 import msgspec
@@ -10,8 +9,7 @@ _INTEGER_PATTERN = re.compile(r"^-?\d+$")
 _FLOAT_PATTERN = re.compile(r"^-?\d+\.\d+$")
 
 
-@dataclass(frozen=True, slots=True)
-class JSONScalarValue:
+class JSONScalarValue(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents one normalized JSON scalar or structured value."""
 
     value: Any

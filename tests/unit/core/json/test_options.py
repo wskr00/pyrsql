@@ -1,19 +1,19 @@
 """Unit tests for orm-neutral JSON options."""
 
-from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
 from pyrsql.core.options import QueryOptions, SortOptions
 
 
 def test_query_options_expose_default_json_options() -> None:
     """Query options carry JSON options by default."""
     options = QueryOptions()
-    assert options.json_options == JSONOptions()
+    assert options.json_options is DEFAULT_JSON_OPTIONS
 
 
 def test_sort_options_expose_default_json_options() -> None:
     """Sort options carry JSON options by default."""
     options = SortOptions()
-    assert options.json_options == JSONOptions()
+    assert options.json_options is DEFAULT_JSON_OPTIONS
 
 
 def test_query_options_accept_json_options_override() -> None:

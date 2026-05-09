@@ -95,3 +95,13 @@ class FieldPolicySet:
         blacklist = self.model_field_blacklist.get(model)
         if blacklist is not None and field_name in blacklist:
             raise ValueError(f"Field {model.__name__}.{field_name} is blocked.")
+
+
+DEFAULT_FIELD_POLICY_SET = FieldPolicySet(
+    field_mapping={},
+    field_whitelist=frozenset(),
+    field_blacklist=frozenset(),
+    model_field_mapping={},
+    model_field_whitelist={},
+    model_field_blacklist={},
+)

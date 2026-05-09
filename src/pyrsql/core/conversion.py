@@ -28,6 +28,23 @@ def _convert_bool(raw_value: str) -> bool:
     raise ValueConversionError(f"Cannot convert {raw_value!r} to bool.")
 
 
+def _convert_datetime(raw_value: str) -> dt.datetime:
+    """Converts a string into datetime with LocalDate-style fallback."""
+    try:
+        parsed_datetime = ciso8601.parse_datetime(raw_value)
+    except ValueError:
+        parsed_datetime = None
+    if parsed_datetime is not None:
+        return parsed_datetime
+    try:
+        parsed_date = dt.date.fromisoformat(raw_value)
+    except ValueError as date_error:
+        raise ValueConversionError(
+            f"Failed to convert {raw_value!r} to datetime."
+        ) from date_error
+    return dt.datetime.combine(parsed_date, dt.time.min)
+
+
 @dataclass(frozen=True, slots=True)
 class ValueConverterRegistry:
     """Immutable registry of orm-neutral string-to-type converters."""
@@ -60,9 +77,6 @@ class ValueConverterRegistry:
         """Converts a raw string into the requested target type."""
         if target_type is None:
             return raw_value
-
-        if target_type is dt.datetime:
-            return self._convert_datetime(raw_value)
 
         converter = self._find_registered_converter(target_type)
         if converter is not None:
@@ -113,22 +127,6 @@ class ValueConverterRegistry:
                     f"Failed to convert {raw_value!r} to "
                     f"{target_type.__name__}."
                 ) from error
-
-    def _convert_datetime(self, raw_value: str) -> dt.datetime:
-        """Converts a string into datetime with LocalDate-style fallback."""
-        try:
-            parsed_datetime = ciso8601.parse_datetime(raw_value)
-        except ValueError:
-            parsed_datetime = None
-        if parsed_datetime is not None:
-            return parsed_datetime
-        try:
-            parsed_date = dt.date.fromisoformat(raw_value)
-        except ValueError as date_error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to datetime."
-            ) from date_error
-        return dt.datetime.combine(parsed_date, dt.time.min)
 
     def _construct_from_string(
         self,
@@ -197,6 +195,7 @@ DEFAULT_VALUE_CONVERTER_REGISTRY = ValueConverterRegistry(
         UUID: UUID,
         dt.date: dt.date.fromisoformat,
         dt.time: dt.time.fromisoformat,
+        dt.datetime: _convert_datetime,
     }
 )
 

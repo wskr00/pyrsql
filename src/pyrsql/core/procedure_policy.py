@@ -1,12 +1,17 @@
 """Shared procedure access-policy helpers."""
 
 import re
-from dataclasses import dataclass
 from re import Pattern
 
+import msgspec
 
-@dataclass(frozen=True, slots=True)
-class ProcedureAccessPolicy:
+
+class ProcedureAccessPolicy(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Regex-based access policy for selector procedures.
 
     The policy stores compiled whitelist and blacklist patterns used to check
@@ -59,3 +64,9 @@ class ProcedureAccessPolicy:
     ) -> bool:
         """Whether a value fully matches at least one pattern."""
         return any(pattern.fullmatch(procedure_name) for pattern in patterns)
+
+
+DEFAULT_PROCEDURE_ACCESS_POLICY = ProcedureAccessPolicy(
+    whitelist_patterns=(),
+    blacklist_patterns=(),
+)

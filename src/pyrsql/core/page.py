@@ -1,15 +1,15 @@
 """ORM-neutral pagination request objects."""
 
-from dataclasses import dataclass
 from typing import Any
+
+import msgspec
 
 from pyrsql.core.compiler import PageCompilationResult
 from pyrsql.ir.page import BoundPage
 from pyrsql.orms.base import ORM
 
 
-@dataclass(frozen=True, slots=True)
-class PageRequest:
+class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents an ORM-neutral pagination request.
 
     Attributes:

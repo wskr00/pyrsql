@@ -1,10 +1,9 @@
 """Immutable JSON path primitives."""
 
-from dataclasses import dataclass, field
+import msgspec
 
 
-@dataclass(frozen=True, slots=True)
-class JSONPath:
+class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents an ORM-neutral JSON path.
 
     Attributes:
@@ -12,7 +11,7 @@ class JSONPath:
     """
 
     segments: tuple[str, ...] = ()
-    _dot_path: str = field(init=False, repr=False, compare=False)
+    _dot_path: str = ""
 
     def __post_init__(self) -> None:
         """Validates path segments.

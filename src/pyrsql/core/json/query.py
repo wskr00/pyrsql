@@ -1,6 +1,6 @@
 """ORM-neutral JSON query models."""
 
-from dataclasses import dataclass
+import msgspec
 
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.values import (
@@ -10,8 +10,12 @@ from pyrsql.core.json.values import (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class JSONPathComparison:
+class JSONPathComparison(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents one JSON path comparison after semantic normalization."""
 
     path: JSONPath

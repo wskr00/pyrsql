@@ -12,17 +12,19 @@ from pyrsql.core.conversion import (
     ValueConverterRegistry,
 )
 from pyrsql.core.custom import CustomPredicateDefinition
-from pyrsql.core.field_policy import FieldPolicySet
+from pyrsql.core.field_policy import DEFAULT_FIELD_POLICY_SET, FieldPolicySet
 from pyrsql.core.joins import JoinHint
-from pyrsql.core.json.options import JSONOptions
-from pyrsql.core.procedure_policy import ProcedureAccessPolicy
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
+from pyrsql.core.procedure_policy import (
+    DEFAULT_PROCEDURE_ACCESS_POLICY,
+    ProcedureAccessPolicy,
+)
 from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY, OperatorRegistry
 from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
 
 _NestedValueT = TypeVar("_NestedValueT")
 _EMPTY_TUPLE: Final[tuple[str, ...]] = ()
-_DEFAULT_JSON_OPTIONS: Final[JSONOptions] = JSONOptions()
 
 
 def _normalize_mapping(
@@ -111,7 +113,7 @@ class QueryOptions:
     model_field_value_converters: Mapping[
         type[Any], Mapping[str, ValueConverter]
     ] = field(default_factory=dict)
-    json_options: JSONOptions = _DEFAULT_JSON_OPTIONS
+    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
     _field_policy: FieldPolicySet = field(
         init=False,
         repr=False,
@@ -257,6 +259,17 @@ class QueryOptions:
 
     def _build_field_policy(self) -> FieldPolicySet:
         """Builds the immutable field-policy object once."""
+        if not any(
+            (
+                self.field_mapping,
+                self.field_whitelist,
+                self.field_blacklist,
+                self.model_field_mapping,
+                self.model_field_whitelist,
+                self.model_field_blacklist,
+            )
+        ):
+            return DEFAULT_FIELD_POLICY_SET
         return _build_field_policy(
             field_mapping=self.field_mapping,
             field_whitelist=self.field_whitelist,
@@ -275,6 +288,8 @@ class QueryOptions:
 
     def _build_procedure_policy(self) -> ProcedureAccessPolicy:
         """Builds the compiled procedure policy once."""
+        if not self.procedure_whitelist and not self.procedure_blacklist:
+            return DEFAULT_PROCEDURE_ACCESS_POLICY
         return _build_procedure_policy(
             self.procedure_whitelist,
             self.procedure_blacklist,
@@ -301,7 +316,7 @@ class SortOptions:
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = DEFAULT_SORT_LIMITS
-    json_options: JSONOptions = _DEFAULT_JSON_OPTIONS
+    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
     _field_policy: FieldPolicySet = field(
         init=False,
         repr=False,
@@ -379,6 +394,17 @@ class SortOptions:
 
     def _build_field_policy(self) -> FieldPolicySet:
         """Builds the immutable field-policy object once."""
+        if not any(
+            (
+                self.field_mapping,
+                self.field_whitelist,
+                self.field_blacklist,
+                self.model_field_mapping,
+                self.model_field_whitelist,
+                self.model_field_blacklist,
+            )
+        ):
+            return DEFAULT_FIELD_POLICY_SET
         return _build_field_policy(
             field_mapping=self.field_mapping,
             field_whitelist=self.field_whitelist,
@@ -390,6 +416,8 @@ class SortOptions:
 
     def _build_procedure_policy(self) -> ProcedureAccessPolicy:
         """Builds the compiled procedure policy once."""
+        if not self.procedure_whitelist and not self.procedure_blacklist:
+            return DEFAULT_PROCEDURE_ACCESS_POLICY
         return _build_procedure_policy(
             self.procedure_whitelist,
             self.procedure_blacklist,
