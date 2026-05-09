@@ -33,7 +33,7 @@ def _parse_sort_fields(
     ).parse()
 
 
-def _analyze_sort_fields(
+def _bind_sort_fields(
     fields: tuple[SortField, ...],
     *,
     options: SortOptions,
@@ -118,7 +118,7 @@ class Sort:
         Returns:
             The bound logical sort IR, or None when no fields were parsed.
         """
-        return _analyze_sort_fields(fields, options=options)
+        return _bind_sort_fields(fields, options=options)
 
     def compile(self, *, orm: ORM) -> SortCompilationResult:
         """Compiles the sort using the provided ORM.

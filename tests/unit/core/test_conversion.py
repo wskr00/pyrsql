@@ -94,6 +94,26 @@ def test_default_registry_uses_string_constructor_fallback() -> None:
     assert converted.value == "abc-123"
 
 
+def test_default_registry_converts_json_dict_and_list_types() -> None:
+    """Converts JSON container strings into native dict and list values."""
+    assert DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
+        '{"kind":"demo","count":2}',
+        dict,
+    ) == {"kind": "demo", "count": 2}
+    assert DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
+        '["a","b","c"]',
+        list,
+    ) == ["a", "b", "c"]
+
+
+def test_default_registry_rejects_wrong_json_container_shape() -> None:
+    """Rejects JSON values whose decoded shape mismatches the target type."""
+    with pytest.raises(ValueConversionError):
+        DEFAULT_VALUE_CONVERTER_REGISTRY.convert('["a","b"]', dict)
+    with pytest.raises(ValueConversionError):
+        DEFAULT_VALUE_CONVERTER_REGISTRY.convert('{"a":1}', list)
+
+
 def test_registry_supports_custom_converter_registration() -> None:
     """Extends the registry immutably with custom converters."""
     registry = ValueConverterRegistry({}).with_converter(

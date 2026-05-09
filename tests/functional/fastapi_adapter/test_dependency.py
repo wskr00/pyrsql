@@ -110,9 +110,15 @@ def test_dependency_translates_query_parse_errors_to_http_422() -> None:
     response = TestClient(app).get("/items", params={"filter": "name=="})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["parameter"] == "filter"
-    assert response.json()["detail"]["type"] == "query_parse_error"
-    assert response.json()["detail"]["detail"][0]["code"] == "parse_error"
+    payload = response.json()["detail"]
+    assert payload["parameter"] == "filter"
+    assert payload["type"] == "query_parse_error"
+    assert payload["errors"][0]["code"] == "parse_error"
+    assert payload["errors"][0]["location"] == {
+        "index": 4,
+        "line": 1,
+        "column": 5,
+    }
 
 
 def test_dependency_exposes_structured_field_policy_diagnostics() -> None:
@@ -138,8 +144,13 @@ def test_dependency_exposes_structured_field_policy_diagnostics() -> None:
     assert response.status_code == 422
     payload = response.json()["detail"]
     assert payload["type"] == "query_semantic_error"
-    assert payload["detail"][0]["code"] == "field_not_whitelisted"
-    assert payload["detail"][0]["field"] == "password"
+    assert payload["errors"][0]["code"] == "field_not_whitelisted"
+    assert payload["errors"][0]["field"] == "password"
+    assert payload["errors"][0]["location"] == {
+        "index": 0,
+        "line": 1,
+        "column": 1,
+    }
 
 
 def test_dependency_supports_one_based_paging() -> None:

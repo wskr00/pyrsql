@@ -116,60 +116,68 @@ class SQLAlchemyPathResolver:
             )
             is_last_segment = segment_index == len(segments_to_resolve) - 1
 
-            if mapped_attribute.kind is SQLAlchemyAttributeKind.RELATIONSHIP:
-                if is_last_segment:
-                    raise SQLAlchemyPathResolutionError(
-                        f"Field path {field_path!r} ends on relationship "
-                        f"{segment!r}; a column-like attribute is required."
+            match mapped_attribute.kind:
+                case SQLAlchemyAttributeKind.RELATIONSHIP:
+                    if is_last_segment:
+                        raise SQLAlchemyPathResolutionError(
+                            f"Field path {field_path!r} ends on relationship "
+                            f"{segment!r}; a column-like attribute is required."
+                        )
+                    joins.append(
+                        SQLAlchemyJoinPlan(
+                            key=self._make_join_key(current_model, segment),
+                            attribute=mapped_attribute.attribute,
+                            default_hint=JoinHint.INNER,
+                            is_collection=mapped_attribute.is_collection,
+                        )
                     )
-                joins.append(
-                    SQLAlchemyJoinPlan(
-                        key=self._make_join_key(current_model, segment),
-                        attribute=mapped_attribute.attribute,
-                        default_hint=JoinHint.INNER,
-                        is_collection=mapped_attribute.is_collection,
-                    )
-                )
-                if mapped_attribute.mapper is None:
-                    raise SQLAlchemyORMError(
-                        "Relationship path resolution requires a mapper."
-                    )
-                current_model = mapped_attribute.mapper.class_
-                segment_index += 1
-                continue
-
-            if not is_last_segment:
-                if mapped_attribute.is_json:
-                    return SQLAlchemyResolvedPath(
-                        root_model=model,
-                        leaf_model=current_model,
-                        field_path=".".join(segments_to_resolve),
-                        joins=tuple(joins),
-                        leaf_attribute=cast(
-                            ColumnElement[Any],
-                            mapped_attribute.attribute,
-                        ),
-                        python_type=None,
-                        json_path=JSONPath(
-                            segments=tuple(
-                                segments_to_resolve[segment_index + 1 :]
+                    if mapped_attribute.mapper is None:
+                        raise SQLAlchemyORMError(
+                            "Relationship path resolution requires a mapper."
+                        )
+                    current_model = mapped_attribute.mapper.class_
+                    segment_index += 1
+                    continue
+                case SQLAlchemyAttributeKind.COLUMN:
+                    if not is_last_segment:
+                        if mapped_attribute.is_json:
+                            return SQLAlchemyResolvedPath(
+                                root_model=model,
+                                leaf_model=current_model,
+                                field_path=".".join(segments_to_resolve),
+                                joins=tuple(joins),
+                                leaf_attribute=cast(
+                                    ColumnElement[Any],
+                                    mapped_attribute.attribute,
+                                ),
+                                python_type=None,
+                                json_path=JSONPath(
+                                    segments=tuple(
+                                        segments_to_resolve[
+                                            segment_index + 1 :
+                                        ]
+                                    )
+                                ),
+                                is_json=True,
                             )
-                        ),
-                        is_json=True,
+                        raise SQLAlchemyPathResolutionError(
+                            f"Field path {field_path!r} traverses through "
+                            f"non-relationship segment {segment!r}."
+                        )
+                    leaf_attribute = mapped_attribute
+                    if field_policy is not None:
+                        self._validate_field_policy(
+                            field_policy,
+                            current_model,
+                            leaf_attribute.name,
+                            ".".join(segments_to_resolve),
+                        )
+                    segment_index += 1
+                case _:
+                    raise SQLAlchemyORMError(
+                        "Path resolution encountered an unsupported attribute "
+                        f"kind {mapped_attribute.kind!r}."
                     )
-                raise SQLAlchemyPathResolutionError(
-                    f"Field path {field_path!r} traverses through "
-                    f"non-relationship segment {segment!r}."
-                )
-            leaf_attribute = mapped_attribute
-            if field_policy is not None:
-                self._validate_field_policy(
-                    field_policy,
-                    current_model,
-                    leaf_attribute.name,
-                    ".".join(segments_to_resolve),
-                )
-            segment_index += 1
 
         if leaf_attribute is None:
             raise SQLAlchemyORMError(

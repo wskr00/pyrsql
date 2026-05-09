@@ -24,6 +24,7 @@
 - `CustomPredicateDefinition`
 - `JSONOptions`
 - `DEFAULT_JSON_OPTIONS`
+- `JSONSortScalarType`
 - `JSONPath`
 - `JSONPathComparison`
 - `JSONScalarNormalizer`
@@ -115,10 +116,45 @@ Supported:
 - PostgreSQL-style JSON / JSONB path filtering and sorting
 - `JSONOptions(use_datetime=...)` for temporal JSON path semantics
 - configurable JSON path function names via `JSONOptions`
+- explicit JSON sort typing via `JSONOptions.sort_field_types`
 
 Not currently supported:
 
 - non-SQLAlchemy ORMs
+
+### JSON filter semantics
+
+Current PostgreSQL JSON behavior is split into two modes:
+
+- whole-document JSON comparison:
+  - direct JSONB comparison
+  - operators: `==`, `!=`, `=in=`, `=out=`, `=na=`, `=nn=`
+- nested JSON path comparison:
+  - PostgreSQL `jsonpath`
+  - `JSONPATH`-typed binds
+  - vars payload for structured values
+
+### JSON sort semantics
+
+Nested JSON sort defaults to text semantics unless explicitly configured.
+
+`JSONOptions.sort_field_types` accepts:
+
+- `JSONSortScalarType.TEXT`
+- `JSONSortScalarType.INTEGER`
+- `JSONSortScalarType.FLOAT`
+- `JSONSortScalarType.NUMERIC`
+- `JSONSortScalarType.BOOLEAN`
+- `JSONSortScalarType.DATE`
+- `JSONSortScalarType.TIME`
+- `JSONSortScalarType.DATETIME`
+- `JSONSortScalarType.DATETIME_TZ`
+
+Whole-document JSON sort:
+
+- is rejected by default
+- is allowed only with explicit `TEXT` configuration
+- does not currently support non-text semantics
 
 ## FastAPI Adapter
 
@@ -280,7 +316,7 @@ Carries:
 
 Carries:
 
-- `source`
+- `text`
 - `expression`
 - `bound_expression`
 
@@ -288,7 +324,7 @@ Carries:
 
 Carries:
 
-- `source`
+- `text`
 - `fields`
 - `bound_sort`
 

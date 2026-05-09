@@ -68,7 +68,7 @@ class SQLAlchemyExpressionTranslator:
         "_path_resolver",
         "_value_coercer",
         "_json_path_builder",
-        "_custom_predicates",
+        "_orm_custom_predicates",
     )
 
     def __init__(
@@ -86,7 +86,7 @@ class SQLAlchemyExpressionTranslator:
         self._json_path_builder = (
             json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
         )
-        self._custom_predicates = MappingProxyType(
+        self._orm_custom_predicates = MappingProxyType(
             dict(custom_predicates or {})
         )
 
@@ -133,9 +133,15 @@ class SQLAlchemyExpressionTranslator:
             )
             joins.extend(child_joins)
             predicates.append(child_predicate)
-        if expression.operator is LogicalOperator.AND:
-            return tuple(joins), sa.and_(*predicates)
-        return tuple(joins), sa.or_(*predicates)
+        match expression.operator:
+            case LogicalOperator.AND:
+                return tuple(joins), sa.and_(*predicates)
+            case LogicalOperator.OR:
+                return tuple(joins), sa.or_(*predicates)
+            case _:
+                raise SQLAlchemyORMError(
+                    f"Unsupported logical operator {expression.operator!r}."
+                )
 
     def _translate_comparison(
         self,
@@ -169,20 +175,27 @@ class SQLAlchemyExpressionTranslator:
                         for argument in expression.arguments
                     ),
                 )
-                predicate = self._json_path_builder.build_filter_expression(
-                    selector_expression,
-                    json_comparison,
-                    options=options.json_options,
-                )
-                if self._should_use_exists_predicate(
-                    selector_joins,
-                    options=options,
+                if self._json_path_builder.supports_document_predicate(
+                    json_comparison
                 ):
-                    return (), self._wrap_exists_predicate(
-                        selector_joins,
-                        predicate,
+                    predicate = (
+                        self._json_path_builder
+                        .build_document_filter_expression(
+                            selector_expression,
+                            json_comparison,
+                        )
                     )
-                return selector_joins, predicate
+                else:
+                    predicate = self._json_path_builder.build_filter_expression(
+                        selector_expression,
+                        json_comparison,
+                        options=options.json_options,
+                    )
+                return self._finalize_predicate(
+                    selector_joins,
+                    predicate,
+                    options=options,
+                )
         else:
             selector_joins, selector_expression, python_type = (
                 self._translate_selector(
@@ -218,15 +231,11 @@ class SQLAlchemyExpressionTranslator:
             coerced_values,
             options=options,
         )
-        if self._should_use_exists_predicate(
+        return self._finalize_predicate(
             selector_joins,
+            predicate,
             options=options,
-        ):
-            return (), self._wrap_exists_predicate(
-                selector_joins,
-                predicate,
-            )
-        return selector_joins, predicate
+        )
 
     def _translate_selector(
         self,
@@ -248,7 +257,10 @@ class SQLAlchemyExpressionTranslator:
             )
             return (
                 resolved_path.joins,
-                self._resolve_column_expression(resolved_path),
+                self._resolve_column_expression(
+                    resolved_path,
+                    options=options,
+                ),
                 str if resolved_path.is_json else resolved_path.python_type,
             )
         if isinstance(selector, BoundLiteral):
@@ -289,6 +301,8 @@ class SQLAlchemyExpressionTranslator:
     def _resolve_column_expression(
         self,
         resolved_path: SQLAlchemyResolvedPath,
+        *,
+        options: QueryOptions,
     ) -> ColumnElement[Any]:
         """Builds the effective SQL expression for a resolved path."""
         base_expression = resolved_path.leaf_attribute
@@ -297,6 +311,8 @@ class SQLAlchemyExpressionTranslator:
         return self._json_path_builder.build_sort_expression(
             base_expression,
             resolved_path.json_path,
+            field_path=resolved_path.field_path,
+            options=options.json_options,
         )
 
     def _build_predicate(
@@ -309,7 +325,7 @@ class SQLAlchemyExpressionTranslator:
         options: QueryOptions,
     ) -> ColumnElement[bool]:
         """Builds a SQLAlchemy predicate for a resolved path."""
-        custom_predicate = self._custom_predicates.get(operator_name)
+        custom_predicate = self._orm_custom_predicates.get(operator_name)
         if custom_predicate is not None:
             return custom_predicate(
                 SQLAlchemyCustomPredicateInput(
@@ -319,89 +335,78 @@ class SQLAlchemyExpressionTranslator:
                     options=options,
                 )
             )
-        if operator_name == EQUAL.name:
-            return self._build_equality_predicate(
-                expression,
-                python_type,
-                values[0],
-                negated=False,
-                options=options,
-            )
-        if operator_name == NOT_EQUAL.name:
-            return self._build_equality_predicate(
-                expression,
-                python_type,
-                values[0],
-                negated=True,
-                options=options,
-            )
-        if operator_name == GREATER_THAN.name:
-            return cast(ColumnElement[bool], expression > values[0])
-        if operator_name == GREATER_THAN_OR_EQUAL.name:
-            return cast(ColumnElement[bool], expression >= values[0])
-        if operator_name == LESS_THAN.name:
-            return cast(ColumnElement[bool], expression < values[0])
-        if operator_name == LESS_THAN_OR_EQUAL.name:
-            return cast(ColumnElement[bool], expression <= values[0])
-        if operator_name == IN.name:
-            return cast(ColumnElement[bool], expression.in_(values))
-        if operator_name == NOT_IN.name:
-            return cast(ColumnElement[bool], expression.not_in(values))
-        if operator_name == IS_NULL.name:
-            return cast(ColumnElement[bool], expression.is_(None))
-        if operator_name == NOT_NULL.name:
-            return cast(ColumnElement[bool], expression.is_not(None))
-        if operator_name == LIKE.name:
-            return self._build_contains_predicate(
-                expression,
-                str(values[0]),
-                ignore_case=False,
-                negated=False,
-                options=options,
-            )
-        if operator_name == NOT_LIKE.name:
-            return self._build_contains_predicate(
-                expression,
-                str(values[0]),
-                ignore_case=False,
-                negated=True,
-                options=options,
-            )
-        if operator_name == IGNORE_CASE.name:
-            return self._build_case_insensitive_equality_predicate(
-                expression,
-                str(values[0]),
-                negated=False,
-            )
-        if operator_name == IGNORE_CASE_LIKE.name:
-            return self._build_contains_predicate(
-                expression,
-                str(values[0]),
-                ignore_case=True,
-                negated=False,
-                options=options,
-            )
-        if operator_name == IGNORE_CASE_NOT_LIKE.name:
-            return self._build_contains_predicate(
-                expression,
-                str(values[0]),
-                ignore_case=True,
-                negated=True,
-                options=options,
-            )
-        if operator_name == BETWEEN.name:
-            return cast(
-                ColumnElement[bool],
-                expression.between(values[0], values[1]),
-            )
-        if operator_name == NOT_BETWEEN.name:
-            return cast(
-                ColumnElement[bool],
-                sa.not_(expression.between(values[0], values[1])),
-            )
-        raise SQLAlchemyORMError(
-            f"Unsupported SQLAlchemy operator {operator_name!r}."
-        )
+        match operator_name:
+            case EQUAL.name:
+                return self._build_equality_predicate(
+                    expression,
+                    python_type,
+                    values[0],
+                    negated=False,
+                    options=options,
+                )
+            case NOT_EQUAL.name:
+                return self._build_equality_predicate(
+                    expression,
+                    python_type,
+                    values[0],
+                    negated=True,
+                    options=options,
+                )
+            case GREATER_THAN.name:
+                return cast(ColumnElement[bool], expression > values[0])
+            case GREATER_THAN_OR_EQUAL.name:
+                return cast(ColumnElement[bool], expression >= values[0])
+            case LESS_THAN.name:
+                return cast(ColumnElement[bool], expression < values[0])
+            case LESS_THAN_OR_EQUAL.name:
+                return cast(ColumnElement[bool], expression <= values[0])
+            case IN.name:
+                return cast(ColumnElement[bool], expression.in_(values))
+            case NOT_IN.name:
+                return cast(ColumnElement[bool], expression.not_in(values))
+            case IS_NULL.name:
+                return cast(ColumnElement[bool], expression.is_(None))
+            case NOT_NULL.name:
+                return cast(ColumnElement[bool], expression.is_not(None))
+            case (
+                LIKE.name
+                | NOT_LIKE.name
+                | IGNORE_CASE_LIKE.name
+                | IGNORE_CASE_NOT_LIKE.name
+            ):
+                return self._build_contains_predicate(
+                    expression,
+                    str(values[0]),
+                    ignore_case=operator_name in {
+                        IGNORE_CASE_LIKE.name,
+                        IGNORE_CASE_NOT_LIKE.name,
+                    },
+                    negated=operator_name in {
+                        NOT_LIKE.name,
+                        IGNORE_CASE_NOT_LIKE.name,
+                    },
+                    options=options,
+                )
+            case IGNORE_CASE.name:
+                return self._build_case_insensitive_equality_predicate(
+                    expression,
+                    str(values[0]),
+                    negated=False,
+                )
+            case BETWEEN.name:
+                return cast(
+                    ColumnElement[bool],
+                    expression.between(values[0], values[1]),
+                )
+            case NOT_BETWEEN.name:
+                return cast(
+                    ColumnElement[bool],
+                    sa.not_(expression.between(values[0], values[1])),
+                )
+            case _:
+                raise SQLAlchemyORMError(
+                    f"Unsupported SQLAlchemy operator {operator_name!r}."
+                )
 
     def _build_equality_predicate(
         self,
@@ -529,6 +534,18 @@ class SQLAlchemyExpressionTranslator:
         if options.join_hints:
             return False
         return any(join_plan.is_collection for join_plan in joins)
+
+    def _finalize_predicate(
+        self,
+        joins: tuple[SQLAlchemyJoinPlan, ...],
+        predicate: ColumnElement[bool],
+        *,
+        options: QueryOptions,
+    ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
+        """Applies collection EXISTS wrapping when joins require it."""
+        if self._should_use_exists_predicate(joins, options=options):
+            return (), self._wrap_exists_predicate(joins, predicate)
+        return joins, predicate
 
     def _wrap_exists_predicate(
         self,

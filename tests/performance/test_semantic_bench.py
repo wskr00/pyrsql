@@ -1,4 +1,4 @@
-"""Performance regression tests for semantic analysis."""
+"""Performance regression tests for semantic binding."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ _QUERY_TEXT = "@upper[name]==JOHN;company.name==demo;addresses.city==belem"
 _SORT_TEXT = "@upper[name],asc;company.name,desc;name,asc,ic"
 
 
-def test_query_semantic_analysis_remains_fast() -> None:
-    """Keeps semantic query analysis within a broad regression budget."""
+def test_query_semantic_binding_remains_fast() -> None:
+    """Keeps semantic query binding within a broad regression budget."""
     expression = Parser(_QUERY_TEXT).parse()
     binder = SemanticBinder(QueryOptions(procedure_whitelist=("upper",)))
     elapsed = timeit(lambda: binder.bind(expression), number=5000)
@@ -27,8 +27,8 @@ def test_query_semantic_analysis_remains_fast() -> None:
     assert average_microseconds < 200.0
 
 
-def test_sort_semantic_analysis_remains_fast() -> None:
-    """Keeps semantic sort analysis within a broad regression budget."""
+def test_sort_semantic_binding_remains_fast() -> None:
+    """Keeps semantic sort binding within a broad regression budget."""
     fields = SortParser(_SORT_TEXT).parse()
     binder = SortBinder(SortOptions(procedure_whitelist=("upper",)))
     elapsed = timeit(lambda: binder.bind(fields), number=5000)

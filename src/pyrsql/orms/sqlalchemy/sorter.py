@@ -5,6 +5,7 @@ from typing import Any, cast
 import sqlalchemy as sa
 from sqlalchemy.sql.elements import ColumnElement
 
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONSortScalarType
 from pyrsql.core.options import SortOptions
 from pyrsql.ir.query import (
     BoundField,
@@ -93,8 +94,18 @@ class SQLAlchemySortTranslator:
             )
             return (
                 resolved_path.joins,
-                self._resolve_column_expression(resolved_path),
-                str if resolved_path.is_json else resolved_path.python_type,
+                self._resolve_column_expression(
+                    resolved_path,
+                    options=options,
+                ),
+                (
+                    self._resolve_json_python_type(
+                        resolved_path.field_path,
+                        options=options,
+                    )
+                    if resolved_path.is_json
+                    else resolved_path.python_type
+                ),
             )
         if isinstance(selector, BoundLiteral):
             python_type = (
@@ -134,6 +145,8 @@ class SQLAlchemySortTranslator:
     def _resolve_column_expression(
         self,
         resolved_path: SQLAlchemyResolvedPath,
+        *,
+        options: SortOptions | None,
     ) -> ColumnElement[Any]:
         """Builds the effective SQL expression for a resolved path."""
         base_expression = resolved_path.leaf_attribute
@@ -142,7 +155,33 @@ class SQLAlchemySortTranslator:
         return self._json_path_builder.build_sort_expression(
             base_expression,
             resolved_path.json_path,
+            field_path=resolved_path.field_path,
+            options=options.json_options if options else DEFAULT_JSON_OPTIONS,
         )
+
+    @staticmethod
+    def _resolve_json_python_type(
+        field_path: str,
+        *,
+        options: SortOptions | None,
+    ) -> type[Any] | None:
+        """Resolves the effective Python type for one JSON sort expression."""
+        json_options = options.json_options if options else DEFAULT_JSON_OPTIONS
+        sort_type = json_options.sort_field_types.get(
+            field_path,
+            JSONSortScalarType.TEXT,
+        )
+        match sort_type:
+            case JSONSortScalarType.TEXT:
+                return str
+            case JSONSortScalarType.INTEGER:
+                return int
+            case JSONSortScalarType.FLOAT | JSONSortScalarType.NUMERIC:
+                return float
+            case JSONSortScalarType.BOOLEAN:
+                return bool
+            case _:
+                return None
 
     def _build_order_clause(
         self,

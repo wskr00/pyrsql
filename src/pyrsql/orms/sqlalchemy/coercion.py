@@ -34,6 +34,7 @@ class SQLAlchemyValueCoercer:
         registry: ValueConverterRegistry | None = None,
     ) -> Any:
         """Coerces a raw argument into a typed Python value."""
+        field_label = field_path or field_name
         if field_converter_set is not None:
             field_converter = field_converter_set.resolve(
                 model=model,
@@ -46,7 +47,7 @@ class SQLAlchemyValueCoercer:
                 except Exception as error:
                     raise SQLAlchemyORMError(
                         f"Failed to convert {raw_value!r} for field "
-                        f"{field_path or field_name!r}."
+                        f"{field_label!r}."
                     ) from error
         active_registry = registry or self._registry
         if active_registry is None:

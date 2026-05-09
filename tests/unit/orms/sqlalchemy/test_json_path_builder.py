@@ -62,15 +62,15 @@ def test_builder_uses_jsonpath_vars_for_structured_values() -> None:
     predicate = builder.build_filter_expression(
         column("payload"),
         JSONPathComparison.from_raw_arguments(
-            path=JSONPath(),
+            path=JSONPath(segments=("tags",)),
             operator_name="equal",
-            raw_arguments=(('[1,2]', True),),
+            raw_arguments=(("[1,2]", True),),
         ),
     )
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = predicate.compile(dialect=dialect)
     assert "CAST(%(param_2)s::JSONB AS JSONB)" in str(compiled)
-    assert compiled.params["param_1"] == "$ ? (@ == $value_0)"
+    assert compiled.params["param_1"] == "$.tags ? (@ == $value_0)"
     assert compiled.params["param_2"] == {"value_0": [1, 2]}
 
 

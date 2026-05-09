@@ -11,11 +11,18 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
+from pyrsql.core.json.options import (
+    DEFAULT_JSON_OPTIONS,
+    JSONOptions,
+    JSONSortScalarType,
+)
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import JSONScalarValue
-from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
+from pyrsql.orms.sqlalchemy.errors import (
+    SQLAlchemyJSONSupportError,
+    SQLAlchemyORMError,
+)
 from pyrsql.parsing.operators import (
     BETWEEN,
     EQUAL,
@@ -53,6 +60,76 @@ class SQLAlchemyJSONPathExpressionBuilder:
     """Builds PostgreSQL JSON path expressions for SQLAlchemy."""
 
     __slots__ = ()
+
+    _DIRECT_DOCUMENT_OPERATORS = frozenset(
+        (
+            EQUAL.name,
+            NOT_EQUAL.name,
+            IN.name,
+            NOT_IN.name,
+            IS_NULL.name,
+            NOT_NULL.name,
+        )
+    )
+
+    def supports_document_predicate(
+        self,
+        comparison: JSONPathComparison,
+    ) -> bool:
+        """Returns whether a whole-document predicate should skip jsonpath."""
+        return (
+            comparison.path.is_root
+            and comparison.operator_name in self._DIRECT_DOCUMENT_OPERATORS
+        )
+
+    def build_document_filter_expression(
+        self,
+        column: ColumnElement[Any],
+        comparison: JSONPathComparison,
+    ) -> ColumnElement[bool]:
+        """Builds a direct whole-document JSONB predicate."""
+        jsonb_column = cast(
+            ColumnElement[Any],
+            sa.cast(column, postgresql.JSONB),
+        )
+        match comparison.operator_name:
+            case EQUAL.name:
+                return jsonb_column == self._jsonb_value_literal(
+                    comparison.values[0]
+                )
+            case NOT_EQUAL.name:
+                return jsonb_column != self._jsonb_value_literal(
+                    comparison.values[0]
+                )
+            case IN.name:
+                return cast(
+                    ColumnElement[bool],
+                    jsonb_column.in_(
+                        tuple(
+                            self._jsonb_value_literal(value)
+                            for value in comparison.values
+                        )
+                    ),
+                )
+            case NOT_IN.name:
+                return cast(
+                    ColumnElement[bool],
+                    jsonb_column.not_in(
+                        tuple(
+                            self._jsonb_value_literal(value)
+                            for value in comparison.values
+                        )
+                    ),
+                )
+            case IS_NULL.name:
+                return jsonb_column == self._jsonb_null_literal()
+            case NOT_NULL.name:
+                return jsonb_column != self._jsonb_null_literal()
+            case _:
+                raise SQLAlchemyJSONSupportError(
+                    "Unsupported whole-document JSON predicate "
+                    f"{comparison.operator_name!r}."
+                )
 
     def build_filter_expression(
         self,
@@ -123,22 +200,111 @@ class SQLAlchemyJSONPathExpressionBuilder:
             ),
         )
 
+    def _jsonb_value_literal(
+        self,
+        value: JSONScalarValue,
+    ) -> ColumnElement[Any]:
+        """Builds one JSONB-typed literal from a normalized JSON value."""
+        return cast(
+            ColumnElement[Any],
+            sa.cast(sa.literal(value.json_literal), postgresql.JSONB),
+        )
+
+    def _jsonb_null_literal(self) -> ColumnElement[Any]:
+        """Builds one JSONB literal representing JSON null."""
+        return cast(
+            ColumnElement[Any],
+            sa.cast(sa.literal("null"), postgresql.JSONB),
+        )
+
     def build_sort_expression(
         self,
         column: ColumnElement[Any],
         json_path: JSONPath,
+        *,
+        field_path: str,
+        options: JSONOptions | None = None,
     ) -> ColumnElement[Any]:
         """Builds a PostgreSQL JSON path extraction expression for sort."""
+        active_options = options or DEFAULT_JSON_OPTIONS
         jsonb_column = cast(
             ColumnElement[Any],
             sa.cast(column, postgresql.JSONB),
         )
+        sort_type = active_options.sort_field_types.get(
+            field_path,
+            JSONSortScalarType.TEXT,
+        )
         if json_path.is_root:
-            return jsonb_column
-        return cast(
+            return self._build_root_sort_expression(
+                jsonb_column,
+                field_path=field_path,
+                sort_type=sort_type,
+                has_explicit_config=(
+                    field_path in active_options.sort_field_types
+                ),
+            )
+        text_expression = cast(
             ColumnElement[Any],
             jsonb_column[json_path.segments].as_string(),
         )
+        return self._cast_sort_expression(
+            text_expression,
+            sort_type=sort_type,
+        )
+
+    def _build_root_sort_expression(
+        self,
+        jsonb_column: ColumnElement[Any],
+        *,
+        field_path: str,
+        sort_type: JSONSortScalarType,
+        has_explicit_config: bool,
+    ) -> ColumnElement[Any]:
+        """Builds a root JSON document sort expression."""
+        if not has_explicit_config:
+            raise SQLAlchemyJSONSupportError(
+                "Sorting by a whole JSON document requires an explicit "
+                f"json sort type for field {field_path!r}."
+            )
+        if sort_type is not JSONSortScalarType.TEXT:
+            raise SQLAlchemyJSONSupportError(
+                "Whole-document JSON sorting currently supports only "
+                f"text semantics for field {field_path!r}."
+            )
+        return cast(ColumnElement[Any], sa.cast(jsonb_column, sa.Text()))
+
+    def _cast_sort_expression(
+        self,
+        expression: ColumnElement[Any],
+        *,
+        sort_type: JSONSortScalarType,
+    ) -> ColumnElement[Any]:
+        """Applies one configured scalar cast to a JSON sort expression."""
+        match sort_type:
+            case JSONSortScalarType.TEXT:
+                return expression
+            case JSONSortScalarType.INTEGER:
+                target_type: Any = sa.Integer()
+            case JSONSortScalarType.FLOAT:
+                target_type = sa.Float()
+            case JSONSortScalarType.NUMERIC:
+                target_type = sa.Numeric()
+            case JSONSortScalarType.BOOLEAN:
+                target_type = sa.Boolean()
+            case JSONSortScalarType.DATE:
+                target_type = sa.Date()
+            case JSONSortScalarType.TIME:
+                target_type = sa.Time()
+            case JSONSortScalarType.DATETIME:
+                target_type = sa.DateTime(timezone=False)
+            case JSONSortScalarType.DATETIME_TZ:
+                target_type = sa.DateTime(timezone=True)
+            case _:
+                raise SQLAlchemyJSONSupportError(
+                    f"Unsupported JSON sort scalar type {sort_type!r}."
+                )
+        return cast(ColumnElement[Any], sa.cast(expression, target_type))
 
     def _build_filter_call(
         self,
@@ -159,138 +325,113 @@ class SQLAlchemyJSONPathExpressionBuilder:
             self._is_datetime_value(value) for value in comparison.values
         ):
             value_reference = "@.datetime()"
-        if comparison.operator_name == NOT_NULL.name:
-            comparison_clause = "(@ != null)"
-        elif comparison.operator_name == EQUAL.name:
-            comparison_clause = self._equality_comparison(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-        elif comparison.operator_name == NOT_EQUAL.name:
-            equality_clause = self._equality_comparison(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = f"!{equality_clause}"
-        elif comparison.operator_name == GREATER_THAN.name:
-            value_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = f"({value_reference} > {value_literal})"
-        elif comparison.operator_name == GREATER_THAN_OR_EQUAL.name:
-            value_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = f"({value_reference} >= {value_literal})"
-        elif comparison.operator_name == LESS_THAN.name:
-            value_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = f"({value_reference} < {value_literal})"
-        elif comparison.operator_name == LESS_THAN_OR_EQUAL.name:
-            value_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = f"({value_reference} <= {value_literal})"
-        elif comparison.operator_name == IN.name:
-            comparison_clause = self._membership_comparison(
-                value_reference,
-                comparison.values,
-                operator="==",
-                join_operator="||",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-        elif comparison.operator_name == NOT_IN.name:
-            comparison_clause = self._membership_comparison(
-                value_reference,
-                comparison.values,
-                operator="!=",
-                join_operator="&&",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-        elif comparison.operator_name == IS_NULL.name:
-            comparison_clause = "(@ == null)"
-        elif comparison.operator_name == LIKE.name:
-            comparison_clause = self._regex_comparison(
-                comparison.values[0],
-                ignore_case=False,
-            )
-        elif comparison.operator_name == NOT_LIKE.name:
-            comparison_clause = "!" + self._regex_comparison(
-                comparison.values[0],
-                ignore_case=False,
-            )
-        elif comparison.operator_name == IGNORE_CASE.name:
-            comparison_clause = self._regex_comparison(
-                comparison.values[0],
-                ignore_case=True,
-            )
-        elif comparison.operator_name == IGNORE_CASE_LIKE.name:
-            comparison_clause = self._regex_comparison(
-                comparison.values[0],
-                ignore_case=True,
-            )
-        elif comparison.operator_name == IGNORE_CASE_NOT_LIKE.name:
-            comparison_clause = "!" + self._regex_comparison(
-                comparison.values[0],
-                ignore_case=True,
-            )
-        elif comparison.operator_name == BETWEEN.name:
-            lower_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            upper_literal = self._render_value_operand(
-                comparison.values[1],
-                variable_name="value_1",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = (
-                f"({value_reference} >= {lower_literal}"
-                f" && {value_reference} <= {upper_literal})"
-            )
-        elif comparison.operator_name == NOT_BETWEEN.name:
-            lower_literal = self._render_value_operand(
-                comparison.values[0],
-                variable_name="value_0",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            upper_literal = self._render_value_operand(
-                comparison.values[1],
-                variable_name="value_1",
-                vars_payload=vars_payload,
-                use_datetime=use_datetime,
-            )
-            comparison_clause = (
-                f"({value_reference} < {lower_literal}"
-                f" || {value_reference} > {upper_literal})"
-            )
-        else:
-            raise SQLAlchemyORMError(
-                f"Unsupported JSON operator {comparison.operator_name!r}."
-            )
+        match comparison.operator_name:
+            case NOT_NULL.name:
+                comparison_clause = "(@ != null)"
+            case EQUAL.name:
+                comparison_clause = self._equality_comparison(
+                    comparison.values[0],
+                    variable_name="value_0",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+            case NOT_EQUAL.name:
+                equality_clause = self._equality_comparison(
+                    comparison.values[0],
+                    variable_name="value_0",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+                comparison_clause = f"!{equality_clause}"
+            case (
+                GREATER_THAN.name
+                | GREATER_THAN_OR_EQUAL.name
+                | LESS_THAN.name
+                | LESS_THAN_OR_EQUAL.name
+            ):
+                operator = {
+                    GREATER_THAN.name: ">",
+                    GREATER_THAN_OR_EQUAL.name: ">=",
+                    LESS_THAN.name: "<",
+                    LESS_THAN_OR_EQUAL.name: "<=",
+                }[comparison.operator_name]
+                value_literal = self._render_value_operand(
+                    comparison.values[0],
+                    variable_name="value_0",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+                comparison_clause = (
+                    f"({value_reference} {operator} {value_literal})"
+                )
+            case IN.name:
+                comparison_clause = self._membership_comparison(
+                    value_reference,
+                    comparison.values,
+                    operator="==",
+                    join_operator="||",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+            case NOT_IN.name:
+                comparison_clause = self._membership_comparison(
+                    value_reference,
+                    comparison.values,
+                    operator="!=",
+                    join_operator="&&",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+            case IS_NULL.name:
+                comparison_clause = "(@ == null)"
+            case (
+                LIKE.name
+                | NOT_LIKE.name
+                | IGNORE_CASE.name
+                | IGNORE_CASE_LIKE.name
+                | IGNORE_CASE_NOT_LIKE.name
+            ):
+                ignore_case = comparison.operator_name in {
+                    IGNORE_CASE.name,
+                    IGNORE_CASE_LIKE.name,
+                    IGNORE_CASE_NOT_LIKE.name,
+                }
+                comparison_clause = self._regex_comparison(
+                    comparison.values[0],
+                    ignore_case=ignore_case,
+                )
+                if comparison.operator_name in {
+                    NOT_LIKE.name,
+                    IGNORE_CASE_NOT_LIKE.name,
+                }:
+                    comparison_clause = f"!{comparison_clause}"
+            case BETWEEN.name | NOT_BETWEEN.name:
+                lower_literal = self._render_value_operand(
+                    comparison.values[0],
+                    variable_name="value_0",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+                upper_literal = self._render_value_operand(
+                    comparison.values[1],
+                    variable_name="value_1",
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )
+                if comparison.operator_name == BETWEEN.name:
+                    comparison_clause = (
+                        f"({value_reference} >= {lower_literal}"
+                        f" && {value_reference} <= {upper_literal})"
+                    )
+                else:
+                    comparison_clause = (
+                        f"({value_reference} < {lower_literal}"
+                        f" || {value_reference} > {upper_literal})"
+                    )
+            case _:
+                raise SQLAlchemyORMError(
+                    f"Unsupported JSON operator {comparison.operator_name!r}."
+                )
         return _JSONPathFilterCall(
             json_path_expression=f"{target_path} ? {comparison_clause}",
             use_timezone_function=use_timezone_function,
@@ -319,7 +460,12 @@ class SQLAlchemyJSONPathExpressionBuilder:
         )
         return (
             f"({value_reference} == "
-            f"{self._render_value_operand(value, variable_name=variable_name, vars_payload=vars_payload, use_datetime=use_datetime)})"
+            f"{self._render_value_operand(
+                value,
+                variable_name=variable_name,
+                vars_payload=vars_payload,
+                use_datetime=use_datetime,
+            )})"
         )
 
     def _regex_comparison(
@@ -356,7 +502,12 @@ class SQLAlchemyJSONPathExpressionBuilder:
         comparisons = (
             (
                 f"({value_reference} {operator} "
-                f"{self._render_value_operand(value, variable_name=f'value_{index}', vars_payload=vars_payload, use_datetime=use_datetime)})"
+                f"{self._render_value_operand(
+                    value,
+                    variable_name=f'value_{index}',
+                    vars_payload=vars_payload,
+                    use_datetime=use_datetime,
+                )})"
             )
             for index, value in enumerate(values)
         )

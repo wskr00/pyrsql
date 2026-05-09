@@ -53,8 +53,7 @@ def _raise_http_error(payload: FastAPIAdapterErrorPayload) -> None:
         detail={
             "parameter": payload.parameter,
             "type": payload.error_type,
-            "message": payload.message,
-            "detail": [msgspec.to_builtins(item) for item in payload.details],
+            "errors": [msgspec.to_builtins(item) for item in payload.details],
         },
     )
 

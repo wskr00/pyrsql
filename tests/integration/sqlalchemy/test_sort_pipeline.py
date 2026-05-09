@@ -15,9 +15,10 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from pyrsql.core.joins import JoinHint
+from pyrsql.core.json.options import JSONOptions, JSONSortScalarType
 from pyrsql.core.options import SortOptions
 from pyrsql.core.sort import Sort
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM, SQLAlchemyJSONSupportError
 
 
 class Base(DeclarativeBase):
@@ -175,3 +176,59 @@ def test_orm_applies_json_sort_clause() -> None:
     sql = str(statement.compile(dialect=dialect))
     assert "#>>" in sql
     assert "payload" in sql
+
+
+def test_orm_applies_typed_json_numeric_sort_clause() -> None:
+    """Applies configured numeric casts for JSON sort expressions."""
+    orm = SQLAlchemyORM()
+    statement = Sort.parse(
+        "payload.user.id,asc",
+        options=SortOptions(
+            json_options=JSONOptions(
+                sort_field_types={
+                    "payload.user.id": JSONSortScalarType.INTEGER,
+                }
+            )
+        ),
+    ).apply(
+        select(JsonEvent),
+        JsonEvent,
+        orm=orm,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "CAST(" in sql
+    assert " AS INTEGER)" in sql
+
+
+def test_orm_rejects_root_json_sort_without_explicit_configuration() -> None:
+    """Rejects ambiguous whole-document JSON sorting by default."""
+    orm = SQLAlchemyORM()
+    with pytest.raises(SQLAlchemyJSONSupportError, match="whole JSON document"):
+        Sort.parse("payload,asc").apply(
+            select(JsonEvent),
+            JsonEvent,
+            orm=orm,
+        )
+
+
+def test_orm_allows_root_json_sort_with_explicit_text_configuration() -> None:
+    """Allows whole-document JSON sort only with explicit text semantics."""
+    orm = SQLAlchemyORM()
+    statement = Sort.parse(
+        "payload,asc",
+        options=SortOptions(
+            json_options=JSONOptions(
+                sort_field_types={
+                    "payload": JSONSortScalarType.TEXT,
+                }
+            )
+        ),
+    ).apply(
+        select(JsonEvent),
+        JsonEvent,
+        orm=orm,
+    )
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(statement.compile(dialect=dialect))
+    assert "CAST(CAST(json_event.payload AS JSONB) AS TEXT) ASC" in sql

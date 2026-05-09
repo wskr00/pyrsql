@@ -34,7 +34,7 @@ def _parse_query_expression(
     ).parse()
 
 
-def _analyze_query_expression(
+def _bind_query_expression(
     expression: Expression,
     *,
     options: QueryOptions,
@@ -123,7 +123,7 @@ class Query:
         Returns:
             The bound logical query IR.
         """
-        return _analyze_query_expression(expression, options=options)
+        return _bind_query_expression(expression, options=options)
 
     def compile(self, *, orm: ORM) -> CompilationResult:
         """Compiles the query using the provided ORM.

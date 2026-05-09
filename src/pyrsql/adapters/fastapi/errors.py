@@ -3,6 +3,7 @@
 import msgspec
 
 from pyrsql.parsing.errors import ParseError
+from pyrsql.parsing.source import SourceSpan
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
     FieldNotWhitelistedError,
@@ -30,13 +31,24 @@ class FastAPIAdapterErrorPayload(
     Attributes:
         parameter: Name of the query parameter associated with the failure.
         error_type: Stable machine-readable error category.
-        message: Human-readable error message.
     """
 
     parameter: str
     error_type: str
-    message: str
     details: tuple["FastAPIAdapterErrorDetail", ...]
+
+
+class FastAPIAdapterErrorLocation(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
+    """Structured source location exposed by adapter diagnostics."""
+
+    index: int
+    line: int
+    column: int
 
 
 class FastAPIAdapterErrorDetail(
@@ -50,6 +62,7 @@ class FastAPIAdapterErrorDetail(
     code: str
     message: str
     field: str | None = None
+    location: FastAPIAdapterErrorLocation | None = None
 
 
 def _extract_field_from_message(message: str) -> str | None:
@@ -62,6 +75,17 @@ def _extract_field_from_message(message: str) -> str | None:
         return None
     field = message[quote_start + 1 : quote_end]
     return field or None
+
+
+def _build_error_location(
+    span: SourceSpan,
+) -> FastAPIAdapterErrorLocation:
+    """Builds one adapter-facing location from a source span."""
+    return FastAPIAdapterErrorLocation(
+        index=span.start.index,
+        line=span.start.line,
+        column=span.start.column,
+    )
 
 
 def build_query_error_payload(
@@ -80,6 +104,7 @@ def build_query_error_payload(
     error_type = "query_parse_error"
     detail_code = getattr(error, "code", "query_parse_error")
     detail_field = None
+    detail_location = None
     if isinstance(error, SemanticError):
         error_type = "query_semantic_error"
         if isinstance(
@@ -92,15 +117,18 @@ def build_query_error_payload(
             ),
         ):
             detail_field = _extract_field_from_message(error.message)
+        detail_location = _build_error_location(error.span)
+    elif isinstance(error, ParseError):
+        detail_location = _build_error_location(error.span)
     return FastAPIAdapterErrorPayload(
         parameter=parameter_name,
         error_type=error_type,
-        message=str(error),
         details=(
             FastAPIAdapterErrorDetail(
                 code=detail_code,
                 message=error.message,
                 field=detail_field,
+                location=detail_location,
             ),
         ),
     )
@@ -138,7 +166,6 @@ def build_sort_error_payload(
     return FastAPIAdapterErrorPayload(
         parameter=parameter_name,
         error_type=error_type,
-        message=str(error),
         details=(
             FastAPIAdapterErrorDetail(
                 code=detail_code,
@@ -168,7 +195,6 @@ def build_page_error_payload(
     return FastAPIAdapterErrorPayload(
         parameter=parameter_name,
         error_type=error_type,
-        message=message,
         details=(
             FastAPIAdapterErrorDetail(
                 code=error_type,

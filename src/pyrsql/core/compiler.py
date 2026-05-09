@@ -7,6 +7,12 @@ import msgspec
 from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort
 
 
+def _validate_orm_name(orm_name: str, *, context: str) -> None:
+    """Validates one compilation result ORM name."""
+    if not orm_name:
+        raise ValueError(f"{context} orm_name cannot be empty.")
+
+
 class CompilationResult(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Wraps an ORM-specific compiled query object.
 
@@ -20,8 +26,7 @@ class CompilationResult(msgspec.Struct, frozen=True, gc=False, kw_only=True):
 
     def __post_init__(self) -> None:
         """Validates compilation result invariants."""
-        if not self.orm_name:
-            raise ValueError("Compilation result orm_name cannot be empty.")
+        _validate_orm_name(self.orm_name, context="Compilation result")
 
     def apply(self, target: Any, model: type[Any]) -> Any:
         """Applies the compiled query to an ORM-specific target.
@@ -54,10 +59,10 @@ class SortCompilationResult(
 
     def __post_init__(self) -> None:
         """Validates sort compilation result invariants."""
-        if not self.orm_name:
-            raise ValueError(
-                "Sort compilation result orm_name cannot be empty."
-            )
+        _validate_orm_name(
+            self.orm_name,
+            context="Sort compilation result",
+        )
 
     def apply(self, target: Any, model: type[Any]) -> Any:
         """Applies the compiled sort to an ORM-specific target.
@@ -90,10 +95,10 @@ class PageCompilationResult(
 
     def __post_init__(self) -> None:
         """Validates page compilation result invariants."""
-        if not self.orm_name:
-            raise ValueError(
-                "Page compilation result orm_name cannot be empty."
-            )
+        _validate_orm_name(
+            self.orm_name,
+            context="Page compilation result",
+        )
 
     def apply(self, target: Any, model: type[Any]) -> Any:
         """Applies the compiled page request to an ORM-specific target.

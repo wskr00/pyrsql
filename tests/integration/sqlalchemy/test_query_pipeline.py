@@ -452,8 +452,9 @@ def test_orm_applies_root_json_array_predicate() -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
-    assert compiled.params["param_1"] == "$ ? (@ == $value_0)"
-    assert compiled.params["param_2"] == {"value_0": [1, 2]}
+    sql = str(compiled)
+    assert " = CAST(%(param_1)s AS JSONB)" in sql
+    assert compiled.params["param_1"] == "[1,2]"
 
 
 def test_orm_applies_json_quoted_object_predicate() -> None:
@@ -474,8 +475,9 @@ def test_orm_applies_root_json_object_predicate() -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
-    assert compiled.params["param_1"] == "$ ? (@ == $value_0)"
-    assert compiled.params["param_2"] == {"value_0": {"id": 1}}
+    sql = str(compiled)
+    assert " = CAST(%(param_1)s AS JSONB)" in sql
+    assert compiled.params["param_1"] == '{"id":1}'
 
 
 def test_orm_applies_json_datetime_path_predicate() -> None:

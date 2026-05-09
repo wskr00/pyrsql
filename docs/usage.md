@@ -60,7 +60,7 @@ query = pyrsql.parse("name==demo")
 
 `Query.parse(...)` returns a `Query` carrying:
 
-- `source`
+- `text`
 - `expression`
 - `bound_expression`
 
@@ -76,7 +76,7 @@ sort = Sort.parse("name,asc;company.name,desc")
 
 `Sort.parse(...)` returns a `Sort` carrying:
 
-- `source`
+- `text`
 - `fields`
 - `bound_sort`
 
@@ -115,6 +115,136 @@ stmt = PageRequest.of(0, 20).apply(
     stmt,
     User,
     orm=orm,
+)
+```
+
+## JSON / JSONB
+
+PostgreSQL JSON and JSONB fields support two distinct query modes.
+
+### Whole-document comparison
+
+When the selector targets the JSON column itself, pyrsql uses direct JSONB
+comparison semantics instead of forcing everything through `jsonpath`.
+
+Examples:
+
+```python
+from pyrsql import Query
+
+Query.parse('payload=={"kind":"demo"}')
+Query.parse('payload==["rg","cpf"]')
+Query.parse("payload=nn=")
+```
+
+Supported whole-document operators:
+
+- `==`
+- `!=`
+- `=in=`
+- `=out=`
+- `=na=`
+- `=nn=`
+
+### Nested path comparison
+
+When the selector traverses inside the JSON document, pyrsql uses PostgreSQL
+`jsonpath` lowering.
+
+Examples:
+
+```python
+from pyrsql import Query
+
+Query.parse("payload.user.id==1")
+Query.parse("payload.user.name==demo")
+Query.parse("payload.tags==[1,2]")
+```
+
+For structured values like arrays and objects, pyrsql passes values through
+PostgreSQL `jsonpath` vars instead of inlining invalid literals into the
+`jsonpath` expression.
+
+### Temporal JSON path semantics
+
+You can enable datetime-aware JSON comparisons with `JSONOptions`.
+
+```python
+from pyrsql.core import JSONOptions, QueryOptions
+from pyrsql import Query
+
+query = Query.parse(
+    "payload.created_at=ge=2026-05-01T10:30:00+00:00",
+    options=QueryOptions(
+        json_options=JSONOptions(use_datetime=True),
+    ),
+)
+```
+
+## JSON Sort
+
+By default, nested JSON sort expressions use text semantics.
+
+```python
+from pyrsql import Sort
+
+sort = Sort.parse("payload.user.name,asc")
+```
+
+For numeric, boolean, or temporal JSON values, configure the sort type
+explicitly with `JSONOptions.sort_field_types`.
+
+```python
+from pyrsql import Sort
+from pyrsql.core import JSONOptions, JSONSortScalarType, SortOptions
+
+sort = Sort.parse(
+    "payload.user.id,asc",
+    options=SortOptions(
+        json_options=JSONOptions(
+            sort_field_types={
+                "payload.user.id": JSONSortScalarType.INTEGER,
+            }
+        )
+    ),
+)
+```
+
+Supported JSON sort scalar types:
+
+- `TEXT`
+- `INTEGER`
+- `FLOAT`
+- `NUMERIC`
+- `BOOLEAN`
+- `DATE`
+- `TIME`
+- `DATETIME`
+- `DATETIME_TZ`
+
+### Whole-document JSON sort
+
+Whole-document JSON sort is intentionally restricted.
+
+- without explicit configuration: pyrsql rejects it
+- with explicit `TEXT` configuration: pyrsql allows it
+- non-text whole-document sort semantics are rejected
+
+Example:
+
+```python
+from pyrsql import Sort
+from pyrsql.core import JSONOptions, JSONSortScalarType, SortOptions
+
+sort = Sort.parse(
+    "payload,asc",
+    options=SortOptions(
+        json_options=JSONOptions(
+            sort_field_types={
+                "payload": JSONSortScalarType.TEXT,
+            }
+        )
+    ),
 )
 ```
 

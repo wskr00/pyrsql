@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID
 
 import ciso8601
+import msgspec
 
 ValueConverter = Callable[[str], Any]
 
@@ -20,12 +21,15 @@ class ValueConversionError(ValueError):
 
 def _convert_bool(raw_value: str) -> bool:
     """Converts a string to bool using explicit accepted values."""
-    lowered = raw_value.lower()
-    if lowered == "true":
-        return True
-    if lowered == "false":
-        return False
-    raise ValueConversionError(f"Cannot convert {raw_value!r} to bool.")
+    match raw_value.lower():
+        case "true":
+            return True
+        case "false":
+            return False
+        case _:
+            raise ValueConversionError(
+                f"Cannot convert {raw_value!r} to bool."
+            )
 
 
 def _convert_datetime(raw_value: str) -> dt.datetime:
@@ -93,6 +97,10 @@ class ValueConverterRegistry:
                 return self._convert_enum(raw_value, target_type)
             if issubclass(target_type, str):
                 return raw_value
+            if issubclass(target_type, dict):
+                return self._convert_json_container(raw_value, target_type)
+            if issubclass(target_type, list):
+                return self._convert_json_container(raw_value, target_type)
         except TypeError as error:  # pragma: no cover - invalid type object
             raise ValueConversionError(
                 f"Unsupported target type {target_type!r}."
@@ -136,6 +144,42 @@ class ValueConverterRegistry:
         """Attempts a plain constructor-based conversion as a fallback."""
         try:
             return target_type(raw_value)
+        except Exception as error:
+            raise ValueConversionError(
+                f"Failed to convert {raw_value!r} to {target_type.__name__}."
+            ) from error
+
+    def _convert_json_container(
+        self,
+        raw_value: str,
+        target_type: type[Any],
+    ) -> Any:
+        """Converts a JSON string into a mapping or sequence container."""
+        try:
+            decoded = msgspec.json.decode(raw_value)
+        except msgspec.DecodeError as error:
+            raise ValueConversionError(
+                f"Failed to convert {raw_value!r} to {target_type.__name__}."
+            ) from error
+
+        expected_type: type[Any]
+        if issubclass(target_type, dict):
+            expected_type = dict
+        elif issubclass(target_type, list):
+            expected_type = list
+        else:  # pragma: no cover - guarded by convert()
+            raise ValueConversionError(
+                f"Unsupported target type {target_type!r}."
+            )
+
+        if not isinstance(decoded, expected_type):
+            raise ValueConversionError(
+                f"Failed to convert {raw_value!r} to {target_type.__name__}."
+            )
+        if target_type is expected_type:
+            return decoded
+        try:
+            return target_type(decoded)
         except Exception as error:
             raise ValueConversionError(
                 f"Failed to convert {raw_value!r} to {target_type.__name__}."

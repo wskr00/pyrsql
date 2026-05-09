@@ -129,6 +129,18 @@ Its job is:
 
 It should not redo semantic interpretation already handled upstream.
 
+For PostgreSQL JSON/JSONB lowering, the current design intentionally separates:
+
+- whole-document JSON predicates:
+  - direct JSONB comparison/containment-style primitives where appropriate
+- nested JSON predicates:
+  - PostgreSQL `jsonpath`
+  - `JSONPATH`-typed binds
+  - vars payloads for structured values
+
+This keeps the backend closer to PostgreSQL/SQLAlchemy primitives instead of
+forcing every JSON case through the same lowering strategy.
+
 ### `adapters`
 
 Own framework-level request and error adaptation.
@@ -201,6 +213,13 @@ Other performance principles:
 - avoid repeating semantic work in the ORM backend
 - keep hot-path allocations small
 - prefer explicit invariants over defensive branching spread everywhere
+
+For JSON specifically:
+
+- whole-document predicates avoid unnecessary `jsonpath` construction
+- structured nested JSON comparisons use vars payloads instead of invalid
+  literal embedding
+- JSON sort semantics are explicit when non-text ordering is required
 
 ## FastAPI Product Layer
 
@@ -275,6 +294,14 @@ Planned long-term areas include:
 - additional ORMs
 - SQLAlchemy-driven OpenAPI example generation
 - more ergonomic integration helpers where justified
+
+Current deliberate JSON limitation:
+
+- whole-document JSON sort only supports explicit text semantics
+
+This is intentional. The project prefers rejecting ambiguous ordering over
+pretending to offer typed whole-document JSON sort semantics that would be
+misleading or backend-fragile.
 
 Rewrite and optimizer-style passes remain a future concern, not a current
 priority. The present architecture is centered on:

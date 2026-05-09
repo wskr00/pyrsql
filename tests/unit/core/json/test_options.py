@@ -1,8 +1,11 @@
 """Unit tests for orm-neutral JSON options."""
 
+from typing import Any, cast
+
 import pytest
 
 from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
+from pyrsql.core.json.options import JSONSortScalarType
 from pyrsql.core.options import QueryOptions, SortOptions
 
 
@@ -41,3 +44,14 @@ def test_json_options_reject_invalid_function_names() -> None:
 
     with pytest.raises(ValueError, match="outer whitespace"):
         JSONOptions(path_exists_tz_function=" jsonb_path_exists_tz ")
+
+
+def test_json_options_normalize_sort_field_types() -> None:
+    """JSON options normalize configured JSON sort scalar types."""
+    options = JSONOptions(
+        sort_field_types={"payload.score": cast(Any, "numeric")},
+    )
+    assert (
+        options.sort_field_types["payload.score"]
+        is JSONSortScalarType.NUMERIC
+    )

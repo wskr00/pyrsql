@@ -3,9 +3,10 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Final, TypeVar
+from typing import Any, Final, Protocol, TypeVar
 
 from pyrsql.core.conversion import (
+    DEFAULT_FIELD_VALUE_CONVERTER_SET,
     DEFAULT_VALUE_CONVERTER_REGISTRY,
     FieldValueConverterSet,
     ValueConverter,
@@ -27,6 +28,43 @@ _NestedValueT = TypeVar("_NestedValueT")
 _EMPTY_TUPLE: Final[tuple[str, ...]] = ()
 
 
+class _SharedPolicyOptionsProtocol(Protocol):
+    """Structural contract for shared field/procedure policy options."""
+
+    @property
+    def field_mapping(self) -> Mapping[str, str]: ...
+
+    @property
+    def model_field_mapping(
+        self,
+    ) -> Mapping[type[Any], Mapping[str, str]]: ...
+
+    @property
+    def join_hints(self) -> Mapping[str, JoinHint]: ...
+
+    @property
+    def field_whitelist(self) -> frozenset[str]: ...
+
+    @property
+    def field_blacklist(self) -> frozenset[str]: ...
+
+    @property
+    def model_field_whitelist(
+        self,
+    ) -> Mapping[type[Any], frozenset[str]]: ...
+
+    @property
+    def model_field_blacklist(
+        self,
+    ) -> Mapping[type[Any], frozenset[str]]: ...
+
+    @property
+    def procedure_whitelist(self) -> tuple[str, ...]: ...
+
+    @property
+    def procedure_blacklist(self) -> tuple[str, ...]: ...
+
+
 def _normalize_mapping(
     mapping: Mapping[str, _NestedValueT],
 ) -> Mapping[str, _NestedValueT]:
@@ -42,6 +80,67 @@ def _normalize_tuple(values: tuple[str, ...]) -> tuple[str, ...]:
 def _normalize_frozenset(values: frozenset[str]) -> frozenset[str]:
     """Normalizes set-like string containers."""
     return frozenset(values)
+
+
+def _normalize_shared_policy_options(
+    options: _SharedPolicyOptionsProtocol,
+) -> None:
+    """Normalizes option fields shared by query and sort configuration."""
+    object.__setattr__(
+        options,
+        "field_mapping",
+        _normalize_mapping(options.field_mapping),
+    )
+    object.__setattr__(
+        options,
+        "model_field_mapping",
+        _normalize_nested_mapping(options.model_field_mapping),
+    )
+    object.__setattr__(
+        options,
+        "join_hints",
+        _normalize_mapping(options.join_hints),
+    )
+    object.__setattr__(
+        options,
+        "field_whitelist",
+        _normalize_frozenset(options.field_whitelist),
+    )
+    object.__setattr__(
+        options,
+        "field_blacklist",
+        _normalize_frozenset(options.field_blacklist),
+    )
+    object.__setattr__(
+        options,
+        "model_field_whitelist",
+        _normalize_nested_sets(options.model_field_whitelist),
+    )
+    object.__setattr__(
+        options,
+        "model_field_blacklist",
+        _normalize_nested_sets(options.model_field_blacklist),
+    )
+    object.__setattr__(
+        options,
+        "procedure_whitelist",
+        _normalize_tuple(options.procedure_whitelist),
+    )
+    object.__setattr__(
+        options,
+        "procedure_blacklist",
+        _normalize_tuple(options.procedure_blacklist),
+    )
+
+
+def _validate_like_escape_character(
+    like_escape_character: str | None,
+) -> None:
+    """Validates one optional SQL LIKE escape character."""
+    if like_escape_character is not None and len(like_escape_character) != 1:
+        raise ValueError(
+            "like_escape_character must be a single character when set."
+        )
 
 
 def _build_field_policy(
@@ -132,21 +231,7 @@ class QueryOptions:
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
-        object.__setattr__(
-            self,
-            "field_mapping",
-            _normalize_mapping(self.field_mapping),
-        )
-        object.__setattr__(
-            self,
-            "model_field_mapping",
-            _normalize_nested_mapping(self.model_field_mapping),
-        )
-        object.__setattr__(
-            self,
-            "join_hints",
-            _normalize_mapping(self.join_hints),
-        )
+        _normalize_shared_policy_options(self)
         object.__setattr__(
             self,
             "field_value_converters",
@@ -164,46 +249,10 @@ class QueryOptions:
         )
         object.__setattr__(
             self,
-            "field_whitelist",
-            _normalize_frozenset(self.field_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "field_blacklist",
-            _normalize_frozenset(self.field_blacklist),
-        )
-        object.__setattr__(
-            self,
-            "model_field_whitelist",
-            _normalize_nested_sets(self.model_field_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "model_field_blacklist",
-            _normalize_nested_sets(self.model_field_blacklist),
-        )
-        object.__setattr__(
-            self,
-            "procedure_whitelist",
-            _normalize_tuple(self.procedure_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "procedure_blacklist",
-            _normalize_tuple(self.procedure_blacklist),
-        )
-        object.__setattr__(
-            self,
             "operator_registry",
             self._build_operator_registry(),
         )
-        if (
-            self.like_escape_character is not None
-            and len(self.like_escape_character) != 1
-        ):
-            raise ValueError(
-                "like_escape_character must be a single character when set."
-            )
+        _validate_like_escape_character(self.like_escape_character)
         object.__setattr__(self, "_field_policy", self._build_field_policy())
         object.__setattr__(
             self,
@@ -281,6 +330,11 @@ class QueryOptions:
 
     def _build_field_converter_set(self) -> FieldValueConverterSet:
         """Builds the immutable field-converter object once."""
+        if (
+            not self.field_value_converters
+            and not self.model_field_value_converters
+        ):
+            return DEFAULT_FIELD_VALUE_CONVERTER_SET
         return FieldValueConverterSet(
             field_converters=self.field_value_converters,
             model_field_converters=self.model_field_value_converters,
@@ -330,51 +384,7 @@ class SortOptions:
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
-        object.__setattr__(
-            self,
-            "field_mapping",
-            _normalize_mapping(self.field_mapping),
-        )
-        object.__setattr__(
-            self,
-            "model_field_mapping",
-            _normalize_nested_mapping(self.model_field_mapping),
-        )
-        object.__setattr__(
-            self,
-            "join_hints",
-            _normalize_mapping(self.join_hints),
-        )
-        object.__setattr__(
-            self,
-            "field_whitelist",
-            _normalize_frozenset(self.field_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "field_blacklist",
-            _normalize_frozenset(self.field_blacklist),
-        )
-        object.__setattr__(
-            self,
-            "model_field_whitelist",
-            _normalize_nested_sets(self.model_field_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "model_field_blacklist",
-            _normalize_nested_sets(self.model_field_blacklist),
-        )
-        object.__setattr__(
-            self,
-            "procedure_whitelist",
-            _normalize_tuple(self.procedure_whitelist),
-        )
-        object.__setattr__(
-            self,
-            "procedure_blacklist",
-            _normalize_tuple(self.procedure_blacklist),
-        )
+        _normalize_shared_policy_options(self)
         object.__setattr__(self, "_field_policy", self._build_field_policy())
         object.__setattr__(
             self,

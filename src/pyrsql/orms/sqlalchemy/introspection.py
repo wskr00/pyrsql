@@ -58,34 +58,47 @@ class SQLAlchemyModelInspector:
         mapper = self.inspect_model(model)
         if attribute_name in mapper.relationships:
             relationship = mapper.relationships[attribute_name]
-            mapped_attribute = SQLAlchemyMappedAttribute(
-                name=attribute_name,
-                kind=SQLAlchemyAttributeKind.RELATIONSHIP,
-                owner_model=model,
-                attribute=getattr(model, attribute_name),
-                mapper=relationship.mapper,
-                python_type=relationship.mapper.class_,
-                is_collection=bool(relationship.uselist),
+            return self._cache_mapped_attribute(
+                cache_key,
+                SQLAlchemyMappedAttribute(
+                    name=attribute_name,
+                    kind=SQLAlchemyAttributeKind.RELATIONSHIP,
+                    owner_model=model,
+                    attribute=getattr(model, attribute_name),
+                    mapper=relationship.mapper,
+                    python_type=relationship.mapper.class_,
+                    is_collection=bool(relationship.uselist),
+                ),
             )
-            self._attribute_cache[cache_key] = mapped_attribute
-            return mapped_attribute
         if attribute_name in mapper.column_attrs:
             column_property = mapper.column_attrs[attribute_name]
-            mapped_attribute = SQLAlchemyMappedAttribute(
-                name=attribute_name,
-                kind=SQLAlchemyAttributeKind.COLUMN,
-                owner_model=model,
-                attribute=getattr(model, attribute_name),
-                mapper=None,
-                python_type=self._resolve_column_python_type(column_property),
-                is_json=self._is_json_column(column_property),
+            return self._cache_mapped_attribute(
+                cache_key,
+                SQLAlchemyMappedAttribute(
+                    name=attribute_name,
+                    kind=SQLAlchemyAttributeKind.COLUMN,
+                    owner_model=model,
+                    attribute=getattr(model, attribute_name),
+                    mapper=None,
+                    python_type=self._resolve_column_python_type(
+                        column_property
+                    ),
+                    is_json=self._is_json_column(column_property),
+                ),
             )
-            self._attribute_cache[cache_key] = mapped_attribute
-            return mapped_attribute
         raise SQLAlchemyModelInspectionError(
             f"Attribute {attribute_name!r} is not mapped on model "
             f"{model.__name__!r}."
         )
+
+    def _cache_mapped_attribute(
+        self,
+        cache_key: tuple[type[Any], str],
+        mapped_attribute: SQLAlchemyMappedAttribute,
+    ) -> SQLAlchemyMappedAttribute:
+        """Stores one resolved attribute in the local cache."""
+        self._attribute_cache[cache_key] = mapped_attribute
+        return mapped_attribute
 
     @staticmethod
     def _resolve_column_python_type(

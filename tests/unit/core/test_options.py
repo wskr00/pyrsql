@@ -3,6 +3,7 @@
 import pytest
 
 from pyrsql.core.conversion import ValueConverterRegistry
+from pyrsql.core.conversion import DEFAULT_FIELD_VALUE_CONVERTER_SET
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import DEFAULT_FIELD_POLICY_SET
 from pyrsql.core.joins import JoinHint
@@ -75,6 +76,7 @@ def test_query_options_cache_derived_policy_objects() -> None:
     assert options.parse_limits is DEFAULT_PARSE_LIMITS
     assert options.field_policy is DEFAULT_FIELD_POLICY_SET
     assert options.procedure_policy is DEFAULT_PROCEDURE_ACCESS_POLICY
+    assert options.field_converter_set is DEFAULT_FIELD_VALUE_CONVERTER_SET
 
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:

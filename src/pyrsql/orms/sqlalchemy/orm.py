@@ -31,6 +31,11 @@ class SQLAlchemyORM(base.ORM):
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
     ) -> None:
+        if translator is not None and custom_predicates is not None:
+            raise ValueError(
+                "custom_predicates cannot be provided when translator is "
+                "passed explicitly."
+            )
         self._translator = translator or SQLAlchemyExpressionTranslator(
             custom_predicates=custom_predicates,
         )
