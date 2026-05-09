@@ -47,8 +47,8 @@ from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
                             maximum_arguments=1,
                         ),
                         argument_type=str,
-                    )
-                }
+                    ),
+                },
             },
             r"predicate",
             id="mismatched-custom-predicate-key",
@@ -61,7 +61,7 @@ def test_query_options_reject_invalid_public_configuration(
 ) -> None:
     """Rejects invalid escape and custom predicate configuration."""
     with pytest.raises(ValueError, match=pattern):
-        QueryOptions(**cast(Any, kwargs))
+        QueryOptions(**cast("Any", kwargs))
 
 
 def test_query_options_normalize_distinct_and_join_hints() -> None:
@@ -236,8 +236,8 @@ def test_query_options_extend_operator_registry_with_custom_operator() -> None:
     )
     options = QueryOptions(
         operator_registry=OperatorRegistry(
-            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,)
-        )
+            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,),
+        ),
     )
 
     assert options.operator_registry.get("=all=").name == "all_match"

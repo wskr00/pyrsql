@@ -29,7 +29,7 @@ class FieldPolicySet:
                 self.model_field_mapping,
                 self.model_field_whitelist,
                 self.model_field_blacklist,
-            )
+            ),
         )
 
     field_mapping: Mapping[str, str]
@@ -90,7 +90,7 @@ class FieldPolicySet:
         whitelist = self.model_field_whitelist.get(model)
         if whitelist is not None and field_name not in whitelist:
             raise ValueError(
-                f"Field {model.__name__}.{field_name} is not allowed."
+                f"Field {model.__name__}.{field_name} is not allowed.",
             )
         blacklist = self.model_field_blacklist.get(model)
         if blacklist is not None and field_name in blacklist:

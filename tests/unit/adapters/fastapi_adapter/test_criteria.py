@@ -14,7 +14,12 @@ from pyrsql.adapters.fastapi import (
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
-from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort, ORM
+from pyrsql.orms.base import (
+    ORM,
+    CompiledPageRequest,
+    CompiledQuery,
+    CompiledSort,
+)
 
 pytestmark = [pytest.mark.fastapi]
 
@@ -29,13 +34,13 @@ class _UnusedORM(ORM):
     def compile_query(self, query: Query) -> CompiledQuery:
         del query
         raise AssertionError(
-            "compile_query should not be called in this unit test"
+            "compile_query should not be called in this unit test",
         )
 
     def compile_sort(self, sort: Sort) -> CompiledSort:
         del sort
         raise AssertionError(
-            "compile_sort should not be called in this unit test"
+            "compile_sort should not be called in this unit test",
         )
 
     def compile_page_request(
@@ -44,7 +49,7 @@ class _UnusedORM(ORM):
     ) -> CompiledPageRequest:
         del page_request
         raise AssertionError(
-            "compile_page_request should not be called in this unit test"
+            "compile_page_request should not be called in this unit test",
         )
 
 
@@ -72,7 +77,7 @@ def test_request_criteria_rejects_invalid_member_types(
 ) -> None:
     """Rejects criteria payloads with invalid runtime types."""
     with pytest.raises(TypeError, match=pattern):
-        RequestCriteria(**cast(Any, kwargs))
+        RequestCriteria(**cast("Any", kwargs))
 
 
 def test_request_criteria_applies_query_sort_and_page_in_order(

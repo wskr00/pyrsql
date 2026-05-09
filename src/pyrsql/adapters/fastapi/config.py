@@ -55,8 +55,10 @@ class FastAPICriteriaConfig(
         """Validates adapter configuration invariants.
 
         Raises:
+            TypeError: If query, sort, or OpenAPI example options have invalid
+                runtime types.
             ValueError: If parameter names are empty, duplicated, or paging
-            limits are inconsistent.
+                limits are inconsistent.
         """
         parameter_names = (
             self.filter_parameter,
@@ -69,7 +71,7 @@ class FastAPICriteriaConfig(
             raise ValueError("FastAPI parameter names must not be empty.")
         if normalized_names != parameter_names:
             raise ValueError(
-                "FastAPI parameter names must not contain outer whitespace."
+                "FastAPI parameter names must not contain outer whitespace.",
             )
         if len(set(normalized_names)) != len(normalized_names):
             raise ValueError("FastAPI parameter names must be unique.")
@@ -89,7 +91,7 @@ class FastAPICriteriaConfig(
             raise TypeError("sort_options must be a SortOptions instance.")
         if not isinstance(self.filter_openapi_examples, Mapping):
             raise TypeError(
-                "filter_openapi_examples must be a mapping instance."
+                "filter_openapi_examples must be a mapping instance.",
             )
         if not isinstance(self.sort_openapi_examples, Mapping):
             raise TypeError("sort_openapi_examples must be a mapping instance.")
@@ -120,10 +122,18 @@ class FastAPICriteriaConfig(
 
     @property
     def minimum_page_number(self) -> int:
-        """The minimum accepted page number for the adapter."""
+        """The minimum accepted page number for the adapter.
+
+        Returns:
+            The lowest valid page number accepted by the adapter.
+        """
         return 1 if self.one_based_paging else 0
 
     @property
     def default_page_number(self) -> int:
-        """The page number used when only size is provided."""
+        """The page number used when only size is provided.
+
+        Returns:
+            The implicit page number used when only page size is provided.
+        """
         return 1 if self.one_based_paging else 0

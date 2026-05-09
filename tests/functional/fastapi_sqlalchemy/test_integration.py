@@ -48,8 +48,8 @@ def test_select_dependency_returns_a_filtered_statement() -> None:
     ) -> dict[str, str]:
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     response = TestClient(app).get(
@@ -75,8 +75,8 @@ def test_count_select_dependency_returns_a_count_statement() -> None:
     ) -> dict[str, str]:
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     response = TestClient(app).get(
@@ -103,12 +103,12 @@ def test_paginated_select_dependency_returns_both_statements() -> None:
     ) -> dict[str, str]:
         return {
             "statement": str(
-                bundle.statement.compile(compile_kwargs={"literal_binds": True})
+                bundle.statement.compile(compile_kwargs={"literal_binds": True}),
             ),
             "count_statement": str(
                 bundle.count_statement.compile(
-                    compile_kwargs={"literal_binds": True}
-                )
+                    compile_kwargs={"literal_binds": True},
+                ),
             ),
         }
 
@@ -135,7 +135,7 @@ def test_resource_dependency_exposes_examples() -> None:
         sortable_fields={"name"},
         default_sort="name,desc",
         filter_examples={
-            "by_name": {"summary": "By name", "value": "name==demo"}
+            "by_name": {"summary": "By name", "value": "name==demo"},
         },
     )
 
@@ -145,8 +145,8 @@ def test_resource_dependency_exposes_examples() -> None:
     ) -> dict[str, str]:
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     response = TestClient(app).get("/users/resource")
@@ -179,8 +179,8 @@ def test_resource_dependency_generates_examples_automatically() -> None:
     ) -> dict[str, str]:
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     schema = app.openapi()
@@ -220,8 +220,8 @@ def test_resource_applier_dependency_transforms_base_select() -> None:
         statement = apply_query(select(User).where(User.id > 10))
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     response = TestClient(app).get("/users/applier")
@@ -248,8 +248,8 @@ def test_resource_statement_factory_changes_select_dependency_base() -> None:
     ) -> dict[str, str]:
         return {
             "sql": str(
-                statement.compile(compile_kwargs={"literal_binds": True})
-            )
+                statement.compile(compile_kwargs={"literal_binds": True}),
+            ),
         }
 
     response = TestClient(app).get("/users/base-statement")

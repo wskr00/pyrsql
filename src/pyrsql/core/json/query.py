@@ -23,12 +23,16 @@ class JSONPathComparison(
     values: tuple[JSONScalarValue, ...]
 
     def __post_init__(self) -> None:
-        """Validates logical JSON comparison invariants."""
+        """Validates logical JSON comparison invariants.
+
+        Raises:
+            ValueError: If the operator name is empty or padded.
+        """
         if not self.operator_name:
             raise ValueError("operator_name cannot be empty.")
         if self.operator_name != self.operator_name.strip():
             raise ValueError(
-                "operator_name must not contain outer whitespace."
+                "operator_name must not contain outer whitespace.",
             )
 
     @classmethod
@@ -40,7 +44,11 @@ class JSONPathComparison(
         raw_arguments: tuple[tuple[str, bool], ...],
         normalizer: JSONScalarNormalizer | None = None,
     ) -> "JSONPathComparison":
-        """Builds a normalized JSON comparison from raw RSQL arguments."""
+        """Builds a normalized JSON comparison from raw RSQL arguments.
+
+        Returns:
+            One normalized JSON path comparison.
+        """
         value_normalizer = normalizer or DEFAULT_JSON_SCALAR_NORMALIZER
         return cls(
             path=path,

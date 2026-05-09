@@ -6,7 +6,14 @@ _DEFAULT_DATE_EXAMPLE = "2026-01-01"
 
 
 def normalize_default_sort(default_sort: str) -> str:
-    """Normalizes shorthand default sort expressions."""
+    """Normalizes shorthand default sort expressions.
+
+    Returns:
+        The normalized default sort expression.
+
+    Raises:
+        ValueError: If the provided default sort is blank.
+    """
     stripped = default_sort.strip()
     if not stripped:
         raise ValueError("default_sort must not be blank.")
@@ -20,7 +27,11 @@ def normalize_default_sort(default_sort: str) -> str:
 
 
 def field_example_value(field_path: str) -> str | int:
-    """Builds a simple example value from a field path."""
+    """Builds a simple example value from a field path.
+
+    Returns:
+        A simple scalar example value inferred from the field path.
+    """
     normalized = field_path.lower()
     if (
         normalized == "id"
@@ -37,7 +48,11 @@ def field_example_value(field_path: str) -> str | int:
 
 
 def format_filter_example(field_path: str) -> str:
-    """Formats one automatic filter example."""
+    """Formats one automatic filter example.
+
+    Returns:
+        One automatic filter expression example.
+    """
     value = field_example_value(field_path)
     return f"{field_path}=={value}"
 
@@ -45,7 +60,11 @@ def format_filter_example(field_path: str) -> str:
 def build_filter_examples(
     filterable_fields: set[str] | frozenset[str] | None,
 ) -> dict[str, dict[str, object]]:
-    """Builds automatic filter examples from declarative field config."""
+    """Builds automatic filter examples from declarative field config.
+
+    Returns:
+        Automatic OpenAPI examples for filter parameters.
+    """
     if not filterable_fields:
         return {}
     examples: dict[str, dict[str, object]] = {}
@@ -62,7 +81,11 @@ def build_sort_examples(
     sortable_fields: set[str] | frozenset[str] | None,
     default_sort: str | None,
 ) -> dict[str, dict[str, object]]:
-    """Builds automatic sort examples from declarative sort config."""
+    """Builds automatic sort examples from declarative sort config.
+
+    Returns:
+        Automatic OpenAPI examples for sort parameters.
+    """
     examples: dict[str, dict[str, object]] = {}
     if sortable_fields:
         first_field = sorted(sortable_fields)[0]
@@ -83,7 +106,11 @@ def merge_openapi_examples(
     generated: dict[str, dict[str, object]],
     explicit: dict[str, dict[str, object]] | None,
 ) -> dict[str, dict[str, object]]:
-    """Merges automatic and explicit OpenAPI examples."""
+    """Merges automatic and explicit OpenAPI examples.
+
+    Returns:
+        The merged OpenAPI example mapping.
+    """
     if not explicit:
         return generated
     merged = dict(generated)

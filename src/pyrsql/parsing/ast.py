@@ -20,7 +20,11 @@ class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     span: SourceSpan
 
     def __post_init__(self) -> None:
-        """Validates argument invariants."""
+        """Validates argument invariants.
+
+        Raises:
+            TypeError: If the argument text is not a string.
+        """
         if not isinstance(self.text, str):
             raise TypeError("Argument text must be a string.")
 
@@ -43,14 +47,23 @@ class ComparisonNode(Node, frozen=True, gc=False, kw_only=True):
     arguments: tuple[Argument, ...]
 
     def __post_init__(self) -> None:
-        """Validates comparison node invariants."""
+        """Validates comparison node invariants.
+
+        Raises:
+            ValueError: If the operator requires arguments but none are
+                provided.
+        """
         if not self.arguments and self.operator.minimum_arguments > 0:
             raise ValueError(
-                "Comparison node is missing required operator arguments."
+                "Comparison node is missing required operator arguments.",
             )
 
     def with_span(self, span: SourceSpan) -> ComparisonNode:
-        """Returns a copy of the comparison with an updated span."""
+        """Returns a copy of the comparison with an updated span.
+
+        Returns:
+            A comparison node copy with the provided span.
+        """
         return ComparisonNode(
             span=span,
             selector=self.selector,
@@ -73,10 +86,14 @@ class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
     children: tuple[Expression, ...]
 
     def __post_init__(self) -> None:
-        """Validates logical node invariants."""
+        """Validates logical node invariants.
+
+        Raises:
+            ValueError: If the logical node has fewer than two children.
+        """
         if len(self.children) < 2:
             raise ValueError(
-                "Logical nodes must contain at least two child expressions."
+                "Logical nodes must contain at least two child expressions.",
             )
 
     def walk(self) -> Iterator[Node]:
@@ -86,7 +103,11 @@ class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
             yield from child.walk()
 
     def with_span(self, span: SourceSpan) -> LogicalNode:
-        """Returns a copy of the logical node with an updated span."""
+        """Returns a copy of the logical node with an updated span.
+
+        Returns:
+            A logical node copy with the provided span.
+        """
         return LogicalNode(
             span=span,
             operator=self.operator,

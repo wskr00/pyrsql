@@ -64,7 +64,7 @@ def test_dependency_parses_filter_sort_and_page_params() -> None:
     """Builds full request criteria from FastAPI query parameters."""
     app = FastAPI()
     dependency = criteria_dependency(
-        FastAPICriteriaConfig(default_page_size=25)
+        FastAPICriteriaConfig(default_page_size=25),
     )
 
     @app.get("/items")
@@ -126,8 +126,8 @@ def test_dependency_exposes_structured_field_policy_diagnostics() -> None:
     app = FastAPI()
     dependency = criteria_dependency(
         FastAPICriteriaConfig(
-            query_options=QueryOptions(field_whitelist=frozenset({"name"}))
-        )
+            query_options=QueryOptions(field_whitelist=frozenset({"name"})),
+        ),
     )
 
     @app.get("/items")
@@ -160,7 +160,7 @@ def test_dependency_supports_one_based_paging() -> None:
         FastAPICriteriaConfig(
             one_based_paging=True,
             default_page_size=20,
-        )
+        ),
     )
 
     @app.get("/items")
@@ -194,7 +194,7 @@ def test_dependency_honors_custom_parameter_names() -> None:
             size_parameter="per_page",
             default_page_size=10,
             query_options=QueryOptions(strict_equality=True),
-        )
+        ),
     )
 
     @app.get("/items")
@@ -244,15 +244,15 @@ def test_dependency_exposes_openapi_examples() -> None:
                 "by_name": {
                     "summary": "By name",
                     "value": "name==demo",
-                }
+                },
             },
             sort_openapi_examples={
                 "by_created_at": {
                     "summary": "By created_at desc",
                     "value": "created_at,desc",
-                }
+                },
             },
-        )
+        ),
     )
 
     @app.get("/items")

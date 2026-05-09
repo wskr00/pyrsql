@@ -14,7 +14,11 @@ class ParseLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     max_node_count: int = 1024
 
     def __post_init__(self) -> None:
-        """Validates parser limit invariants."""
+        """Validates parser limit invariants.
+
+        Raises:
+            ValueError: If any parser limit is non-positive.
+        """
         if self.max_query_length <= 0:
             raise ValueError("max_query_length must be greater than 0.")
         if self.max_selector_length <= 0:

@@ -36,7 +36,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
     company: Mapped[Company] = relationship()
-    addresses: Mapped[list["Address"]] = relationship(back_populates="user")
+    addresses: Mapped[list[Address]] = relationship(back_populates="user")
 
 
 class Address(Base):

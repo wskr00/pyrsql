@@ -65,10 +65,10 @@ class SQLAlchemyExpressionTranslator:
     """
 
     __slots__ = (
-        "_path_resolver",
-        "_value_coercer",
         "_json_path_builder",
         "_orm_custom_predicates",
+        "_path_resolver",
+        "_value_coercer",
     )
 
     def __init__(
@@ -81,13 +81,14 @@ class SQLAlchemyExpressionTranslator:
         ) = None,
         json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
+        """Initializes the translator with reusable lowering collaborators."""
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._value_coercer = value_coercer or SQLAlchemyValueCoercer()
         self._json_path_builder = (
             json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
         )
         self._orm_custom_predicates = MappingProxyType(
-            dict(custom_predicates or {})
+            dict(custom_predicates or {}),
         )
 
     def translate(
@@ -122,13 +123,20 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Lowers one logical bound expression."""
+        """Lowers one logical bound expression.
+
+        Returns:
+            Join plans and a SQLAlchemy predicate.
+
+        Raises:
+            SQLAlchemyORMError: If the logical operator is unsupported.
+        """
         joins: list[SQLAlchemyJoinPlan] = []
         predicates: list[ColumnElement[bool]] = []
         for child in expression.children:
             child_joins, child_predicate = self.translate(
                 model,
-                cast(BoundComparison | BoundLogical, child),
+                cast("BoundComparison | BoundLogical", child),
                 options=options,
             )
             joins.extend(child_joins)
@@ -140,7 +148,7 @@ class SQLAlchemyExpressionTranslator:
                 return tuple(joins), sa.or_(*predicates)
             case _:
                 raise SQLAlchemyORMError(
-                    f"Unsupported logical operator {expression.operator!r}."
+                    f"Unsupported logical operator {expression.operator!r}.",
                 )
 
     def _translate_comparison(
@@ -150,7 +158,11 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Lowers one comparison bound expression."""
+        """Lowers one comparison bound expression.
+
+        Returns:
+            Join plans and a SQLAlchemy predicate.
+        """
         field_model = None
         field_name = None
         field_path = None
@@ -176,7 +188,7 @@ class SQLAlchemyExpressionTranslator:
                     ),
                 )
                 if self._json_path_builder.supports_document_predicate(
-                    json_comparison
+                    json_comparison,
                 ):
                     predicate = (
                         self._json_path_builder
@@ -205,7 +217,7 @@ class SQLAlchemyExpressionTranslator:
                 )
             )
         custom_predicate = options.custom_predicates.get(
-            expression.operator.name
+            expression.operator.name,
         )
         argument_type = (
             custom_predicate.argument_type
@@ -248,7 +260,14 @@ class SQLAlchemyExpressionTranslator:
         ColumnElement[Any],
         type[Any] | None,
     ]:
-        """Lowers one bound selector recursively."""
+        """Lowers one bound selector recursively.
+
+        Returns:
+            Join plans, a SQLAlchemy expression, and an inferred Python type.
+
+        Raises:
+            TypeError: If the selector is not a supported selector node.
+        """
         if isinstance(selector, BoundField):
             resolved_path = self._path_resolver.resolve(
                 model,
@@ -291,7 +310,7 @@ class SQLAlchemyExpressionTranslator:
         )(*argument_expressions)
         return (
             tuple(joins),
-            cast(ColumnElement[Any], function_expression),
+            cast("ColumnElement[Any]", function_expression),
             infer_sql_function_python_type(
                 selector.function_name,
                 tuple(argument_types),
@@ -304,7 +323,11 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> ColumnElement[Any]:
-        """Builds the effective SQL expression for a resolved path."""
+        """Builds the effective SQL expression for a resolved path.
+
+        Returns:
+            The effective SQL expression for the resolved path.
+        """
         base_expression = resolved_path.leaf_attribute
         if not resolved_path.is_json:
             return base_expression
@@ -324,7 +347,14 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> ColumnElement[bool]:
-        """Builds a SQLAlchemy predicate for a resolved path."""
+        """Builds a SQLAlchemy predicate for a resolved path.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+
+        Raises:
+            SQLAlchemyORMError: If the operator is unsupported.
+        """
         custom_predicate = self._orm_custom_predicates.get(operator_name)
         if custom_predicate is not None:
             return custom_predicate(
@@ -333,7 +363,7 @@ class SQLAlchemyExpressionTranslator:
                     python_type=python_type,
                     values=values,
                     options=options,
-                )
+                ),
             )
         match operator_name:
             case EQUAL.name:
@@ -353,21 +383,21 @@ class SQLAlchemyExpressionTranslator:
                     options=options,
                 )
             case GREATER_THAN.name:
-                return cast(ColumnElement[bool], expression > values[0])
+                return cast("ColumnElement[bool]", expression > values[0])
             case GREATER_THAN_OR_EQUAL.name:
-                return cast(ColumnElement[bool], expression >= values[0])
+                return cast("ColumnElement[bool]", expression >= values[0])
             case LESS_THAN.name:
-                return cast(ColumnElement[bool], expression < values[0])
+                return cast("ColumnElement[bool]", expression < values[0])
             case LESS_THAN_OR_EQUAL.name:
-                return cast(ColumnElement[bool], expression <= values[0])
+                return cast("ColumnElement[bool]", expression <= values[0])
             case IN.name:
-                return cast(ColumnElement[bool], expression.in_(values))
+                return cast("ColumnElement[bool]", expression.in_(values))
             case NOT_IN.name:
-                return cast(ColumnElement[bool], expression.not_in(values))
+                return cast("ColumnElement[bool]", expression.not_in(values))
             case IS_NULL.name:
-                return cast(ColumnElement[bool], expression.is_(None))
+                return cast("ColumnElement[bool]", expression.is_(None))
             case NOT_NULL.name:
-                return cast(ColumnElement[bool], expression.is_not(None))
+                return cast("ColumnElement[bool]", expression.is_not(None))
             case (
                 LIKE.name
                 | NOT_LIKE.name
@@ -395,17 +425,17 @@ class SQLAlchemyExpressionTranslator:
                 )
             case BETWEEN.name:
                 return cast(
-                    ColumnElement[bool],
+                    "ColumnElement[bool]",
                     expression.between(values[0], values[1]),
                 )
             case NOT_BETWEEN.name:
                 return cast(
-                    ColumnElement[bool],
+                    "ColumnElement[bool]",
                     sa.not_(expression.between(values[0], values[1])),
                 )
             case _:
                 raise SQLAlchemyORMError(
-                    f"Unsupported SQLAlchemy operator {operator_name!r}."
+                    f"Unsupported SQLAlchemy operator {operator_name!r}.",
                 )
 
     def _build_equality_predicate(
@@ -417,7 +447,11 @@ class SQLAlchemyExpressionTranslator:
         negated: bool,
         options: QueryOptions,
     ) -> ColumnElement[bool]:
-        """Builds equality semantics, including RSQL wildcard handling."""
+        """Builds equality semantics, including RSQL wildcard handling.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+        """
         predicate: ColumnElement[bool]
         if is_string_python_type(python_type):
             predicate = self._build_string_equality_predicate(
@@ -426,10 +460,10 @@ class SQLAlchemyExpressionTranslator:
                 options=options,
             )
         else:
-            predicate = cast(ColumnElement[bool], expression == value)
+            predicate = cast("ColumnElement[bool]", expression == value)
         if not negated:
             return predicate
-        return cast(ColumnElement[bool], sa.not_(predicate))
+        return cast("ColumnElement[bool]", sa.not_(predicate))
 
     def _build_string_equality_predicate(
         self,
@@ -438,7 +472,11 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> ColumnElement[bool]:
-        """Builds equality for string values with wildcard semantics."""
+        """Builds equality for string values with wildcard semantics.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+        """
         if options.strict_equality:
             return expression == value
 
@@ -468,11 +506,15 @@ class SQLAlchemyExpressionTranslator:
         *,
         negated: bool,
     ) -> ColumnElement[bool]:
-        """Builds a case-insensitive equality predicate."""
+        """Builds a case-insensitive equality predicate.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+        """
         predicate = sa.func.lower(expression) == value.lower()
         if not negated:
             return predicate
-        return cast(ColumnElement[bool], sa.not_(predicate))
+        return cast("ColumnElement[bool]", sa.not_(predicate))
 
     def _build_contains_predicate(
         self,
@@ -483,7 +525,11 @@ class SQLAlchemyExpressionTranslator:
         negated: bool,
         options: QueryOptions,
     ) -> ColumnElement[bool]:
-        """Builds contains-style LIKE semantics with optional escaping."""
+        """Builds contains-style LIKE semantics with optional escaping.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+        """
         pattern = f"%{value}%"
         return self._build_pattern_predicate(
             expression,
@@ -502,25 +548,29 @@ class SQLAlchemyExpressionTranslator:
         negated: bool,
         options: QueryOptions,
     ) -> ColumnElement[bool]:
-        """Builds a LIKE or ILIKE predicate with optional escaping."""
+        """Builds a LIKE or ILIKE predicate with optional escaping.
+
+        Returns:
+            A SQLAlchemy boolean predicate.
+        """
         escape_character = options.like_escape_character
         if ignore_case:
             if negated:
                 return cast(
-                    ColumnElement[bool],
+                    "ColumnElement[bool]",
                     expression.not_ilike(pattern, escape=escape_character),
                 )
             return cast(
-                ColumnElement[bool],
+                "ColumnElement[bool]",
                 expression.ilike(pattern, escape=escape_character),
             )
         if negated:
             return cast(
-                ColumnElement[bool],
+                "ColumnElement[bool]",
                 expression.not_like(pattern, escape=escape_character),
             )
         return cast(
-            ColumnElement[bool],
+            "ColumnElement[bool]",
             expression.like(pattern, escape=escape_character),
         )
 
@@ -530,7 +580,11 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> bool:
-        """Returns whether a filter should use relationship EXISTS forms."""
+        """Returns whether a filter should use relationship EXISTS forms.
+
+        Returns:
+            ``True`` when the filter should use EXISTS wrapping.
+        """
         if options.join_hints:
             return False
         return any(join_plan.is_collection for join_plan in joins)
@@ -542,7 +596,11 @@ class SQLAlchemyExpressionTranslator:
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Applies collection EXISTS wrapping when joins require it."""
+        """Applies collection EXISTS wrapping when joins require it.
+
+        Returns:
+            The finalized join plans and predicate.
+        """
         if self._should_use_exists_predicate(joins, options=options):
             return (), self._wrap_exists_predicate(joins, predicate)
         return joins, predicate
@@ -552,7 +610,11 @@ class SQLAlchemyExpressionTranslator:
         joins: tuple[SQLAlchemyJoinPlan, ...],
         predicate: ColumnElement[bool],
     ) -> ColumnElement[bool]:
-        """Wraps a leaf predicate using relationship any()/has()."""
+        """Wraps a leaf predicate using relationship any()/has().
+
+        Returns:
+            A wrapped SQLAlchemy boolean predicate.
+        """
         wrapped_predicate = predicate
         for join_plan in reversed(joins):
             if join_plan.is_collection:

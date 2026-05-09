@@ -18,7 +18,7 @@ from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.options import JSONOptions, JSONSortScalarType
 from pyrsql.core.options import SortOptions
 from pyrsql.core.sort import Sort
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM, SQLAlchemyJSONSupportError
+from pyrsql.orms.sqlalchemy import SQLAlchemyJSONSupportError, SQLAlchemyORM
 
 
 class Base(DeclarativeBase):
@@ -187,8 +187,8 @@ def test_orm_applies_typed_json_numeric_sort_clause() -> None:
             json_options=JSONOptions(
                 sort_field_types={
                     "payload.user.id": JSONSortScalarType.INTEGER,
-                }
-            )
+                },
+            ),
         ),
     ).apply(
         select(JsonEvent),
@@ -221,8 +221,8 @@ def test_orm_allows_root_json_sort_with_explicit_text_configuration() -> None:
             json_options=JSONOptions(
                 sort_field_types={
                     "payload": JSONSortScalarType.TEXT,
-                }
-            )
+                },
+            ),
         ),
     ).apply(
         select(JsonEvent),

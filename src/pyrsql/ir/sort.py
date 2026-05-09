@@ -16,14 +16,18 @@ class BoundSortField(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     ignore_case: bool
 
     def __post_init__(self) -> None:
-        """Validates bound sort field invariants."""
+        """Validates bound sort field invariants.
+
+        Raises:
+            TypeError: If any field has the wrong runtime type.
+        """
         if not isinstance(self.selector, BoundSelectorNode):
             raise TypeError(
-                "Bound sort field selector must be a BoundSelectorNode."
+                "Bound sort field selector must be a BoundSelectorNode.",
             )
         if not isinstance(self.direction, SortDirection):
             raise TypeError(
-                "Bound sort field direction must be a SortDirection."
+                "Bound sort field direction must be a SortDirection.",
             )
         if not isinstance(self.ignore_case, bool):
             raise TypeError("Bound sort field ignore_case must be a bool.")
@@ -35,8 +39,12 @@ class BoundSort(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     fields: tuple[BoundSortField, ...]
 
     def __post_init__(self) -> None:
-        """Validates bound sort invariants."""
+        """Validates bound sort invariants.
+
+        Raises:
+            ValueError: If no bound sort fields are present.
+        """
         if not self.fields:
             raise ValueError(
-                "Bound sort must contain at least one bound sort field."
+                "Bound sort must contain at least one bound sort field.",
             )

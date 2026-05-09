@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import datetime as dt
 from collections.abc import Callable
+import datetime as dt
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID

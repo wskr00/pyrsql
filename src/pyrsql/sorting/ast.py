@@ -46,7 +46,11 @@ class SortField(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     ignore_case: bool
 
     def __post_init__(self) -> None:
-        """Validates sort field invariants."""
+        """Validates sort field invariants.
+
+        Raises:
+            TypeError: If any sort field component has the wrong type.
+        """
         if not isinstance(self.selector, SelectorNode):
             raise TypeError("Sort field selector must be a SelectorNode.")
         if not isinstance(self.direction, SortDirection):

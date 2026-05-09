@@ -39,7 +39,9 @@ dev = [
     { include-group = "test" },
     { include-group = "typing" },
 ]
-lint = ["ruff>=0.11.0", "pylint>=3.2.0"]
+lint = [
+    "ruff>=0.11.0",
+]
 test = [
     "pytest>=8.2.0",
     "httpx>=0.27.0",
@@ -58,28 +60,107 @@ managed = true
 line-length = 80
 target-version = "py310"
 src = ["src", "tests"]
+fix = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "S", "PT"]
-ignore = ["E501"]
+select = ["ALL"]
+preview = true
 fixable = ["ALL"]
+unfixable = ["ERA"]
+
+ignore = [
+    "CPY001",
+    "EM101",
+    "EM102",
+    "TRY003",
+]
+
+future-annotations = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+mypy-init-return = true
+suppress-dummy-args = true
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
+
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions"]
+strict = false
+runtime-evaluated-base-classes = [
+    "sqlalchemy.orm.DeclarativeBase",
+]
+runtime-evaluated-decorators = [
+    "fastapi.FastAPI.get",
+    "fastapi.FastAPI.post",
+    "fastapi.FastAPI.put",
+    "fastapi.FastAPI.patch",
+    "fastapi.FastAPI.delete",
+    "fastapi.FastAPI.options",
+    "fastapi.FastAPI.head",
+    "fastapi.FastAPI.trace",
+    "fastapi.FastAPI.api_route",
+    "fastapi.APIRouter.get",
+    "fastapi.APIRouter.post",
+    "fastapi.APIRouter.put",
+    "fastapi.APIRouter.patch",
+    "fastapi.APIRouter.delete",
+    "fastapi.APIRouter.options",
+    "fastapi.APIRouter.head",
+    "fastapi.APIRouter.trace",
+    "fastapi.APIRouter.api_route",
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["pyrsql"]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["E402", "S101"]
-"src/pyrsql/integrations/fastapi/*.py" = ["B008"]
-"tests/functional/fastapi_sqlalchemy/*.py" = ["B008"]
+"tests/**/*.py" = [
+    "ANN",
+    "ARG",
+    "DOC201",
+    "DOC501",
+    "DOC502",
+    "D",
+    "E402",
+    "FBT",
+    "PLR2004",
+    "S101",
+    "SLF001",
+]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 80
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = ["--import-mode=importlib"]
+addopts = [
+    "--import-mode=importlib",
+]
 markers = [
     "unit: isolated tests",
     "integration: interaction between components",
@@ -95,6 +176,7 @@ files = ["src", "tests"]
 strict = true
 warn_unused_configs = true
 show_error_codes = true
+pretty = true
 
 [tool.coverage.run]
 source = ["pyrsql"]
@@ -113,5 +195,4 @@ source-include = [
     "docs/**",
     "tests/**",
     "src/pyrsql/py.typed",
-    ".pylintrc"
 ]

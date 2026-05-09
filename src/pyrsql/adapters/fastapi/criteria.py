@@ -23,7 +23,11 @@ class RequestCriteria(
     page_request: PageRequest | None = None
 
     def __post_init__(self) -> None:
-        """Validates criteria payload types."""
+        """Validates criteria payload types.
+
+        Raises:
+            TypeError: If any provided criterion has the wrong runtime type.
+        """
         if self.query is not None and not isinstance(self.query, Query):
             raise TypeError("query must be a Query instance or None.")
         if self.sort is not None and not isinstance(self.sort, Sort):
@@ -33,12 +37,16 @@ class RequestCriteria(
             PageRequest,
         ):
             raise TypeError(
-                "page_request must be a PageRequest instance or None."
+                "page_request must be a PageRequest instance or None.",
             )
 
     @property
     def is_empty(self) -> bool:
-        """Indicates whether no query components are present."""
+        """Indicates whether no query components are present.
+
+        Returns:
+            ``True`` when query, sort, and page criteria are all absent.
+        """
         return (
             self.query is None
             and self.sort is None
@@ -52,7 +60,11 @@ class RequestCriteria(
         *,
         orm: ORM,
     ) -> Any:
-        """Applies the criteria to an ORM-specific target."""
+        """Applies the criteria to an ORM-specific target.
+
+        Returns:
+            The transformed ORM-specific target after applying all criteria.
+        """
         current_target = target
         if self.query is not None:
             current_target = self.query.apply(

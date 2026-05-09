@@ -9,13 +9,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.sql import Select
 
-import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig, RequestCriteria
 from pyrsql.integrations.fastapi import (
     FastAPISQLAlchemyIntegration,
     FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
+import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 from .conftest import OtherModel, User
@@ -61,14 +61,14 @@ def test_integration_rejects_invalid_public_configuration(
 ) -> None:
     """Rejects invalid ORM and criteria config objects."""
     with pytest.raises(TypeError, match=pattern):
-        FastAPISQLAlchemyIntegration(**cast(Any, kwargs))
+        FastAPISQLAlchemyIntegration(**cast("Any", kwargs))
 
 
 def test_resource_rejects_invalid_integration_type() -> None:
     """Rejects invalid integration objects for declarative resources."""
     with pytest.raises(TypeError, match="integration must be"):
         FastAPISQLAlchemyResource(
-            integration=cast(Any, object()),
+            integration=cast("Any", object()),
             model=User,
             criteria_config=FastAPICriteriaConfig(),
         )
@@ -82,13 +82,13 @@ def test_integration_reuses_cached_dependencies(
         integration.criteria_dependency() is integration.criteria_dependency()
     )
     assert integration.select_dependency(User) is integration.select_dependency(
-        User
+        User,
     )
     assert integration.count_select_dependency(
-        User
+        User,
     ) is integration.count_select_dependency(User)
     assert integration.paginated_select_dependency(
-        User
+        User,
     ) is integration.paginated_select_dependency(User)
 
 
@@ -215,7 +215,7 @@ def test_integration_builds_declarative_resource(
         default_sort="name,desc",
         max_page_size=50,
         filter_examples={
-            "by_name": {"summary": "By name", "value": "name==demo"}
+            "by_name": {"summary": "By name", "value": "name==demo"},
         },
     )
 
@@ -426,7 +426,7 @@ def test_resource_select_uses_statement_factory_for_base_statement(
     ("statement_factory", "pattern"),
     [
         pytest.param(
-            lambda: cast(Any, "invalid"),
+            lambda: cast("Any", "invalid"),
             r"sqlalchemy\.sql\.Select",
             id="non-select-result",
         ),
@@ -445,7 +445,7 @@ def test_resource_rejects_invalid_statement_factory_results(
     """Rejects invalid base statement factories for declarative resources."""
     resource = integration.resource(
         User,
-        statement_factory=cast(Callable[[], Select[Any]], statement_factory),
+        statement_factory=cast("Callable[[], Select[Any]]", statement_factory),
     )
 
     with pytest.raises(TypeError, match=pattern):
@@ -490,14 +490,14 @@ def test_integration_rejects_invalid_request_criteria(
     method = getattr(integration, method_name)
 
     with pytest.raises(TypeError, match="criteria must be a RequestCriteria"):
-        method(User, cast(Any, "invalid"))
+        method(User, cast("Any", "invalid"))
 
 
 def test_paginated_select_rejects_invalid_statements() -> None:
     """Rejects non-select statement payloads in the paginated bundle."""
     with pytest.raises(TypeError):
         SQLAlchemyPaginatedSelect(
-            statement=cast(Any, "invalid"),
+            statement=cast("Any", "invalid"),
             count_statement=select(User),
         )
 

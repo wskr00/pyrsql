@@ -11,7 +11,11 @@ class SortLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     max_field_path_length: int = 256
 
     def __post_init__(self) -> None:
-        """Validates sort parser limit invariants."""
+        """Validates sort parser limit invariants.
+
+        Raises:
+            ValueError: If any sort limit is non-positive.
+        """
         if self.max_sort_length <= 0:
             raise ValueError("max_sort_length must be greater than 0.")
         if self.max_fields <= 0:

@@ -7,7 +7,7 @@ import msgspec
 
 _INTEGER_PATTERN = re.compile(r"^-?\d+$")
 _FLOAT_PATTERN = re.compile(
-    r"^-?(?:\d+\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)$"
+    r"^-?(?:\d+\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)$",
 )
 
 
@@ -28,7 +28,11 @@ class JSONScalarNormalizer:
         *,
         quoted: bool,
     ) -> JSONScalarValue:
-        """Builds one JSON value from a raw RSQL argument."""
+        """Builds one JSON value from a raw RSQL argument.
+
+        Returns:
+            One normalized JSON scalar or structured value.
+        """
         if quoted:
             parsed_json = self._try_parse_json(raw_value)
             if parsed_json is not None:
@@ -51,7 +55,11 @@ class JSONScalarNormalizer:
         return self._from_python_value(raw_value)
 
     def _from_python_value(self, value: Any) -> JSONScalarValue:
-        """Creates a normalized JSON value from a Python object."""
+        """Creates a normalized JSON value from a Python object.
+
+        Returns:
+            One normalized JSON value wrapper.
+        """
         return JSONScalarValue(
             value=value,
             json_literal=msgspec.json.encode(value).decode("utf-8"),
@@ -59,7 +67,12 @@ class JSONScalarNormalizer:
         )
 
     def _try_parse_json(self, raw_value: str) -> Any | None:
-        """Parses quoted JSON arguments when they contain JSON values."""
+        """Parses quoted JSON arguments when they contain JSON values.
+
+        Returns:
+            The parsed JSON value, or ``None`` when the argument should remain
+            a plain string.
+        """
         try:
             parsed = msgspec.json.decode(raw_value)
         except msgspec.DecodeError:

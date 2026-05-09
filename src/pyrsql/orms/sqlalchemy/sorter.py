@@ -32,7 +32,7 @@ from pyrsql.sorting.ast import SortDirection
 class SQLAlchemySortTranslator:
     """Lowers bound sort IR to SQLAlchemy order clauses."""
 
-    __slots__ = ("_path_resolver", "_json_path_builder")
+    __slots__ = ("_json_path_builder", "_path_resolver")
 
     def __init__(
         self,
@@ -40,6 +40,7 @@ class SQLAlchemySortTranslator:
         path_resolver: SQLAlchemyPathResolver | None = None,
         json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
+        """Initializes the translator with reusable helper collaborators."""
         self._path_resolver = path_resolver or SQLAlchemyPathResolver()
         self._json_path_builder = (
             json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
@@ -55,7 +56,11 @@ class SQLAlchemySortTranslator:
         tuple[SQLAlchemyJoinPlan, ...],
         tuple[ColumnElement[Any], ...],
     ]:
-        """Lowers bound sort IR for a mapped model."""
+        """Lowers bound sort IR for a mapped model.
+
+        Returns:
+            Join plans and ORDER BY clauses.
+        """
         joins: list[SQLAlchemyJoinPlan] = []
         order_clauses: list[ColumnElement[Any]] = []
         for field in sort_plan.fields:
@@ -70,7 +75,7 @@ class SQLAlchemySortTranslator:
                     expression,
                     python_type,
                     field,
-                )
+                ),
             )
         return tuple(joins), tuple(order_clauses)
 
@@ -85,7 +90,14 @@ class SQLAlchemySortTranslator:
         ColumnElement[Any],
         type[Any] | None,
     ]:
-        """Lowers one bound selector recursively."""
+        """Lowers one bound selector recursively.
+
+        Returns:
+            Join plans, an SQL expression, and an inferred Python type.
+
+        Raises:
+            TypeError: If the selector is not a supported selector node.
+        """
         if isinstance(selector, BoundField):
             resolved_path = self._path_resolver.resolve(
                 model,
@@ -135,7 +147,7 @@ class SQLAlchemySortTranslator:
         )(*argument_expressions)
         return (
             tuple(joins),
-            cast(ColumnElement[Any], function_expression),
+            cast("ColumnElement[Any]", function_expression),
             infer_sql_function_python_type(
                 selector.function_name,
                 tuple(argument_types),
@@ -148,7 +160,11 @@ class SQLAlchemySortTranslator:
         *,
         options: SortOptions | None,
     ) -> ColumnElement[Any]:
-        """Builds the effective SQL expression for a resolved path."""
+        """Builds the effective SQL expression for a resolved path.
+
+        Returns:
+            The effective SQL expression for the resolved path.
+        """
         base_expression = resolved_path.leaf_attribute
         if not resolved_path.is_json:
             return base_expression
@@ -165,7 +181,11 @@ class SQLAlchemySortTranslator:
         *,
         options: SortOptions | None,
     ) -> type[Any] | None:
-        """Resolves the effective Python type for one JSON sort expression."""
+        """Resolves the effective Python type for one JSON sort expression.
+
+        Returns:
+            The inferred Python type, or ``None`` when unknown.
+        """
         json_options = options.json_options if options else DEFAULT_JSON_OPTIONS
         sort_type = json_options.sort_field_types.get(
             field_path,
@@ -189,9 +209,13 @@ class SQLAlchemySortTranslator:
         python_type: type[Any] | None,
         field: BoundSortField,
     ) -> ColumnElement[Any]:
-        """Builds an ORDER BY clause for a resolved sort field."""
+        """Builds an ORDER BY clause for a resolved sort field.
+
+        Returns:
+            A SQLAlchemy ordering expression.
+        """
         if field.ignore_case and is_string_python_type(python_type):
-            expression = cast(ColumnElement[Any], sa.func.lower(expression))
+            expression = cast("ColumnElement[Any]", sa.func.lower(expression))
         if field.direction is SortDirection.DESCENDING:
-            return cast(ColumnElement[Any], expression.desc())
-        return cast(ColumnElement[Any], expression.asc())
+            return cast("ColumnElement[Any]", expression.desc())
+        return cast("ColumnElement[Any]", expression.asc())

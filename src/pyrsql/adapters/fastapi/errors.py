@@ -66,7 +66,11 @@ class FastAPIAdapterErrorDetail(
 
 
 def _extract_field_from_message(message: str) -> str | None:
-    """Extracts a quoted field path from a normalized pyrsql message."""
+    """Extracts a quoted field path from a normalized pyrsql message.
+
+    Returns:
+        The extracted field path, or ``None`` when no quoted field exists.
+    """
     quote_start = message.find("'")
     if quote_start < 0:
         return None
@@ -80,7 +84,11 @@ def _extract_field_from_message(message: str) -> str | None:
 def _build_error_location(
     span: SourceSpan,
 ) -> FastAPIAdapterErrorLocation:
-    """Builds one adapter-facing location from a source span."""
+    """Builds one adapter-facing location from a source span.
+
+    Returns:
+        One normalized adapter-facing source location.
+    """
     return FastAPIAdapterErrorLocation(
         index=span.start.index,
         line=span.start.line,

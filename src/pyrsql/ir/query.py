@@ -18,7 +18,11 @@ class BoundNode(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     span: SourceSpan
 
     def __post_init__(self) -> None:
-        """Validates bound node invariants."""
+        """Validates bound node invariants.
+
+        Raises:
+            TypeError: If the span is not a SourceSpan.
+        """
         if not isinstance(self.span, SourceSpan):
             raise TypeError("Bound node span must be a SourceSpan.")
 
@@ -43,7 +47,11 @@ class BoundField(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
     segments: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        """Validates bound field invariants."""
+        """Validates bound field invariants.
+
+        Raises:
+            ValueError: If the raw path, field path, or segments are invalid.
+        """
         if not self.raw_path:
             raise ValueError("Bound field raw_path cannot be empty.")
         if not self.field_path:
@@ -52,7 +60,7 @@ class BoundField(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
             raise ValueError("Bound field must contain at least one segment.")
         if tuple(self.field_path.split(".")) != self.segments:
             raise ValueError(
-                "Bound field segments must match the resolved field_path."
+                "Bound field segments must match the resolved field_path.",
             )
 
 
@@ -69,12 +77,16 @@ class BoundFunction(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
     arguments: tuple[BoundSelectorNode, ...]
 
     def __post_init__(self) -> None:
-        """Validates bound function invariants."""
+        """Validates bound function invariants.
+
+        Raises:
+            ValueError: If the function name or arguments are invalid.
+        """
         if not self.function_name:
             raise ValueError("Bound function name cannot be empty.")
         if not self.arguments:
             raise ValueError(
-                "Bound function must contain at least one argument."
+                "Bound function must contain at least one argument.",
             )
 
     def walk_selectors(self) -> Iterator[BoundSelectorNode]:
@@ -96,7 +108,11 @@ class BoundArgument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     span: SourceSpan
 
     def __post_init__(self) -> None:
-        """Validates bound argument invariants."""
+        """Validates bound argument invariants.
+
+        Raises:
+            TypeError: If the argument text or span has the wrong type.
+        """
         if not isinstance(self.text, str):
             raise TypeError("Bound argument text must be a string.")
         if not isinstance(self.span, SourceSpan):
@@ -111,18 +127,22 @@ class BoundComparison(BoundNode, frozen=True, gc=False, kw_only=True):
     arguments: tuple[BoundArgument, ...]
 
     def __post_init__(self) -> None:
-        """Validates bound comparison invariants."""
+        """Validates bound comparison invariants.
+
+        Raises:
+            ValueError: If the arguments do not satisfy operator arity.
+        """
         super().__post_init__()
         if len(self.arguments) < self.operator.minimum_arguments:
             raise ValueError(
-                "Bound comparison is missing required operator arguments."
+                "Bound comparison is missing required operator arguments.",
             )
         if (
             self.operator.maximum_arguments is not None
             and len(self.arguments) > self.operator.maximum_arguments
         ):
             raise ValueError(
-                "Bound comparison exceeds the operator argument limit."
+                "Bound comparison exceeds the operator argument limit.",
             )
 
     def walk(self) -> Iterator[BoundNode]:
@@ -137,11 +157,15 @@ class BoundLogical(BoundNode, frozen=True, gc=False, kw_only=True):
     children: tuple[BoundNode, ...]
 
     def __post_init__(self) -> None:
-        """Validates bound logical invariants."""
+        """Validates bound logical invariants.
+
+        Raises:
+            ValueError: If the logical node has fewer than two children.
+        """
         super().__post_init__()
         if len(self.children) < 2:
             raise ValueError(
-                "Bound logical nodes must contain at least two children."
+                "Bound logical nodes must contain at least two children.",
             )
 
     def walk(self) -> Iterator[BoundNode]:

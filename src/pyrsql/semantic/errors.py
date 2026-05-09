@@ -17,7 +17,11 @@ class SemanticError(ValueError):
 
     @property
     def diagnostic(self) -> SemanticDiagnostic:
-        """Returns the structured diagnostic for this error."""
+        """Returns the structured diagnostic for this error.
+
+        Returns:
+            The structured semantic diagnostic.
+        """
         return SemanticDiagnostic(
             code=self.code,
             message=self.message,
@@ -25,7 +29,11 @@ class SemanticError(ValueError):
         )
 
     def __str__(self) -> str:
-        """Formats semantic errors with source position data."""
+        """Formats semantic errors with source position data.
+
+        Returns:
+            The formatted semantic error string.
+        """
         return str(self.diagnostic)
 
 

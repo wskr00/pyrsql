@@ -28,7 +28,15 @@ class SelectorParser:
         max_length: int,
         context: str,
     ) -> SelectorNode:
-        """Parses a selector recursively."""
+        """Parses a selector recursively.
+
+        Returns:
+            The parsed selector node.
+
+        Raises:
+            TypeError: If the selector text is not a string.
+            SelectorParseError: If the selector text is invalid.
+        """
         if not isinstance(raw_selector, str):
             raise TypeError("Selector text must be a string.")
         normalized_selector = raw_selector.strip()
@@ -37,7 +45,7 @@ class SelectorParser:
         if len(normalized_selector) > max_length:
             raise SelectorParseError(
                 f"{context} exceeds the maximum supported length of "
-                f"{max_length}."
+                f"{max_length}.",
             )
         if normalized_selector.startswith("@"):
             return self._parse_function_selector(
@@ -47,7 +55,7 @@ class SelectorParser:
             )
         if normalized_selector.startswith("#"):
             return LiteralSelector(
-                value=self._parse_literal_value(normalized_selector[1:])
+                value=self._parse_literal_value(normalized_selector[1:]),
             )
         return FieldSelector(
             raw_path=normalized_selector,
@@ -55,7 +63,14 @@ class SelectorParser:
         )
 
     def split_top_level(self, text: str, *, delimiter: str) -> tuple[str, ...]:
-        """Splits text on a delimiter while respecting nested brackets."""
+        """Splits text on a delimiter while respecting nested brackets.
+
+        Returns:
+            The top-level split fragments.
+
+        Raises:
+            SelectorParseError: If the brackets are unbalanced.
+        """
         parts: list[str] = []
         start_index = 0
         depth = 0
@@ -66,7 +81,7 @@ class SelectorParser:
                 depth -= 1
                 if depth < 0:
                     raise SelectorParseError(
-                        f"Selector fragment {text!r} has unbalanced brackets."
+                        f"Selector fragment {text!r} has unbalanced brackets.",
                     )
             elif character == delimiter and depth == 0:
                 part = text[start_index:index].strip()
@@ -75,7 +90,7 @@ class SelectorParser:
                 start_index = index + 1
         if depth != 0:
             raise SelectorParseError(
-                f"Selector fragment {text!r} has unbalanced brackets."
+                f"Selector fragment {text!r} has unbalanced brackets.",
             )
         final_part = text[start_index:].strip()
         if final_part:
@@ -89,7 +104,14 @@ class SelectorParser:
         max_length: int,
         context: str,
     ) -> FunctionSelector:
-        """Parses a function selector recursively."""
+        """Parses a function selector recursively.
+
+        Returns:
+            The parsed function selector.
+
+        Raises:
+            SelectorParseError: If the selector syntax is invalid.
+        """
         argument_start = raw_selector.find("[")
         argument_end = raw_selector.rfind("]")
         if (
@@ -98,7 +120,7 @@ class SelectorParser:
             or argument_end != len(raw_selector) - 1
         ):
             raise SelectorParseError(
-                f"{context} has invalid function selector {raw_selector!r}."
+                f"{context} has invalid function selector {raw_selector!r}.",
             )
         function_name = raw_selector[1:argument_start].strip()
         if not function_name:
@@ -108,7 +130,7 @@ class SelectorParser:
         if not argument_fragments:
             raise SelectorParseError(
                 f"{context} function {function_name!r} must have at least one "
-                "argument."
+                "argument.",
             )
         return FunctionSelector(
             function_name=function_name,
@@ -123,7 +145,11 @@ class SelectorParser:
         )
 
     def _parse_literal_value(self, raw_literal: str) -> SelectorLiteral:
-        """Parses a static literal selector value."""
+        """Parses a static literal selector value.
+
+        Returns:
+            The parsed literal value.
+        """
         normalized_literal = raw_literal.replace("\t", " ")
         match normalized_literal.lower():
             case "null":

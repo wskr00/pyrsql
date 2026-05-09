@@ -9,7 +9,11 @@ def infer_sql_function_python_type(
     function_name: str,
     argument_types: tuple[type[Any] | None, ...],
 ) -> type[Any] | None:
-    """Infers the Python type for common SQL functions."""
+    """Infers the Python type for common SQL functions.
+
+    Returns:
+        The inferred Python type, or ``None`` when unknown.
+    """
     normalized_name = function_name.lower()
     if normalized_name in _STRING_SQL_FUNCTIONS:
         return str
@@ -21,7 +25,11 @@ def infer_sql_function_python_type(
 
 
 def is_string_python_type(python_type: type[Any] | None) -> bool:
-    """Returns whether the resolved Python type is string-compatible."""
+    """Returns whether the resolved Python type is string-compatible.
+
+    Returns:
+        ``True`` when the type is string-compatible.
+    """
     if python_type is None:
         return False
     return issubclass(python_type, str)

@@ -23,14 +23,14 @@ class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         """Validates path segments.
 
         Raises:
-            ValueError: If any segment is empty.
+            ValueError: If any segment is empty or padded with whitespace.
         """
         for segment in self.segments:
             if not segment:
                 raise ValueError("JSON path segments cannot be empty.")
             if segment != segment.strip():
                 raise ValueError(
-                    "JSON path segments must not contain outer whitespace."
+                    "JSON path segments must not contain outer whitespace.",
                 )
         object.__setattr__(self, "_dot_path", ".".join(self.segments))
         object.__setattr__(
@@ -41,19 +41,35 @@ class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
 
     @property
     def is_root(self) -> bool:
-        """Whether the path targets the root JSON value."""
+        """Whether the path targets the root JSON value.
+
+        Returns:
+            ``True`` when the path has no segments.
+        """
         return not self.segments
 
     def to_dot_path(self) -> str:
-        """The path rendered as a dotted string."""
+        """The path rendered as a dotted string.
+
+        Returns:
+            The cached dotted representation of the JSON path.
+        """
         return self._dot_path
 
     def to_postgresql_jsonpath(self) -> str:
-        """The path rendered as a PostgreSQL jsonpath root expression."""
+        """The path rendered as a PostgreSQL jsonpath root expression.
+
+        Returns:
+            The cached PostgreSQL ``jsonpath`` representation.
+        """
         return self._postgresql_jsonpath
 
     def _build_postgresql_jsonpath(self) -> str:
-        """Builds one PostgreSQL jsonpath root expression."""
+        """Builds one PostgreSQL jsonpath root expression.
+
+        Returns:
+            A PostgreSQL ``jsonpath`` string rooted at ``$``.
+        """
         if self.is_root:
             return "$"
         return "$" + "".join(
@@ -63,7 +79,11 @@ class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
 
     @staticmethod
     def _render_postgresql_segment(segment: str) -> str:
-        """Builds one PostgreSQL jsonpath segment."""
+        """Builds one PostgreSQL jsonpath segment.
+
+        Returns:
+            One rendered PostgreSQL ``jsonpath`` segment.
+        """
         if _SIMPLE_JSONPATH_SEGMENT_PATTERN.fullmatch(segment) is not None:
             return f".{segment}"
         return "." + json.dumps(segment)

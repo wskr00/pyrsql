@@ -22,7 +22,7 @@ from pyrsql.core.options import QueryOptions, SortOptions
     ],
 )
 def test_options_expose_default_json_options(
-    factory: type[QueryOptions] | type[SortOptions],
+    factory: type[QueryOptions | SortOptions],
     attribute_name: str,
 ) -> None:
     """Query and sort options carry shared JSON options by default."""
@@ -63,15 +63,15 @@ def test_json_options_accept_function_name_overrides() -> None:
             id="whitespace-path-exists-tz-function",
         ),
         pytest.param(
-            {"sort_field_types": cast(Any, "invalid")},
+            {"sort_field_types": cast("Any", "invalid")},
             r"sort_field_types",
             id="invalid-sort-field-types-mapping",
         ),
         pytest.param(
             {
                 "sort_field_types": {
-                    " payload.score ": JSONSortScalarType.NUMERIC
-                }
+                    " payload.score ": JSONSortScalarType.NUMERIC,
+                },
             },
             r"outer whitespace",
             id="whitespace-sort-field-path",
@@ -84,13 +84,13 @@ def test_json_options_reject_invalid_public_configuration(
 ) -> None:
     """JSON options reject malformed function names and sort config."""
     with pytest.raises((TypeError, ValueError), match=pattern):
-        JSONOptions(**cast(Any, kwargs))
+        JSONOptions(**cast("Any", kwargs))
 
 
 def test_json_options_normalize_sort_field_types() -> None:
     """JSON options normalize configured JSON sort scalar types."""
     options = JSONOptions(
-        sort_field_types={"payload.score": cast(Any, "numeric")},
+        sort_field_types={"payload.score": cast("Any", "numeric")},
     )
 
     assert (

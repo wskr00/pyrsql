@@ -27,17 +27,17 @@ from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 
 __all__ = [
+    "DEFAULT_JSON_OPTIONS",
     "CompilationResult",
     "CustomPredicateDefinition",
-    "DEFAULT_JSON_OPTIONS",
     "FieldPolicySet",
     "FieldValueConverterSet",
     "JSONOptions",
     "JSONPath",
     "JSONPathComparison",
-    "JSONSortScalarType",
     "JSONScalarNormalizer",
     "JSONScalarValue",
+    "JSONSortScalarType",
     "PageCompilationResult",
     "PageRequest",
     "ProcedureAccessPolicy",

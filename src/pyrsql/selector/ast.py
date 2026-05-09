@@ -24,20 +24,24 @@ class FieldSelector(SelectorNode, frozen=True, gc=False, kw_only=True):
     segments: tuple[str, ...]
 
     def __post_init__(self) -> None:
-        """Validates field selector invariants."""
+        """Validates field selector invariants.
+
+        Raises:
+            ValueError: If the field selector path is invalid.
+        """
         if not self.raw_path:
             raise ValueError("Field selector path cannot be empty.")
         if self.raw_path != self.raw_path.strip():
             raise ValueError(
-                "Field selector path cannot contain outer whitespace."
+                "Field selector path cannot contain outer whitespace.",
             )
         if not self.segments:
             raise ValueError(
-                "Field selector must contain at least one segment."
+                "Field selector must contain at least one segment.",
             )
         if any(not segment for segment in self.segments):
             raise ValueError(
-                "Field selector cannot contain empty path segments."
+                "Field selector cannot contain empty path segments.",
             )
         if tuple(self.raw_path.split(".")) != self.segments:
             raise ValueError("Field selector segments must match the raw path.")
@@ -56,16 +60,20 @@ class FunctionSelector(SelectorNode, frozen=True, gc=False, kw_only=True):
     arguments: tuple[SelectorNode, ...]
 
     def __post_init__(self) -> None:
-        """Validates function selector invariants."""
+        """Validates function selector invariants.
+
+        Raises:
+            ValueError: If the function selector is invalid.
+        """
         if not self.function_name:
             raise ValueError("Function selector name cannot be empty.")
         if self.function_name != self.function_name.strip():
             raise ValueError(
-                "Function selector name cannot contain outer whitespace."
+                "Function selector name cannot contain outer whitespace.",
             )
         if not self.arguments:
             raise ValueError(
-                "Function selector must contain at least one argument."
+                "Function selector must contain at least one argument.",
             )
 
     def walk(self) -> Iterator[SelectorNode]:

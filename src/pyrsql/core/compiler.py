@@ -8,7 +8,11 @@ from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort
 
 
 def _validate_orm_name(orm_name: str, *, context: str) -> None:
-    """Validates one compilation result ORM name."""
+    """Validates one compilation result ORM name.
+
+    Raises:
+        ValueError: If the ORM name is empty.
+    """
     if not orm_name:
         raise ValueError(f"{context} orm_name cannot be empty.")
 

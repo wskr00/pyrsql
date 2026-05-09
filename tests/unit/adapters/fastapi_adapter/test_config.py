@@ -31,7 +31,7 @@ def test_config_rejects_invalid_parameter_names(
 ) -> None:
     """Rejects duplicate aliases and names with outer whitespace."""
     with pytest.raises(ValueError, match=r"(?i)parameter|whitespace|unique"):
-        FastAPICriteriaConfig(**cast(Any, kwargs))
+        FastAPICriteriaConfig(**cast("Any", kwargs))
 
 
 @pytest.mark.parametrize(
@@ -70,7 +70,7 @@ def test_config_rejects_invalid_public_configuration(
 ) -> None:
     """Rejects invalid paging, options, and OpenAPI examples."""
     with pytest.raises((TypeError, ValueError), match=pattern):
-        FastAPICriteriaConfig(**cast(Any, kwargs))
+        FastAPICriteriaConfig(**cast("Any", kwargs))
 
 
 def test_config_exposes_derived_page_numbers() -> None:
@@ -96,7 +96,7 @@ def test_config_keeps_openapi_examples_as_immutable_copies(
     assert config.filter_openapi_examples is not openapi_examples
 
     with pytest.raises(TypeError):
-        cast(dict[str, Any], config.filter_openapi_examples)["new"] = {}
+        cast("dict[str, Any]", config.filter_openapi_examples)["new"] = {}
 
 
 def test_config_reuses_default_shared_options() -> None:

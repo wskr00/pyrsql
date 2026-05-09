@@ -11,7 +11,7 @@ try:
 except ImportError as error:  # pragma: no cover - import guard
     raise ImportError(
         "FastAPI support requires installing the 'fastapi' extra: "
-        "pip install pyrsql[fastapi]"
+        "pip install pyrsql[fastapi]",
     ) from error
 
 from pyrsql.adapters.fastapi.config import FastAPICriteriaConfig
@@ -47,7 +47,11 @@ _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 
 def _raise_http_error(payload: FastAPIAdapterErrorPayload) -> None:
-    """Raises a standardized FastAPI HTTP exception for adapter failures."""
+    """Raises a standardized FastAPI HTTP exception for adapter failures.
+
+    Raises:
+        HTTPException: Always raised with a normalized adapter payload.
+    """
     raise HTTPException(
         status_code=422,
         detail={
@@ -64,7 +68,14 @@ def _build_page_request(
     page_value: int | None,
     size_value: int | None,
 ) -> PageRequest | None:
-    """Builds a page request from validated FastAPI query params."""
+    """Builds a page request from validated FastAPI query params.
+
+    Returns:
+        A normalized page request, or ``None`` when pagination is absent.
+
+    Raises:
+        ValueError: If internal validation leaves the resolved page size unset.
+    """
     resolved_page_size = size_value or config.default_page_size
 
     if page_value is None:
@@ -83,7 +94,7 @@ def _build_page_request(
                     f"'{config.size_parameter}' is required when "
                     f"'{config.page_parameter}' is provided."
                 ),
-            )
+            ),
         )
 
     if config.one_based_paging:
@@ -96,7 +107,7 @@ def _build_page_request(
                         f"'{config.page_parameter}' must be greater than 0 "
                         "when one_based_paging is enabled."
                     ),
-                )
+                ),
             )
         resolved_page_number -= 1
 
@@ -109,7 +120,11 @@ def _build_page_request(
 def _build_criteria_callable(
     config: FastAPICriteriaConfig,
 ) -> Callable[..., RequestCriteria]:
-    """Builds the concrete dependency callable for a fixed configuration."""
+    """Builds the concrete dependency callable for a fixed configuration.
+
+    Returns:
+        A FastAPI-compatible callable that parses request criteria.
+    """
 
     def dependency(
         filter_value: Annotated[
@@ -155,7 +170,7 @@ def _build_criteria_callable(
                 )
             except _QUERY_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_query_error_payload(config.filter_parameter, error)
+                    build_query_error_payload(config.filter_parameter, error),
                 )
 
         if sort_value:
@@ -166,7 +181,7 @@ def _build_criteria_callable(
                 )
             except _SORT_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_sort_error_payload(config.sort_parameter, error)
+                    build_sort_error_payload(config.sort_parameter, error),
                 )
 
         page_request = _build_page_request(
@@ -191,7 +206,7 @@ class CriteriaDependency:
     parsed RequestCriteria object.
     """
 
-    __slots__ = ("config", "_dependency", "__signature__")
+    __slots__ = ("__signature__", "_dependency", "config")
 
     def __init__(
         self,
@@ -232,5 +247,5 @@ def criteria_dependency(
 
 
 _DEFAULT_CRITERIA_DEPENDENCY = CriteriaDependency(
-    _DEFAULT_FASTAPI_CRITERIA_CONFIG
+    _DEFAULT_FASTAPI_CRITERIA_CONFIG,
 )

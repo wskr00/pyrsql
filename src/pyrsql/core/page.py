@@ -21,7 +21,12 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     page_size: int
 
     def __post_init__(self) -> None:
-        """Validates pagination invariants."""
+        """Validates pagination invariants.
+
+        Raises:
+            ValueError: If the page number is negative or the page size is not
+                positive.
+        """
         if self.page_number < 0:
             raise ValueError("page_number must be greater than or equal to 0.")
         if self.page_size <= 0:
@@ -59,6 +64,10 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
 
         Returns:
             A validated pagination request.
+
+        Raises:
+            ValueError: If the offset or limit is invalid, or if the offset
+                does not align with the limit.
         """
         if offset < 0:
             raise ValueError("offset must be greater than or equal to 0.")
@@ -67,23 +76,35 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         page_number, remainder = divmod(offset, limit)
         if remainder != 0:
             raise ValueError(
-                "offset must align with limit to convert into a PageRequest."
+                "offset must align with limit to convert into a PageRequest.",
             )
         return cls(page_number=page_number, page_size=limit)
 
     @property
     def offset(self) -> int:
-        """The zero-based row offset for this request."""
+        """The zero-based row offset for this request.
+
+        Returns:
+            The zero-based row offset.
+        """
         return self.page_number * self.page_size
 
     @property
     def limit(self) -> int:
-        """The maximum number of rows for this request."""
+        """The maximum number of rows for this request.
+
+        Returns:
+            The maximum number of rows to fetch.
+        """
         return self.page_size
 
     @property
     def bound_page(self) -> BoundPage:
-        """The logical pagination IR for this request."""
+        """The logical pagination IR for this request.
+
+        Returns:
+            The bound pagination IR for this request.
+        """
         return BoundPage(
             page_number=self.page_number,
             page_size=self.page_size,

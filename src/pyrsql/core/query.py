@@ -17,7 +17,11 @@ _DEFAULT_QUERY_OPTIONS = QueryOptions()
 def _resolve_query_options(
     options: QueryOptions | None,
 ) -> QueryOptions:
-    """Returns the provided options or the shared immutable default."""
+    """Returns the provided options or the shared immutable default.
+
+    Returns:
+        The provided options, or the shared default when omitted.
+    """
     return options or _DEFAULT_QUERY_OPTIONS
 
 
@@ -26,7 +30,11 @@ def _parse_query_expression(
     *,
     options: QueryOptions,
 ) -> Expression:
-    """Parses raw query text into a syntax tree."""
+    """Parses raw query text into a syntax tree.
+
+    Returns:
+        The parsed query expression tree.
+    """
     return Parser(
         query_text,
         limits=options.parse_limits,
@@ -39,7 +47,11 @@ def _bind_query_expression(
     *,
     options: QueryOptions,
 ) -> BoundComparison | BoundLogical:
-    """Binds a syntax tree into logical query IR."""
+    """Binds a syntax tree into logical query IR.
+
+    Returns:
+        The bound logical query IR.
+    """
     return SemanticBinder(options).bind(expression)
 
 

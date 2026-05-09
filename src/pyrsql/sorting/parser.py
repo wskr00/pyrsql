@@ -20,12 +20,20 @@ class SortParser:
         *,
         limits: SortLimits | None = None,
     ) -> None:
+        """Initializes the parser with raw sort text and limits."""
         self._source = (source or "").strip()
         self._limits = limits or DEFAULT_SORT_LIMITS
         self._selector_parser = DEFAULT_SELECTOR_PARSER
 
     def parse(self) -> tuple[SortField, ...]:
-        """Parses the configured sort expression."""
+        """Parses the configured sort expression.
+
+        Returns:
+            The parsed sort fields.
+
+        Raises:
+            SortParseError: If the expression is invalid.
+        """
         if not self._source:
             return _EMPTY_FIELDS
 
@@ -34,7 +42,7 @@ class SortParser:
         if len(self._source) > max_sort_length:
             raise SortParseError(
                 "Sort expression exceeds the maximum supported length of "
-                f"{max_sort_length}."
+                f"{max_sort_length}.",
             )
 
         fields: list[SortField] = []
@@ -46,7 +54,7 @@ class SortParser:
             if len(fields) > max_fields:
                 raise SortParseError(
                     "Sort expression exceeds the maximum supported field "
-                    f"count of {max_fields}."
+                    f"count of {max_fields}.",
                 )
         return tuple(fields)
 
@@ -56,7 +64,14 @@ class SortParser:
         *,
         clause_index: int,
     ) -> SortField | None:
-        """Parses a single semicolon-delimited sort clause."""
+        """Parses a single semicolon-delimited sort clause.
+
+        Returns:
+            The parsed sort field, or ``None`` for blank clauses.
+
+        Raises:
+            SortParseError: If the clause syntax is invalid.
+        """
         clause = clause.strip()
         if not clause:
             return None
@@ -65,7 +80,7 @@ class SortParser:
                 self._selector_parser.split_top_level(
                     clause,
                     delimiter=",",
-                )
+                ),
             )
         except SelectorParseError as error:
             raise SortParseError(str(error)) from error
@@ -76,7 +91,7 @@ class SortParser:
             raise SortParseError(
                 "Sort clause "
                 f"#{clause_index} {clause!r} has too many comma-separated "
-                "parts."
+                "parts.",
             )
 
         selector = self._parse_selector(parts[0], clause_index=clause_index)
@@ -110,13 +125,20 @@ class SortParser:
         *,
         clause_index: int,
     ) -> SortDirection:
-        """Parses the direction token for a sort clause."""
+        """Parses the direction token for a sort clause.
+
+        Returns:
+            The parsed sort direction.
+
+        Raises:
+            SortParseError: If the direction is unsupported.
+        """
         direction = SortDirection.from_raw(raw_direction.strip())
         if direction is not None:
             return direction
         raise SortParseError(
             f"Sort clause #{clause_index} {clause!r} has unsupported direction "
-            f"{raw_direction!r}."
+            f"{raw_direction!r}.",
         )
 
     def _parse_ignore_case(
@@ -126,7 +148,14 @@ class SortParser:
         *,
         clause_index: int,
     ) -> bool:
-        """Parses the ignore-case modifier for a sort clause."""
+        """Parses the ignore-case modifier for a sort clause.
+
+        Returns:
+            ``True`` when the modifier enables case-insensitive sort.
+
+        Raises:
+            SortParseError: If the modifier is unsupported.
+        """
         match raw_flag.strip().lower():
             case "ic":
                 return True
@@ -134,7 +163,7 @@ class SortParser:
                 raise SortParseError(
                     f"Sort clause #{clause_index} {clause!r} has unsupported "
                     "modifier "
-                    f"{raw_flag!r}."
+                    f"{raw_flag!r}.",
                 )
 
     def _parse_selector(
@@ -143,7 +172,14 @@ class SortParser:
         *,
         clause_index: int,
     ) -> SelectorNode:
-        """Parses a sort selector recursively."""
+        """Parses a sort selector recursively.
+
+        Returns:
+            The parsed selector node.
+
+        Raises:
+            SortParseError: If the selector syntax is invalid.
+        """
         try:
             return self._selector_parser.parse(
                 raw_selector,

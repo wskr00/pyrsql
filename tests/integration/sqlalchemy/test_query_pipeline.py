@@ -255,15 +255,15 @@ def test_orm_applies_custom_operator_predicate() -> None:
             "all_match": CustomPredicateDefinition(
                 operator=all_match,
                 argument_type=str,
-            )
-        }
+            ),
+        },
     )
     orm = SQLAlchemyORM(
         custom_predicates={
             "all_match": lambda payload: (
                 func.lower(payload.expression) == str(payload.values[0]).lower()
-            )
-        }
+            ),
+        },
     )
     query = pyrsql.parse("name=all=DEMO", options=options)
     statement = orm.compile_query(query).apply(select(User), User)
@@ -317,8 +317,8 @@ def test_orm_applies_field_specific_converter() -> None:
                 "created_at": lambda raw: dt.datetime.strptime(
                     raw,
                     "%d/%m/%Y",
-                )
-            }
+                ),
+            },
         ),
     )
     statement = orm.compile_query(query).apply(select(Event), Event)
@@ -333,8 +333,8 @@ def test_orm_applies_model_field_specific_converter() -> None:
         "company.name==demo",
         options=QueryOptions(
             model_field_value_converters={
-                Company: {"name": lambda raw: raw.upper()}
-            }
+                Company: {"name": lambda raw: raw.upper()},
+            },
         ),
     )
     statement = orm.compile_query(query).apply(select(User), User)
@@ -377,7 +377,7 @@ def test_orm_applies_json_array_path_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.roles.id ? (@ == 1)" == str(value)
+        str(value) == "$.roles.id ? (@ == 1)"
         for value in compiled.params.values()
     )
 
@@ -390,7 +390,7 @@ def test_orm_applies_json_boolean_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.active ? (@ == true)" == str(value)
+        str(value) == "$.active ? (@ == true)"
         for value in compiled.params.values()
     )
 
@@ -403,7 +403,7 @@ def test_orm_applies_json_null_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.deleted_at ? (@ == null)" == str(value)
+        str(value) == "$.deleted_at ? (@ == null)"
         for value in compiled.params.values()
     )
 
@@ -416,7 +416,7 @@ def test_orm_applies_json_in_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.status ? ((@ == 1) || (@ == 2) || (@ == 3))" == str(value)
+        str(value) == "$.status ? ((@ == 1) || (@ == 2) || (@ == 3))"
         for value in compiled.params.values()
     )
 
@@ -429,7 +429,7 @@ def test_orm_applies_json_between_predicate() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
     assert any(
-        "$.score ? (@ >= 10 && @ <= 20)" == str(value)
+        str(value) == "$.score ? (@ >= 10 && @ <= 20)"
         for value in compiled.params.values()
     )
 

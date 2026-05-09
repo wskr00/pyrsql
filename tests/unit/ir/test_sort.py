@@ -20,7 +20,7 @@ def test_bound_sort_keeps_fields() -> None:
                 direction=SortDirection.DESCENDING,
                 ignore_case=False,
             ),
-        )
+        ),
     )
 
     assert len(sort.fields) == 1

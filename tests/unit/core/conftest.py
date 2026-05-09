@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import pytest
 
@@ -31,7 +31,7 @@ class FakeCompiledResult:
 class FakeORM(ORM):
     """Configurable ORM double for core unit tests."""
 
-    __slots__ = ("query_result", "sort_result", "page_result")
+    __slots__ = ("page_result", "query_result", "sort_result")
 
     def __init__(
         self,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
+import re
 
 import pytest
 
@@ -113,7 +113,7 @@ def test_sort_binder_maps_field_selectors_inside_functions() -> None:
         _SortOptions(
             field_mapping={"companyName": "company.name"},
             procedure_whitelist=("upper",),
-        )
+        ),
     ).bind(fields)
     selector = bound_sort.fields[0].selector
 

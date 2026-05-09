@@ -10,7 +10,14 @@ from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan, SQLAlchemySelect
 
 
 def require_sqlalchemy_select(target: object) -> SQLAlchemySelect:
-    """Validates and narrows an ORM target to a SQLAlchemy Select."""
+    """Validates and narrows an ORM target to a SQLAlchemy Select.
+
+    Returns:
+        The validated SQLAlchemy ``Select`` object.
+
+    Raises:
+        TypeError: If the target is not a SQLAlchemy ``Select``.
+    """
     if not isinstance(target, Select):
         raise TypeError("SQLAlchemy ORM expects a sqlalchemy.sql.Select.")
     return target
@@ -22,7 +29,14 @@ def apply_relationship_joins(
     *,
     join_hints: Mapping[str, JoinHint] | None = None,
 ) -> SQLAlchemySelect:
-    """Applies relationship joins once each while preserving order."""
+    """Applies relationship joins once each while preserving order.
+
+    Returns:
+        The statement with the requested joins applied.
+
+    Raises:
+        SQLAlchemyORMError: If a join hint requests an unsupported join type.
+    """
     join_hints = join_hints or {}
     deduplicated_joins = dict.fromkeys(joins)
     updated_statement = statement
@@ -35,6 +49,6 @@ def apply_relationship_joins(
             updated_statement = updated_statement.outerjoin(join_plan.attribute)
             continue
         raise SQLAlchemyORMError(
-            "SQLAlchemy ORM does not support RIGHT joins via join_hints."
+            "SQLAlchemy ORM does not support RIGHT joins via join_hints.",
         )
     return updated_statement

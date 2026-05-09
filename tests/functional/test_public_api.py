@@ -88,8 +88,8 @@ def test_parse_uses_custom_operator_registry() -> None:
     )
     options = QueryOptions(
         operator_registry=OperatorRegistry(
-            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,)
-        )
+            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,),
+        ),
     )
     query = pyrsql.parse("name=all=demo", options=options)
     assert query.expression is not None
@@ -110,8 +110,8 @@ def test_parse_uses_custom_predicate_definition() -> None:
             "all_match": CustomPredicateDefinition(
                 operator=all_match,
                 argument_type=str,
-            )
-        }
+            ),
+        },
     )
     query = pyrsql.parse("name=all=demo", options=options)
     assert query.expression is not None
@@ -132,8 +132,8 @@ def test_query_options_reject_mismatched_custom_predicate_key() -> None:
                         maximum_arguments=1,
                     ),
                     argument_type=str,
-                )
-            }
+                ),
+            },
         )
 
 

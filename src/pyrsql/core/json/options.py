@@ -1,8 +1,8 @@
 """ORM-neutral JSON options."""
 
-import re
 from collections.abc import Mapping
 from enum import Enum
+import re
 from types import MappingProxyType
 
 import msgspec
@@ -44,7 +44,7 @@ class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         """Validates configured SQL function names.
 
         Raises:
-            ValueError: If either configured SQL function name is empty.
+            TypeError: If ``sort_field_types`` is not a mapping.
         """
         self._validate_sql_identifier(
             self.path_exists_function,
@@ -67,32 +67,43 @@ class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
                         else JSONSortScalarType(sort_type)
                     )
                     for path, sort_type in self.sort_field_types.items()
-                }
+                },
             ),
         )
 
     @staticmethod
     def _validate_sql_identifier(value: str, *, field_name: str) -> None:
-        """Validates one SQL function identifier."""
+        """Validates one SQL function identifier.
+
+        Raises:
+            ValueError: If the identifier is empty, padded, or invalid.
+        """
         if not value:
             raise ValueError(f"{field_name} cannot be empty.")
         if value != value.strip():
             raise ValueError(
-                f"{field_name} must not contain outer whitespace."
+                f"{field_name} must not contain outer whitespace.",
             )
         if _SQL_IDENTIFIER_PATTERN.fullmatch(value) is None:
             raise ValueError(
-                f"{field_name} must be a valid SQL identifier."
+                f"{field_name} must be a valid SQL identifier.",
             )
 
     @staticmethod
     def _normalize_sort_field_path(path: str) -> str:
-        """Validates one configured JSON sort field path."""
+        """Validates one configured JSON sort field path.
+
+        Returns:
+            The normalized JSON sort field path.
+
+        Raises:
+            ValueError: If the configured path is empty or padded.
+        """
         if not path:
             raise ValueError("JSON sort field paths cannot be empty.")
         if path != path.strip():
             raise ValueError(
-                "JSON sort field paths must not contain outer whitespace."
+                "JSON sort field paths must not contain outer whitespace.",
             )
         return path
 

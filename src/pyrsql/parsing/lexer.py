@@ -17,6 +17,7 @@ class Lexer:
         limits: ParseLimits | None = None,
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
+        """Initializes the lexer with source text and parser limits."""
         self._source = (
             source
             if isinstance(source, SourceText)
@@ -31,11 +32,19 @@ class Lexer:
 
     @property
     def limits(self) -> ParseLimits:
-        """Returns the configured parser safety limits."""
+        """Returns the configured parser safety limits.
+
+        Returns:
+            The lexer safety limits currently in use.
+        """
         return self._limits
 
     def tokenize(self) -> tuple[Token, ...]:
-        """Tokenizes the configured source."""
+        """Tokenizes the configured source.
+
+        Returns:
+            The tokenized source stream.
+        """
         tokens: list[Token] = []
         while not self._is_at_end():
             self._skip_whitespace()
@@ -47,12 +56,16 @@ class Lexer:
                 TokenKind.EOF,
                 "",
                 self._current_position(),
-            )
+            ),
         )
         return tuple(tokens)
 
     def _next_token(self) -> Token:
-        """Returns the next token from the stream."""
+        """Returns the next token from the stream.
+
+        Returns:
+            The next token in source order.
+        """
         if operator := self._match_operator():
             return operator
 
@@ -72,7 +85,14 @@ class Lexer:
                 return self._consume_unquoted_text()
 
     def _consume_quoted_text(self) -> Token:
-        """Consumes a single-quoted text token."""
+        """Consumes a single-quoted text token.
+
+        Returns:
+            The consumed quoted token.
+
+        Raises:
+            LexError: If the quoted text is unterminated.
+        """
         start = self._current_position()
         self._advance()
         characters: list[str] = []
@@ -93,7 +113,14 @@ class Lexer:
         )
 
     def _consume_unquoted_text(self) -> Token:
-        """Consumes an unquoted text token."""
+        """Consumes an unquoted text token.
+
+        Returns:
+            The consumed unquoted token.
+
+        Raises:
+            LexError: If the current character cannot start a token.
+        """
         start = self._current_position()
         start_index = self._index
         while not self._is_at_end():
@@ -125,13 +152,21 @@ class Lexer:
         return self._make_token(TokenKind.UNQUOTED_TEXT, lexeme, start)
 
     def _single_char_token(self, kind: TokenKind) -> Token:
-        """Consumes a fixed-width token."""
+        """Consumes a fixed-width token.
+
+        Returns:
+            The consumed single-character token.
+        """
         start = self._current_position()
         lexeme = self._advance()
         return self._make_token(kind, lexeme, start)
 
     def _match_operator(self) -> Token | None:
-        """Consumes a comparison operator when present."""
+        """Consumes a comparison operator when present.
+
+        Returns:
+            The matched operator token, or ``None``.
+        """
         start = self._current_position()
         for spelling in self._candidate_operator_spellings():
             if self._source.text.startswith(spelling, self._index):
@@ -144,14 +179,22 @@ class Lexer:
         return None
 
     def _starts_with_operator(self) -> bool:
-        """Checks whether the current position begins an operator."""
+        """Checks whether the current position begins an operator.
+
+        Returns:
+            ``True`` when the current position can start a known operator.
+        """
         for spelling in self._candidate_operator_spellings():
             if self._source.text.startswith(spelling, self._index):
                 return True
         return False
 
     def _candidate_operator_spellings(self) -> tuple[str, ...]:
-        """Returns spellings matching the current prefix character."""
+        """Returns spellings matching the current prefix character.
+
+        Returns:
+            Candidate operator spellings for the current prefix.
+        """
         return self._operator_registry.match_candidates(self._peek())
 
     def _skip_whitespace(self) -> None:
@@ -162,7 +205,11 @@ class Lexer:
             self._advance()
 
     def _validate_source_length(self) -> None:
-        """Enforces the global query size limit."""
+        """Enforces the global query size limit.
+
+        Raises:
+            LexError: If the source exceeds the configured length.
+        """
         if self._source.length > self._limits.max_query_length:
             position = SourcePosition(index=0, line=1, column=1)
             raise LexError(
@@ -178,7 +225,11 @@ class Lexer:
         lexeme: str,
         position: SourcePosition,
     ) -> None:
-        """Enforces the unquoted text length limit."""
+        """Enforces the unquoted text length limit.
+
+        Raises:
+            LexError: If the unquoted token exceeds the configured length.
+        """
         if len(lexeme) > self._limits.max_selector_length:
             raise LexError(
                 message=(
@@ -193,7 +244,11 @@ class Lexer:
         lexeme: str,
         position: SourcePosition,
     ) -> None:
-        """Enforces the quoted argument length limit."""
+        """Enforces the quoted argument length limit.
+
+        Raises:
+            LexError: If the quoted token exceeds the configured length.
+        """
         if len(lexeme) > self._limits.max_argument_length:
             raise LexError(
                 message=(
@@ -204,7 +259,11 @@ class Lexer:
             )
 
     def _advance(self) -> str:
-        """Consumes the current character and updates source position."""
+        """Consumes the current character and updates source position.
+
+        Returns:
+            The consumed character.
+        """
         character = self._source.text[self._index]
         self._index += 1
         if character == "\n":
@@ -220,11 +279,19 @@ class Lexer:
         self._column += len(operator)
 
     def _peek(self) -> str:
-        """Returns the current character without consuming it."""
+        """Returns the current character without consuming it.
+
+        Returns:
+            The current character.
+        """
         return self._source.text[self._index]
 
     def _current_position(self) -> SourcePosition:
-        """Returns the current source position."""
+        """Returns the current source position.
+
+        Returns:
+            The current source position.
+        """
         return SourcePosition(
             index=self._index,
             line=self._line,
@@ -237,7 +304,11 @@ class Lexer:
         lexeme: str,
         start: SourcePosition,
     ) -> Token:
-        """Builds a token from a start position and current cursor."""
+        """Builds a token from a start position and current cursor.
+
+        Returns:
+            The constructed token.
+        """
         return Token(
             kind=kind,
             lexeme=lexeme,
@@ -245,5 +316,9 @@ class Lexer:
         )
 
     def _is_at_end(self) -> bool:
-        """Checks whether the lexer reached the end of the source."""
+        """Checks whether the lexer reached the end of the source.
+
+        Returns:
+            ``True`` when the lexer cursor reached the end of input.
+        """
         return self._index >= self._source.length

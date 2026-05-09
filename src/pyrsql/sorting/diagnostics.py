@@ -10,5 +10,9 @@ class SortDiagnostic(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     message: str
 
     def __str__(self) -> str:
-        """Formats the diagnostic as a stable string."""
+        """Formats the diagnostic as a stable string.
+
+        Returns:
+            The formatted diagnostic string.
+        """
         return f"[{self.code}] {self.message}"

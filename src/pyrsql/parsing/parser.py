@@ -44,6 +44,7 @@ class Parser:
         limits: ParseLimits | None = None,
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
+        """Initializes the parser with raw source text and limits."""
         self._limits = limits or DEFAULT_PARSE_LIMITS
         self._operator_registry = operator_registry
         self._tokens = Lexer(
@@ -57,7 +58,11 @@ class Parser:
 
     @property
     def limits(self) -> ParseLimits:
-        """Returns the configured parser safety limits."""
+        """Returns the configured parser safety limits.
+
+        Returns:
+            The parser safety limits currently in use.
+        """
         return self._limits
 
     def parse(self) -> Expression:
@@ -71,7 +76,11 @@ class Parser:
         return node
 
     def _parse_or_expression(self, depth: int) -> Expression:
-        """Parses OR-precedence logical expressions."""
+        """Parses OR-precedence logical expressions.
+
+        Returns:
+            The parsed expression subtree.
+        """
         self._enforce_depth(depth)
         nodes = [self._parse_and_expression(depth + 1)]
         while self._match(TokenKind.OR, TokenKind.COMMA):
@@ -81,7 +90,11 @@ class Parser:
         return self._make_logical_node(LogicalOperator.OR, nodes)
 
     def _parse_and_expression(self, depth: int) -> Expression:
-        """Parses AND-precedence logical expressions."""
+        """Parses AND-precedence logical expressions.
+
+        Returns:
+            The parsed expression subtree.
+        """
         self._enforce_depth(depth)
         nodes = [self._parse_primary_expression(depth + 1)]
         while self._match(TokenKind.AND, TokenKind.SEMICOLON):
@@ -91,7 +104,11 @@ class Parser:
         return self._make_logical_node(LogicalOperator.AND, nodes)
 
     def _parse_primary_expression(self, depth: int) -> Expression:
-        """Parses grouped or comparison expressions."""
+        """Parses grouped or comparison expressions.
+
+        Returns:
+            The parsed primary expression.
+        """
         self._enforce_depth(depth)
         if self._current().kind is TokenKind.LPAREN:
             opening = self._expect(
@@ -109,7 +126,14 @@ class Parser:
         return self._parse_comparison()
 
     def _parse_comparison(self) -> ComparisonNode:
-        """Parses a comparison expression."""
+        """Parses a comparison expression.
+
+        Returns:
+            The parsed comparison node.
+
+        Raises:
+            ParseError: If the comparison syntax is invalid.
+        """
         selector = self._expect(
             TokenKind.UNQUOTED_TEXT,
             message="Expected a selector before the comparison operator",
@@ -138,7 +162,11 @@ class Parser:
         )
 
     def _parse_arguments(self) -> tuple[Argument, ...]:
-        """Parses comparison arguments."""
+        """Parses comparison arguments.
+
+        Returns:
+            The parsed comparison arguments.
+        """
         if self._current().kind is TokenKind.LPAREN:
             return self._parse_argument_list()
         if self._current().kind in _EXPRESSION_TERMINATORS:
@@ -147,7 +175,14 @@ class Parser:
         return (self._make_argument(argument_token),)
 
     def _parse_argument_list(self) -> tuple[Argument, ...]:
-        """Parses a parenthesized argument list."""
+        """Parses a parenthesized argument list.
+
+        Returns:
+            The parsed argument list.
+
+        Raises:
+            ParseError: If the argument list is malformed or exceeds limits.
+        """
         self._expect(
             TokenKind.LPAREN,
             message="Expected '(' to start argument list",
@@ -167,7 +202,7 @@ class Parser:
                     span=self._current().span,
                 )
             argument_token = self._expect_value(
-                "Expected an argument inside list"
+                "Expected an argument inside list",
             )
             arguments.append(self._make_argument(argument_token))
             if self._match(TokenKind.COMMA):
@@ -184,7 +219,12 @@ class Parser:
         operator: ComparisonOperator,
         arguments: tuple[Argument, ...],
     ) -> None:
-        """Validates operator arity."""
+        """Validates operator arity.
+
+        Raises:
+            ParseError: If the number of arguments does not match the
+                operator's arity.
+        """
         minimum_arguments = operator.minimum_arguments
         maximum_arguments = operator.maximum_arguments
         if len(arguments) < minimum_arguments:
@@ -209,7 +249,11 @@ class Parser:
         operator: LogicalOperator,
         children: list[Expression],
     ) -> LogicalNode:
-        """Builds a logical node while tracking parser limits."""
+        """Builds a logical node while tracking parser limits.
+
+        Returns:
+            The constructed logical node.
+        """
         self._register_node()
         return LogicalNode(
             span=SourceSpan.cover(children[0].span, children[-1].span),
@@ -225,7 +269,11 @@ class Parser:
         operator: ComparisonOperator,
         arguments: tuple[Argument, ...],
     ) -> ComparisonNode:
-        """Builds a comparison node while tracking parser limits."""
+        """Builds a comparison node while tracking parser limits.
+
+        Returns:
+            The constructed comparison node.
+        """
         self._register_node()
         end_span = arguments[-1].span if arguments else operator_token.span
         return ComparisonNode(
@@ -236,7 +284,11 @@ class Parser:
         )
 
     def _make_argument(self, token: Token) -> Argument:
-        """Builds an argument node from a value token."""
+        """Builds an argument node from a value token.
+
+        Returns:
+            The constructed argument node.
+        """
         return Argument(
             text=token.lexeme,
             quoted=token.kind is TokenKind.QUOTED_TEXT,
@@ -244,7 +296,14 @@ class Parser:
         )
 
     def _expect_value(self, message: str) -> Token:
-        """Consumes the next value token."""
+        """Consumes the next value token.
+
+        Returns:
+            The consumed value token.
+
+        Raises:
+            ParseError: If the current token is not a value token.
+        """
         current = self._current()
         if current.kind not in (TokenKind.UNQUOTED_TEXT, TokenKind.QUOTED_TEXT):
             raise ParseError(message=message, span=current.span)
@@ -252,7 +311,14 @@ class Parser:
         return current
 
     def _expect(self, kind: TokenKind, *, message: str) -> Token:
-        """Consumes the next token if it matches the expected kind."""
+        """Consumes the next token if it matches the expected kind.
+
+        Returns:
+            The consumed token.
+
+        Raises:
+            ParseError: If the current token kind does not match.
+        """
         current = self._current()
         if current.kind is not kind:
             raise ParseError(message=message, span=current.span)
@@ -260,14 +326,22 @@ class Parser:
         return current
 
     def _match(self, *kinds: TokenKind) -> bool:
-        """Consumes the current token if it matches one of the kinds."""
+        """Consumes the current token if it matches one of the kinds.
+
+        Returns:
+            ``True`` when a token was consumed.
+        """
         if self._current().kind in kinds:
             self._advance()
             return True
         return False
 
     def _register_node(self) -> None:
-        """Tracks AST node creation against parser limits."""
+        """Tracks AST node creation against parser limits.
+
+        Raises:
+            ParseError: If the node count exceeds the configured limit.
+        """
         self._node_count += 1
         if self._node_count > self._limits.max_node_count:
             raise ParseError(
@@ -279,7 +353,11 @@ class Parser:
             )
 
     def _enforce_depth(self, depth: int) -> None:
-        """Enforces the maximum expression depth."""
+        """Enforces the maximum expression depth.
+
+        Raises:
+            ParseError: If the expression depth exceeds the configured limit.
+        """
         if depth > self._limits.max_expression_depth:
             raise ParseError(
                 message=(
@@ -290,7 +368,11 @@ class Parser:
             )
 
     def _current(self) -> Token:
-        """The current token."""
+        """The current token.
+
+        Returns:
+            The current token.
+        """
         return self._tokens[self._index]
 
     def _advance(self) -> None:

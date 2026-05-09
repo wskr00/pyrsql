@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Mapping
+import re
 
 import pytest
 
-from pyrsql.ir.query import BoundComparison, BoundField, BoundFunction, BoundLogical
+from pyrsql.ir.query import (
+    BoundComparison,
+    BoundField,
+    BoundFunction,
+    BoundLogical,
+)
 from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder

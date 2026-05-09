@@ -19,7 +19,7 @@ def test_sort_parse_builds_sort_object_from_parser_and_binder(
     """Composes parsed sort fields and bound sort IR into one Sort object."""
     options = SortOptions()
     fields = cast(
-        tuple[SortField, ...],
+        "tuple[SortField, ...]",
         (object(), object()),
     )
     bound_sort = object()

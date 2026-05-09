@@ -43,13 +43,13 @@ class FastAPISQLAlchemyIntegration:
     """Composes the FastAPI adapter with the SQLAlchemy ORM integration."""
 
     __slots__ = (
-        "orm",
-        "criteria_config",
-        "_criteria_dependency",
-        "_select_dependencies",
-        "_count_select_dependencies",
-        "_paginated_select_dependencies",
         "_base_selects",
+        "_count_select_dependencies",
+        "_criteria_dependency",
+        "_paginated_select_dependencies",
+        "_select_dependencies",
+        "criteria_config",
+        "orm",
     )
 
     def __init__(
@@ -58,14 +58,19 @@ class FastAPISQLAlchemyIntegration:
         orm: SQLAlchemyORM | None = None,
         criteria_config: FastAPICriteriaConfig | None = None,
     ) -> None:
-        """Creates an integration helper for FastAPI and SQLAlchemy."""
+        """Creates an integration helper for FastAPI and SQLAlchemy.
+
+        Raises:
+            TypeError: If ``orm`` or ``criteria_config`` has the wrong runtime
+                type.
+        """
         if orm is not None and not isinstance(orm, SQLAlchemyORM):
             raise TypeError("orm must be a SQLAlchemyORM or None.")
         if criteria_config is not None and not isinstance(
-            criteria_config, FastAPICriteriaConfig
+            criteria_config, FastAPICriteriaConfig,
         ):
             raise TypeError(
-                "criteria_config must be a FastAPICriteriaConfig or None."
+                "criteria_config must be a FastAPICriteriaConfig or None.",
             )
         self.orm = orm or _DEFAULT_SQLALCHEMY_ORM
         self.criteria_config = (
@@ -73,18 +78,22 @@ class FastAPISQLAlchemyIntegration:
         )
         self._criteria_dependency = CriteriaDependency(self.criteria_config)
         self._select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemySelect]
+            SQLAlchemyModel, Callable[..., SQLAlchemySelect],
         ] = {}
         self._count_select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemySelect]
+            SQLAlchemyModel, Callable[..., SQLAlchemySelect],
         ] = {}
         self._paginated_select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemyPaginatedSelect]
+            SQLAlchemyModel, Callable[..., SQLAlchemyPaginatedSelect],
         ] = {}
         self._base_selects: dict[SQLAlchemyModel, SQLAlchemySelect] = {}
 
     def criteria_dependency(self) -> CriteriaDependency:
-        """Returns a configured FastAPI dependency for request criteria."""
+        """Returns a configured FastAPI dependency for request criteria.
+
+        Returns:
+            A configured FastAPI criteria dependency.
+        """
         return self._criteria_dependency
 
     def _apply_query(
@@ -93,7 +102,11 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Applies only the filtering part of request criteria."""
+        """Applies only the filtering part of request criteria.
+
+        Returns:
+            A statement with query/filter semantics applied.
+        """
         return apply_query_with_orm(
             statement,
             model,
@@ -107,7 +120,11 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Applies sort and page semantics on top of a filtered statement."""
+        """Applies sort and page semantics on top of a filtered statement.
+
+        Returns:
+            A statement with sort and page semantics applied.
+        """
         return apply_sort_and_page_with_orm(
             statement,
             model,
@@ -120,11 +137,19 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Builds the common filtered select used by list and count flows."""
+        """Builds the common filtered select used by list and count flows.
+
+        Returns:
+            The shared filtered select statement used by list and count flows.
+        """
         return self._apply_query(self._base_select(model), model, criteria)
 
     def _base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
-        """Returns a cached base select(model) statement."""
+        """Returns a cached base select(model) statement.
+
+        Returns:
+            A cached base ``select(model)`` statement.
+        """
         statement = self._base_selects.get(model)
         if statement is not None:
             return statement
@@ -133,14 +158,22 @@ class FastAPISQLAlchemyIntegration:
         return statement
 
     def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
-        """Returns the cached base select for a model."""
+        """Returns the cached base select for a model.
+
+        Returns:
+            The cached base ``select(model)`` statement.
+        """
         return self._base_select(model)
 
     def _count_from_filtered_select(
         self,
         filtered_statement: SQLAlchemySelect,
     ) -> SQLAlchemySelect:
-        """Builds a count statement from an already-filtered select."""
+        """Builds a count statement from an already-filtered select.
+
+        Returns:
+            A count statement derived from the filtered select.
+        """
         return count_from_filtered_select(filtered_statement)
 
     def apply(
@@ -149,11 +182,15 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Applies request criteria to an existing SQLAlchemy select."""
+        """Applies request criteria to an existing SQLAlchemy select.
+
+        Returns:
+            A statement with all request criteria applied.
+        """
         require_sqlalchemy_select(statement)
         criteria = require_request_criteria(criteria)
         return cast(
-            SQLAlchemySelect,
+            "SQLAlchemySelect",
             criteria.apply(statement, model, orm=self.orm),
         )
 
@@ -162,7 +199,11 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Builds a select statement for a model and applies criteria."""
+        """Builds a select statement for a model and applies criteria.
+
+        Returns:
+            A select statement with all request criteria applied.
+        """
         criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return self._apply_sort_and_page(
@@ -176,10 +217,14 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
-        """Builds a count statement from the filtered query semantics only."""
+        """Builds a count statement from the filtered query semantics only.
+
+        Returns:
+            A count statement derived from the filtered query semantics.
+        """
         criteria = require_request_criteria(criteria)
         return self._count_from_filtered_select(
-            self._filtered_select(model, criteria)
+            self._filtered_select(model, criteria),
         )
 
     def paginated_select(
@@ -187,7 +232,11 @@ class FastAPISQLAlchemyIntegration:
         model: SQLAlchemyModel,
         criteria: RequestCriteria,
     ) -> SQLAlchemyPaginatedSelect:
-        """Builds both list and count statements for a paginated flow."""
+        """Builds both list and count statements for a paginated flow.
+
+        Returns:
+            The paired list and count statements for a paginated flow.
+        """
         criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return SQLAlchemyPaginatedSelect(
@@ -197,7 +246,7 @@ class FastAPISQLAlchemyIntegration:
                 criteria,
             ),
             count_statement=self._count_from_filtered_select(
-                filtered_statement
+                filtered_statement,
             ),
         )
 
@@ -205,7 +254,11 @@ class FastAPISQLAlchemyIntegration:
         self,
         model: SQLAlchemyModel,
     ) -> Callable[..., SQLAlchemySelect]:
-        """Returns a FastAPI dependency that yields a filtered select."""
+        """Returns a FastAPI dependency that yields a filtered select.
+
+        Returns:
+            A FastAPI dependency that yields a filtered select statement.
+        """
         cached_dependency = self._select_dependencies.get(model)
         if cached_dependency is not None:
             return cached_dependency
@@ -223,7 +276,11 @@ class FastAPISQLAlchemyIntegration:
         self,
         model: SQLAlchemyModel,
     ) -> Callable[..., SQLAlchemySelect]:
-        """Returns a FastAPI dependency that yields a count select."""
+        """Returns a FastAPI dependency that yields a count select.
+
+        Returns:
+            A FastAPI dependency that yields a count select statement.
+        """
         cached_dependency = self._count_select_dependencies.get(model)
         if cached_dependency is not None:
             return cached_dependency
@@ -241,7 +298,11 @@ class FastAPISQLAlchemyIntegration:
         self,
         model: SQLAlchemyModel,
     ) -> Callable[..., SQLAlchemyPaginatedSelect]:
-        """Returns a FastAPI dependency yielding list and count statements."""
+        """Returns a FastAPI dependency yielding list and count statements.
+
+        Returns:
+            A FastAPI dependency that yields paired list and count statements.
+        """
         cached_dependency = self._paginated_select_dependencies.get(model)
         if cached_dependency is not None:
             return cached_dependency
@@ -271,7 +332,11 @@ class FastAPISQLAlchemyIntegration:
         filter_examples: dict[str, dict[str, object]] | None = None,
         sort_examples: dict[str, dict[str, object]] | None = None,
     ) -> FastAPISQLAlchemyResource:
-        """Builds a declarative route-ready resource for one model."""
+        """Builds a declarative route-ready resource for one model.
+
+        Returns:
+            A declarative FastAPI + SQLAlchemy resource for the model.
+        """
         query_options = self.criteria_config.query_options
         sort_options = self.criteria_config.sort_options
         if filterable_fields is not None:

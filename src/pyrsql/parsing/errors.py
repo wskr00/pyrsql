@@ -17,7 +17,11 @@ class ParseError(ValueError):
 
     @property
     def diagnostic(self) -> ParseDiagnostic:
-        """Returns the structured diagnostic for this error."""
+        """Returns the structured diagnostic for this error.
+
+        Returns:
+            The structured parse diagnostic.
+        """
         return ParseDiagnostic(
             code=self.code,
             message=self.message,
@@ -25,7 +29,11 @@ class ParseError(ValueError):
         )
 
     def __str__(self) -> str:
-        """Formats the parse error with source location data."""
+        """Formats the parse error with source location data.
+
+        Returns:
+            The formatted parse error string.
+        """
         return str(self.diagnostic)
 
 

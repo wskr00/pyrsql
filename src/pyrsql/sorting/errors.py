@@ -15,11 +15,19 @@ class SortError(ValueError):
 
     @property
     def diagnostic(self) -> SortDiagnostic:
-        """Returns the structured diagnostic for this error."""
+        """Returns the structured diagnostic for this error.
+
+        Returns:
+            The structured sorting diagnostic.
+        """
         return SortDiagnostic(code=self.code, message=self.message)
 
     def __str__(self) -> str:
-        """Formats the sort error consistently."""
+        """Formats the sort error consistently.
+
+        Returns:
+            The formatted sort error string.
+        """
         return str(self.diagnostic)
 
 

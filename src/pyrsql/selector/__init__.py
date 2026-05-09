@@ -18,8 +18,8 @@ __all__ = [
     "FieldSelector",
     "FunctionSelector",
     "LiteralSelector",
-    "SelectorNode",
     "SelectorLiteral",
+    "SelectorNode",
     "SelectorParseError",
     "SelectorParser",
 ]

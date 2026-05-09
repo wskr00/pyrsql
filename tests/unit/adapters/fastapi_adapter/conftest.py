@@ -22,11 +22,11 @@ def query_stub() -> Query:
     query = object.__new__(Query)
     object.__setattr__(query, "text", "stub")
     object.__setattr__(query, "options", QueryOptions())
-    object.__setattr__(query, "expression", cast(Expression, object()))
+    object.__setattr__(query, "expression", cast("Expression", object()))
     object.__setattr__(
         query,
         "bound_expression",
-        cast(BoundComparison, object()),
+        cast("BoundComparison", object()),
     )
     return query
 
@@ -55,7 +55,7 @@ def openapi_examples_fixture() -> Mapping[str, Any]:
         "by_name": {
             "summary": "By name",
             "value": "name==demo",
-        }
+        },
     }
 
 

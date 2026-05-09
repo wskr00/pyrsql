@@ -60,7 +60,11 @@ class ORM(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """The stable ORM name."""
+        """The stable ORM name.
+
+        Returns:
+            The ORM's stable identifier.
+        """
 
     @abstractmethod
     def compile_query(self, query: "Query") -> CompiledQuery:

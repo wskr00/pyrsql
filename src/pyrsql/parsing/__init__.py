@@ -17,9 +17,9 @@ from pyrsql.parsing.source import SourceSpan, SourceText
 from pyrsql.parsing.tokens import Token, TokenKind
 
 __all__ = [
+    "DEFAULT_PARSE_LIMITS",
     "Argument",
     "ComparisonNode",
-    "DEFAULT_PARSE_LIMITS",
     "Expression",
     "LexError",
     "Lexer",

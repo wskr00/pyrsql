@@ -59,19 +59,28 @@ class SortBinder:
     """Binds parsed sort fields into logical sort IR."""
 
     def __init__(self, options: SortBindingOptions) -> None:
+        """Initializes the binder with sort binding options."""
         self._field_whitelist = options.field_whitelist
         self._field_blacklist = options.field_blacklist
         self._procedure_policy = options.procedure_policy
         self._field_mapping = options.field_mapping
 
     def bind(self, fields: tuple[SortField, ...]) -> BoundSort:
-        """Binds parsed sort fields into a bound sort request."""
+        """Binds parsed sort fields into a bound sort request.
+
+        Returns:
+            A bound sort request.
+        """
         return BoundSort(
             fields=tuple(self._bind_field(field) for field in fields),
         )
 
     def _bind_field(self, field: SortField) -> BoundSortField:
-        """Binds a single parsed sort field."""
+        """Binds a single parsed sort field.
+
+        Returns:
+            The bound sort field.
+        """
         return BoundSortField(
             selector=self._bind_selector(field.selector),
             direction=field.direction,
@@ -79,7 +88,11 @@ class SortBinder:
         )
 
     def _bind_selector(self, selector: SelectorNode) -> BoundSelectorNode:
-        """Binds a parsed selector recursively."""
+        """Binds a parsed selector recursively.
+
+        Returns:
+            The bound selector node.
+        """
         return _bind_selector(
             selector,
             field_mapping=self._field_mapping,
@@ -88,7 +101,12 @@ class SortBinder:
         )
 
     def _enforce_field_access_policy(self, field_path: str) -> None:
-        """Validates whitelist and blacklist rules."""
+        """Validates whitelist and blacklist rules.
+
+        Raises:
+            SortFieldNotWhitelistedError: If the field is not allowed.
+            SortFieldBlacklistedError: If the field is blocked.
+        """
         if self._field_whitelist and field_path not in self._field_whitelist:
             raise SortFieldNotWhitelistedError(
                 message=f"Field {field_path!r} is not allowed",
@@ -99,7 +117,12 @@ class SortBinder:
             )
 
     def _enforce_function_access_policy(self, function_name: str) -> None:
-        """Validates whitelist and blacklist rules for functions."""
+        """Validates whitelist and blacklist rules for functions.
+
+        Raises:
+            SortFunctionNotWhitelistedError: If the function is not allowed.
+            SortFunctionBlacklistedError: If the function is blocked.
+        """
         if not self._procedure_policy.is_whitelisted(function_name):
             raise SortFunctionNotWhitelistedError(
                 message=f"Function {function_name!r} is not whitelisted",
@@ -117,7 +140,14 @@ def _bind_selector(
     validate_field: Callable[[str], None],
     validate_function: Callable[[str], None],
 ) -> BoundSelectorNode:
-    """Binds one parsed selector recursively."""
+    """Binds one parsed selector recursively.
+
+    Returns:
+        The bound selector node.
+
+    Raises:
+        TypeError: If the selector is not a supported selector node.
+    """
     if isinstance(selector, FieldSelector):
         field_path = field_mapping.get(selector.raw_path, selector.raw_path)
         validate_field(field_path)

@@ -23,16 +23,17 @@ from pyrsql.orms.sqlalchemy.types import (
 class SQLAlchemyPathResolver:
     """Resolves bound field paths into ORM joins and leaf attributes."""
 
-    __slots__ = ("_inspector", "_default_resolution_cache")
+    __slots__ = ("_default_resolution_cache", "_inspector")
 
     def __init__(
         self,
         *,
         inspector: SQLAlchemyModelInspector | None = None,
     ) -> None:
+        """Initializes the resolver with an optional shared inspector."""
         self._inspector = inspector or SQLAlchemyModelInspector()
         self._default_resolution_cache: dict[
-            tuple[type[Any], str], SQLAlchemyResolvedPath
+            tuple[type[Any], str], SQLAlchemyResolvedPath,
         ] = {}
 
     def resolve(
@@ -42,7 +43,11 @@ class SQLAlchemyPathResolver:
         *,
         field_policy: FieldPolicySet | None = None,
     ) -> SQLAlchemyResolvedPath:
-        """Resolves a dotted field path against a mapped SQLAlchemy model."""
+        """Resolves a dotted field path against a mapped SQLAlchemy model.
+
+        Returns:
+            The resolved SQLAlchemy path.
+        """
         if field_policy is None or field_policy.is_empty:
             cache_key = (model, field_path)
             cached_path = self._default_resolution_cache.get(cache_key)
@@ -68,14 +73,23 @@ class SQLAlchemyPathResolver:
         *,
         field_policy: FieldPolicySet | None,
     ) -> SQLAlchemyResolvedPath:
-        """Resolves a dotted field path with the provided field policy."""
+        """Resolves a dotted field path with the provided field policy.
+
+        Returns:
+            The resolved SQLAlchemy path.
+
+        Raises:
+            SQLAlchemyPathResolutionError: If the field path or mapped fields
+                are invalid.
+            SQLAlchemyORMError: If SQLAlchemy metadata resolution fails.
+        """
         if not field_path:
             raise SQLAlchemyPathResolutionError("Field path cannot be empty.")
 
         raw_segments = tuple(field_path.split("."))
         if not raw_segments or any(not segment for segment in raw_segments):
             raise SQLAlchemyPathResolutionError(
-                f"Field path {field_path!r} is invalid."
+                f"Field path {field_path!r} is invalid.",
             )
         segments = raw_segments
 
@@ -98,7 +112,7 @@ class SQLAlchemyPathResolver:
                     if any(not part for part in mapped_segments):
                         raise SQLAlchemyPathResolutionError(
                             f"Mapped field {segment!r} on "
-                            f"{current_model.__name__!r} is invalid."
+                            f"{current_model.__name__!r} is invalid.",
                         )
                     segments_to_resolve[segment_index : segment_index + 1] = (
                         mapped_segments
@@ -107,7 +121,7 @@ class SQLAlchemyPathResolver:
                     if expansion_count > 32:
                         raise SQLAlchemyPathResolutionError(
                             "Field mapping expansion exceeded the supported "
-                            "limit."
+                            "limit.",
                         )
                     continue
             mapped_attribute = self._inspector.get_mapped_attribute(
@@ -121,7 +135,7 @@ class SQLAlchemyPathResolver:
                     if is_last_segment:
                         raise SQLAlchemyPathResolutionError(
                             f"Field path {field_path!r} ends on relationship "
-                            f"{segment!r}; a column-like attribute is required."
+                            f"{segment!r}; a column-like attribute is required.",
                         )
                     joins.append(
                         SQLAlchemyJoinPlan(
@@ -129,11 +143,11 @@ class SQLAlchemyPathResolver:
                             attribute=mapped_attribute.attribute,
                             default_hint=JoinHint.INNER,
                             is_collection=mapped_attribute.is_collection,
-                        )
+                        ),
                     )
                     if mapped_attribute.mapper is None:
                         raise SQLAlchemyORMError(
-                            "Relationship path resolution requires a mapper."
+                            "Relationship path resolution requires a mapper.",
                         )
                     current_model = mapped_attribute.mapper.class_
                     segment_index += 1
@@ -147,7 +161,7 @@ class SQLAlchemyPathResolver:
                                 field_path=".".join(segments_to_resolve),
                                 joins=tuple(joins),
                                 leaf_attribute=cast(
-                                    ColumnElement[Any],
+                                    "ColumnElement[Any]",
                                     mapped_attribute.attribute,
                                 ),
                                 python_type=None,
@@ -155,14 +169,14 @@ class SQLAlchemyPathResolver:
                                     segments=tuple(
                                         segments_to_resolve[
                                             segment_index + 1 :
-                                        ]
-                                    )
+                                        ],
+                                    ),
                                 ),
                                 is_json=True,
                             )
                         raise SQLAlchemyPathResolutionError(
                             f"Field path {field_path!r} traverses through "
-                            f"non-relationship segment {segment!r}."
+                            f"non-relationship segment {segment!r}.",
                         )
                     leaf_attribute = mapped_attribute
                     if field_policy is not None:
@@ -176,12 +190,12 @@ class SQLAlchemyPathResolver:
                 case _:
                     raise SQLAlchemyORMError(
                         "Path resolution encountered an unsupported attribute "
-                        f"kind {mapped_attribute.kind!r}."
+                        f"kind {mapped_attribute.kind!r}.",
                     )
 
         if leaf_attribute is None:
             raise SQLAlchemyORMError(
-                "Path resolution ended without a resolved leaf attribute."
+                "Path resolution ended without a resolved leaf attribute.",
             )
         return SQLAlchemyResolvedPath(
             root_model=model,
@@ -189,7 +203,7 @@ class SQLAlchemyPathResolver:
             field_path=field_path,
             joins=tuple(joins),
             leaf_attribute=cast(
-                ColumnElement[Any],
+                "ColumnElement[Any]",
                 leaf_attribute.attribute,
             ),
             python_type=leaf_attribute.python_type,
@@ -202,7 +216,11 @@ class SQLAlchemyPathResolver:
         model: type[Any],
         segment: str,
     ) -> str:
-        """Builds the stable join-hint lookup key for one relationship step."""
+        """Builds the stable join-hint lookup key for one relationship step.
+
+        Returns:
+            A stable join-hint lookup key.
+        """
         return f"{model.__name__}.{segment}"
 
     @staticmethod
@@ -212,7 +230,11 @@ class SQLAlchemyPathResolver:
         field_name: str,
         field_path: str,
     ) -> None:
-        """Validates field access using global and model-specific rules."""
+        """Validates field access using global and model-specific rules.
+
+        Raises:
+            SQLAlchemyPathResolutionError: If the field access is invalid.
+        """
         try:
             field_policy.validate_global_field_access(field_path)
             field_policy.validate_model_field_access(model, field_name)

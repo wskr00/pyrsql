@@ -17,7 +17,11 @@ _DEFAULT_SORT_OPTIONS = SortOptions()
 def _resolve_sort_options(
     options: SortOptions | None,
 ) -> SortOptions:
-    """Returns the provided options or the shared immutable default."""
+    """Returns the provided options or the shared immutable default.
+
+    Returns:
+        The provided options, or the shared default when omitted.
+    """
     return options or _DEFAULT_SORT_OPTIONS
 
 
@@ -26,7 +30,11 @@ def _parse_sort_fields(
     *,
     options: SortOptions,
 ) -> tuple[SortField, ...]:
-    """Parses raw sort text into sort fields."""
+    """Parses raw sort text into sort fields.
+
+    Returns:
+        The parsed sort fields.
+    """
     return SortParser(
         sort_text,
         limits=options.sort_limits,
@@ -38,7 +46,11 @@ def _bind_sort_fields(
     *,
     options: SortOptions,
 ) -> BoundSort | None:
-    """Binds parsed sort fields into logical sort IR."""
+    """Binds parsed sort fields into logical sort IR.
+
+    Returns:
+        The bound logical sort IR, or ``None`` when no fields were parsed.
+    """
     if not fields:
         return None
     return SortBinder(options).bind(fields)

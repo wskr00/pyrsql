@@ -19,7 +19,7 @@ __all__ = [
     "JSONOptions",
     "JSONPath",
     "JSONPathComparison",
-    "JSONSortScalarType",
     "JSONScalarNormalizer",
     "JSONScalarValue",
+    "JSONSortScalarType",
 ]

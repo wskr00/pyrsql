@@ -55,7 +55,7 @@ def test_split_top_level_normalizes_fragments(
 )
 def test_parse_supports_field_and_literal_selectors(
     raw_selector: str,
-    expected_type: type[FieldSelector] | type[LiteralSelector],
+    expected_type: type[FieldSelector | LiteralSelector],
     expected_value: object,
 ) -> None:
     """Parses field and literal selectors into the expected node types."""

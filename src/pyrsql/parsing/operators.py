@@ -16,7 +16,11 @@ class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     maximum_arguments: int | None
 
     def __post_init__(self) -> None:
-        """Validates operator invariants."""
+        """Validates operator invariants.
+
+        Raises:
+            ValueError: If the operator definition is invalid.
+        """
         if not self.name:
             raise ValueError("Operator name cannot be empty.")
         if not self.spellings:
@@ -32,7 +36,7 @@ class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             and self.maximum_arguments < self.minimum_arguments
         ):
             raise ValueError(
-                "maximum_arguments cannot be less than minimum_arguments."
+                "maximum_arguments cannot be less than minimum_arguments.",
             )
 
 
@@ -44,11 +48,15 @@ class OperatorRegistry:
     operators_by_spelling: Mapping[str, ComparisonOperator] = field(init=False)
     operator_spellings: tuple[str, ...] = field(init=False)
     operator_spellings_by_prefix: Mapping[str, tuple[str, ...]] = field(
-        init=False
+        init=False,
     )
 
     def __post_init__(self) -> None:
-        """Builds lookup structures and validates uniqueness."""
+        """Builds lookup structures and validates uniqueness.
+
+        Raises:
+            ValueError: If no operators are registered or spellings collide.
+        """
         if not self.operators:
             raise ValueError("Operator registry must contain operators.")
         operators_by_spelling: dict[str, ComparisonOperator] = {}
@@ -56,7 +64,7 @@ class OperatorRegistry:
             for spelling in operator.spellings:
                 if spelling in operators_by_spelling:
                     raise ValueError(
-                        f"Duplicate operator spelling registered: {spelling!r}."
+                        f"Duplicate operator spelling registered: {spelling!r}.",
                     )
                 operators_by_spelling[spelling] = operator
         spellings_by_prefix: dict[str, list[str]] = {}
@@ -75,7 +83,7 @@ class OperatorRegistry:
                     operators_by_spelling,
                     key=len,
                     reverse=True,
-                )
+                ),
             ),
         )
         object.__setattr__(
@@ -85,16 +93,24 @@ class OperatorRegistry:
                 {
                     prefix: tuple(sorted(spellings, key=len, reverse=True))
                     for prefix, spellings in spellings_by_prefix.items()
-                }
+                },
             ),
         )
 
     def get(self, spelling: str) -> ComparisonOperator:
-        """Returns the operator registered for the provided spelling."""
+        """Returns the operator registered for the provided spelling.
+
+        Returns:
+            The registered comparison operator.
+        """
         return self.operators_by_spelling[spelling]
 
     def match_candidates(self, prefix: str) -> tuple[str, ...]:
-        """Returns operator spellings that can start with the prefix."""
+        """Returns operator spellings that can start with the prefix.
+
+        Returns:
+            Candidate operator spellings for the prefix.
+        """
         return self.operator_spellings_by_prefix.get(prefix, ())
 
 
@@ -222,7 +238,7 @@ SUPPORTED_COMPARISON_OPERATORS = (
 )
 
 DEFAULT_OPERATOR_REGISTRY = OperatorRegistry(
-    operators=SUPPORTED_COMPARISON_OPERATORS
+    operators=SUPPORTED_COMPARISON_OPERATORS,
 )
 OPERATOR_SPELLINGS = DEFAULT_OPERATOR_REGISTRY.operator_spellings
 OPERATORS_BY_SPELLING = DEFAULT_OPERATOR_REGISTRY.operators_by_spelling

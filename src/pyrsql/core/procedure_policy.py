@@ -50,11 +50,19 @@ class ProcedureAccessPolicy(
         )
 
     def is_whitelisted(self, procedure_name: str) -> bool:
-        """Whether the procedure matches the whitelist."""
+        """Whether the procedure matches the whitelist.
+
+        Returns:
+            ``True`` when the procedure matches at least one whitelist pattern.
+        """
         return self._matches_any(procedure_name, self.whitelist_patterns)
 
     def is_blacklisted(self, procedure_name: str) -> bool:
-        """Whether the procedure matches the blacklist."""
+        """Whether the procedure matches the blacklist.
+
+        Returns:
+            ``True`` when the procedure matches at least one blacklist pattern.
+        """
         return self._matches_any(procedure_name, self.blacklist_patterns)
 
     def _matches_any(
@@ -62,7 +70,11 @@ class ProcedureAccessPolicy(
         procedure_name: str,
         patterns: tuple[Pattern[str], ...],
     ) -> bool:
-        """Whether a value fully matches at least one pattern."""
+        """Whether a value fully matches at least one pattern.
+
+        Returns:
+            ``True`` when the value fully matches at least one pattern.
+        """
         return any(pattern.fullmatch(procedure_name) for pattern in patterns)
 
 
