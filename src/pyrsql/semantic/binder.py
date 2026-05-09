@@ -1,7 +1,8 @@
 """ORM-neutral semantic binder."""
 
-from collections.abc import Callable, Mapping
-from typing import Protocol
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
 
 from pyrsql.ir.query import (
     BoundArgument,
@@ -10,15 +11,12 @@ from pyrsql.ir.query import (
     BoundFunction,
     BoundLiteral,
     BoundLogical,
-    BoundSelectorNode,
 )
-from pyrsql.parsing.ast import ComparisonNode, Expression, LogicalNode
-from pyrsql.parsing.source import SourceSpan
+from pyrsql.parsing.ast import ComparisonNode, LogicalNode
 from pyrsql.selector.ast import (
     FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    SelectorNode,
 )
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
@@ -26,6 +24,18 @@ from pyrsql.semantic.errors import (
     FunctionBlacklistedError,
     FunctionNotWhitelistedError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
+    from pyrsql.ir.query import (
+        BoundSelectorNode,
+    )
+    from pyrsql.parsing.ast import Expression
+    from pyrsql.parsing.source import SourceSpan
+    from pyrsql.selector.ast import (
+        SelectorNode,
+    )
 
 
 class ProcedurePolicyProtocol(Protocol):

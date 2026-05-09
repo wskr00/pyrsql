@@ -1,10 +1,14 @@
 """Parsing error types."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pyrsql.parsing.diagnostics import ParseDiagnostic
-from pyrsql.parsing.source import SourceSpan
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,12 +2,16 @@
 
 # pylint: disable=redefined-builtin
 
-from typing import Any
+from __future__ import annotations
 
-from pyrsql.core.compiler import CompilationResult
-from pyrsql.core.options import QueryOptions
+from typing import TYPE_CHECKING, Any
+
 from pyrsql.core.query import Query
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompilationResult
+    from pyrsql.core.options import QueryOptions
+    from pyrsql.orms.base import ORM
 
 
 def parse(query_text: str, *, options: QueryOptions | None = None) -> Query:

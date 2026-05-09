@@ -1,16 +1,21 @@
 """ORM-neutral value conversion support."""
 
-from collections.abc import Callable, Mapping
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
 import datetime as dt
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import ciso8601
 import msgspec
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 ValueConverter = Callable[[str], Any]
 
@@ -82,7 +87,7 @@ class ValueConverterRegistry:
         self,
         target_type: type[Any],
         converter: ValueConverter,
-    ) -> "ValueConverterRegistry":
+    ) -> ValueConverterRegistry:
         """Returns a new registry with one additional converter.
 
         Returns:

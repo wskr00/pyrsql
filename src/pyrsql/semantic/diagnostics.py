@@ -1,8 +1,13 @@
 """Structured semantic diagnostics."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
-from pyrsql.parsing.source import SourceSpan
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 class SemanticDiagnostic(msgspec.Struct, frozen=True, gc=False, kw_only=True):

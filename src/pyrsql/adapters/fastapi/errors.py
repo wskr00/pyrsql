@@ -1,9 +1,12 @@
 """FastAPI adapter error helpers."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
 from pyrsql.parsing.errors import ParseError
-from pyrsql.parsing.source import SourceSpan
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
     FieldNotWhitelistedError,
@@ -18,6 +21,9 @@ from pyrsql.sorting.errors import (
     SortFunctionNotWhitelistedError,
     SortParseError,
 )
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 class FastAPIAdapterErrorPayload(
@@ -35,7 +41,7 @@ class FastAPIAdapterErrorPayload(
 
     parameter: str
     error_type: str
-    details: tuple["FastAPIAdapterErrorDetail", ...]
+    details: tuple[FastAPIAdapterErrorDetail, ...]
 
 
 class FastAPIAdapterErrorLocation(

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 import re
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,6 +16,9 @@ from pyrsql.sorting.errors import (
     SortFunctionNotWhitelistedError,
 )
 from pyrsql.sorting.parser import SortParser
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class _ProcedurePolicy:

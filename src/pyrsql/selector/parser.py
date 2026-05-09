@@ -1,14 +1,21 @@
 """Shared recursive parser for pyrsql selectors."""
 
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING
 
 from pyrsql.selector.ast import (
     FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    SelectorLiteral,
-    SelectorNode,
 )
+
+if TYPE_CHECKING:
+    from pyrsql.selector.ast import (
+        SelectorLiteral,
+        SelectorNode,
+    )
 
 
 class SelectorParseError(ValueError):

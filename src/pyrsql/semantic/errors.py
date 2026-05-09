@@ -1,10 +1,14 @@
 """Semantic analysis exceptions."""
 
-from dataclasses import dataclass
-from typing import ClassVar
+from __future__ import annotations
 
-from pyrsql.parsing.source import SourceSpan
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar
+
 from pyrsql.semantic.diagnostics import SemanticDiagnostic
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,12 +1,16 @@
 """ORM-neutral pagination request objects."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 
 from pyrsql.core.compiler import PageCompilationResult
 from pyrsql.ir.page import BoundPage
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from pyrsql.orms.base import ORM
 
 
 class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -37,7 +41,7 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         cls,
         page_number: int,
         page_size: int,
-    ) -> "PageRequest":
+    ) -> PageRequest:
         """Builds a pagination request from page number and page size.
 
         Args:
@@ -55,7 +59,7 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         *,
         offset: int,
         limit: int,
-    ) -> "PageRequest":
+    ) -> PageRequest:
         """Builds a pagination request from offset and limit.
 
         Args:

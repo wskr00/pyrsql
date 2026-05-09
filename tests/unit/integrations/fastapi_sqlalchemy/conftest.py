@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.sql import Select
 
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig, RequestCriteria
 from pyrsql.core.page import PageRequest
@@ -15,6 +14,9 @@ from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql import Select
 
 
 class Base(DeclarativeBase):

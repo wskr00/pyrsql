@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
-from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
-from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
 
 from .conftest import Address, Company, Event, User
+
+if TYPE_CHECKING:
+    from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
+    from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
 
 pytestmark = [pytest.mark.sqlalchemy]
 

@@ -1,10 +1,14 @@
 """Token models for the lexer."""
 
+from __future__ import annotations
+
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 import msgspec
 
-from pyrsql.parsing.source import SourceSpan
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 class TokenKind(Enum):

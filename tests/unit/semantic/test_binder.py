@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 import re
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -13,7 +13,6 @@ from pyrsql.ir.query import (
     BoundFunction,
     BoundLogical,
 )
-from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder
 from pyrsql.semantic.errors import (
@@ -22,6 +21,11 @@ from pyrsql.semantic.errors import (
     FunctionBlacklistedError,
     FunctionNotWhitelistedError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from pyrsql.parsing.ast import Expression
 
 
 class _ProcedurePolicy:

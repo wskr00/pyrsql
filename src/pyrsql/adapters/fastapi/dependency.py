@@ -1,8 +1,7 @@
 """Dependency factories for FastAPI request integration."""
 
-from collections.abc import Callable
-from inspect import Signature, signature
-from typing import Annotated, Any
+from inspect import signature
+from typing import TYPE_CHECKING, Annotated, Any
 
 import msgspec
 
@@ -17,7 +16,6 @@ except ImportError as error:  # pragma: no cover - import guard
 from pyrsql.adapters.fastapi.config import FastAPICriteriaConfig
 from pyrsql.adapters.fastapi.criteria import RequestCriteria
 from pyrsql.adapters.fastapi.errors import (
-    FastAPIAdapterErrorPayload,
     build_page_error_payload,
     build_query_error_payload,
     build_sort_error_payload,
@@ -35,6 +33,14 @@ from pyrsql.sorting.errors import (
     SortParseError,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from inspect import Signature
+
+    from pyrsql.adapters.fastapi.errors import (
+        FastAPIAdapterErrorPayload,
+    )
+
 _QUERY_ERROR_TYPES = (ParseError, SemanticError)
 _SORT_ERROR_TYPES = (
     SortParseError,
@@ -46,7 +52,7 @@ _SORT_ERROR_TYPES = (
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 
-def _raise_http_error(payload: FastAPIAdapterErrorPayload) -> None:
+def _raise_http_error(payload: "FastAPIAdapterErrorPayload") -> None:
     """Raises a standardized FastAPI HTTP exception for adapter failures.
 
     Raises:
@@ -119,7 +125,7 @@ def _build_page_request(
 
 def _build_criteria_callable(
     config: FastAPICriteriaConfig,
-) -> Callable[..., RequestCriteria]:
+) -> "Callable[..., RequestCriteria]":
     """Builds the concrete dependency callable for a fixed configuration.
 
     Returns:

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -26,6 +25,9 @@ from pyrsql.parsing.operators import (
     OperatorRegistry,
 )
 from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @pytest.mark.parametrize(

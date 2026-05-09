@@ -1,10 +1,15 @@
 """Supported comparison operators."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 import msgspec
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):

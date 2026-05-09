@@ -1,13 +1,21 @@
 """ORM-neutral JSON query models."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
-from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.values import (
     DEFAULT_JSON_SCALAR_NORMALIZER,
-    JSONScalarNormalizer,
-    JSONScalarValue,
 )
+
+if TYPE_CHECKING:
+    from pyrsql.core.json.path import JSONPath
+    from pyrsql.core.json.values import (
+        JSONScalarNormalizer,
+        JSONScalarValue,
+    )
 
 
 class JSONPathComparison(
@@ -43,7 +51,7 @@ class JSONPathComparison(
         operator_name: str,
         raw_arguments: tuple[tuple[str, bool], ...],
         normalizer: JSONScalarNormalizer | None = None,
-    ) -> "JSONPathComparison":
+    ) -> JSONPathComparison:
         """Builds a normalized JSON comparison from raw RSQL arguments.
 
         Returns:

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import cast
-
-import pytest
+from typing import TYPE_CHECKING, cast
 
 from pyrsql.core.options import SortOptions
 from pyrsql.core.sort import Sort
-from pyrsql.orms.base import ORM
-from pyrsql.sorting.ast import SortField
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import pytest
+
+    from pyrsql.orms.base import ORM
+    from pyrsql.sorting.ast import SortField
 
 
 def test_sort_parse_builds_sort_object_from_parser_and_binder(

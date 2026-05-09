@@ -1,24 +1,36 @@
 """Recursive-descent parser for pyrsql token streams."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pyrsql.parsing.ast import (
     Argument,
     ComparisonNode,
-    Expression,
     LogicalNode,
     LogicalOperator,
 )
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
-    ComparisonOperator,
-    OperatorRegistry,
 )
 from pyrsql.parsing.source import SourceSpan
-from pyrsql.parsing.tokens import Token, TokenKind
-from pyrsql.selector.ast import SelectorNode
+from pyrsql.parsing.tokens import TokenKind
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.ast import (
+        Expression,
+    )
+    from pyrsql.parsing.limits import ParseLimits
+    from pyrsql.parsing.operators import (
+        ComparisonOperator,
+        OperatorRegistry,
+    )
+    from pyrsql.parsing.tokens import Token
+    from pyrsql.selector.ast import SelectorNode
 
 _EXPRESSION_TERMINATORS = (
     TokenKind.EOF,

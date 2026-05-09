@@ -1,15 +1,19 @@
 """High-level query object."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
-from pyrsql.ir.query import BoundComparison, BoundLogical
-from pyrsql.orms.base import ORM
-from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder
+
+if TYPE_CHECKING:
+    from pyrsql.ir.query import BoundComparison, BoundLogical
+    from pyrsql.orms.base import ORM
+    from pyrsql.parsing.ast import Expression
 
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 
@@ -80,7 +84,7 @@ class Query:
         query_text: str,
         *,
         options: QueryOptions | None = None,
-    ) -> "Query":
+    ) -> Query:
         """Parses raw RSQL text into a query object.
 
         Args:

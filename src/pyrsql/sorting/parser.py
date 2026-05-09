@@ -1,12 +1,17 @@
 """Parser for pyrsql sort expressions."""
 
-from typing import Final
+from __future__ import annotations
 
-from pyrsql.selector.ast import SelectorNode
+from typing import TYPE_CHECKING, Final
+
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
 from pyrsql.sorting.ast import SortDirection, SortField
 from pyrsql.sorting.errors import SortParseError
-from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
+
+if TYPE_CHECKING:
+    from pyrsql.selector.ast import SelectorNode
+    from pyrsql.sorting.limits import SortLimits
 
 _EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
 

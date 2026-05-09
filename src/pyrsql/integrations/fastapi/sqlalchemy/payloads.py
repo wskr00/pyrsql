@@ -1,9 +1,15 @@
 """Shared payload types for FastAPI + SQLAlchemy integrations."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-from pyrsql.orms.sqlalchemy.types import SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemySelect
 
 
 class SQLAlchemyPaginatedSelect(

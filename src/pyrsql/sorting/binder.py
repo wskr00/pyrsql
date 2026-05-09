@@ -1,28 +1,37 @@
 """ORM-neutral binder for parsed sort fields."""
 
-from collections.abc import Callable, Mapping
-from typing import Protocol
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
 
 from pyrsql.ir.query import (
     BoundField,
     BoundFunction,
     BoundLiteral,
-    BoundSelectorNode,
 )
 from pyrsql.ir.sort import BoundSort, BoundSortField
 from pyrsql.selector.ast import (
     FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    SelectorNode,
 )
-from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import (
     SortFieldBlacklistedError,
     SortFieldNotWhitelistedError,
     SortFunctionBlacklistedError,
     SortFunctionNotWhitelistedError,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
+    from pyrsql.ir.query import (
+        BoundSelectorNode,
+    )
+    from pyrsql.selector.ast import (
+        SelectorNode,
+    )
+    from pyrsql.sorting.ast import SortField
 
 
 class ProcedurePolicyProtocol(Protocol):

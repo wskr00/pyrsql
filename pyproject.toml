@@ -73,6 +73,9 @@ ignore = [
     "EM101",
     "EM102",
     "TRY003",
+    "COM812",
+    "ISC001",
+
 ]
 
 future-annotations = true

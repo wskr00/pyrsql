@@ -94,6 +94,5 @@ def test_json_options_normalize_sort_field_types() -> None:
     )
 
     assert (
-        options.sort_field_types["payload.score"]
-        is JSONSortScalarType.NUMERIC
+        options.sort_field_types["payload.score"] is JSONSortScalarType.NUMERIC
     )

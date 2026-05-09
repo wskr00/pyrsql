@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from sqlalchemy import column
@@ -10,7 +10,11 @@ from sqlalchemy import column
 from pyrsql.core.json.options import JSONOptions
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.orms.sqlalchemy.json_path import SQLAlchemyJSONPathExpressionBuilder
+
+if TYPE_CHECKING:
+    from pyrsql.orms.sqlalchemy.json_path import (
+        SQLAlchemyJSONPathExpressionBuilder,
+    )
 
 pytestmark = [pytest.mark.sqlalchemy]
 

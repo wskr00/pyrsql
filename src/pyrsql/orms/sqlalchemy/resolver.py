@@ -1,10 +1,9 @@
 """Path resolution for SQLAlchemy ORM models."""
 
-from typing import Any, cast
+from __future__ import annotations
 
-from sqlalchemy.sql.elements import ColumnElement
+from typing import TYPE_CHECKING, Any, cast
 
-from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
 from pyrsql.orms.sqlalchemy.errors import (
@@ -15,9 +14,16 @@ from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
 from pyrsql.orms.sqlalchemy.types import (
     SQLAlchemyAttributeKind,
     SQLAlchemyJoinPlan,
-    SQLAlchemyMappedAttribute,
     SQLAlchemyResolvedPath,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from pyrsql.core.field_policy import FieldPolicySet
+    from pyrsql.orms.sqlalchemy.types import (
+        SQLAlchemyMappedAttribute,
+    )
 
 
 class SQLAlchemyPathResolver:
@@ -33,7 +39,8 @@ class SQLAlchemyPathResolver:
         """Initializes the resolver with an optional shared inspector."""
         self._inspector = inspector or SQLAlchemyModelInspector()
         self._default_resolution_cache: dict[
-            tuple[type[Any], str], SQLAlchemyResolvedPath,
+            tuple[type[Any], str],
+            SQLAlchemyResolvedPath,
         ] = {}
 
     def resolve(

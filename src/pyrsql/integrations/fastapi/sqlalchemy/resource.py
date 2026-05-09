@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from fastapi import Depends
@@ -13,9 +12,7 @@ from pyrsql.adapters.fastapi import (
     RequestCriteria,
 )
 from pyrsql.core.sort import Sort as PyrsqlSort
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 from .helpers import (
     apply_query_with_orm,
@@ -26,6 +23,11 @@ from .helpers import (
 from .payloads import SQLAlchemyPaginatedSelect
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
     from .integration import FastAPISQLAlchemyIntegration
 
 
@@ -102,7 +104,8 @@ class FastAPISQLAlchemyResource:
         if not isinstance(criteria_config, FastAPICriteriaConfig):
             raise TypeError("criteria_config must be a FastAPICriteriaConfig.")
         if default_sort is not None and not isinstance(
-            default_sort, PyrsqlSort,
+            default_sort,
+            PyrsqlSort,
         ):
             raise TypeError("default_sort must be a Sort or None.")
         if statement_factory is not None and not callable(statement_factory):

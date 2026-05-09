@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig
 from pyrsql.core.options import QueryOptions, SortOptions
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 pytestmark = [pytest.mark.fastapi]
 

@@ -1,15 +1,21 @@
 """Compiled sort support for SQLAlchemy."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
-from pyrsql.core.options import SortOptions
-from pyrsql.ir.sort import BoundSort
-from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,
     require_sqlalchemy_select,
 )
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.core.options import SortOptions
+    from pyrsql.ir.sort import BoundSort
+    from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
 class SQLAlchemyCompiledSort(

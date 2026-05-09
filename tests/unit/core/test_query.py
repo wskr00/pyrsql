@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-
-import pytest
+from typing import TYPE_CHECKING
 
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    import pytest
+
+    from pyrsql.orms.base import ORM
 
 
 def test_query_parse_builds_query_object_from_parser_and_binder(

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.sql import Select
 
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig, RequestCriteria
 from pyrsql.integrations.fastapi import (
@@ -16,9 +14,15 @@ from pyrsql.integrations.fastapi import (
     SQLAlchemyPaginatedSelect,
 )
 import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 from .conftest import OtherModel, User
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.sql import Select
+
+    from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 pytest.importorskip("fastapi")
 

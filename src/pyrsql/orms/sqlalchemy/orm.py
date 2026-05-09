@@ -1,6 +1,7 @@
 """SQLAlchemy ORM entry point."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from typing_extensions import override
@@ -9,14 +10,16 @@ from pyrsql.orms import base
 from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_page import SQLAlchemyCompiledPageRequest
 from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
-from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
 from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from pyrsql.core.page import PageRequest
     from pyrsql.core.query import Query
     from pyrsql.core.sort import Sort
+    from pyrsql.orms.sqlalchemy.custom import SQLAlchemyCustomPredicate
 
 
 class SQLAlchemyORM(base.ORM):
@@ -58,7 +61,7 @@ class SQLAlchemyORM(base.ORM):
         """
         return "sqlalchemy"
 
-    def compile_query(self, query: "Query") -> SQLAlchemyCompiledQuery:
+    def compile_query(self, query: Query) -> SQLAlchemyCompiledQuery:
         """Compiles a pyrsql query for SQLAlchemy.
 
         Returns:
@@ -70,7 +73,7 @@ class SQLAlchemyORM(base.ORM):
             translator=self._translator,
         )
 
-    def compile_sort(self, sort: "Sort") -> SQLAlchemyCompiledSort:
+    def compile_sort(self, sort: Sort) -> SQLAlchemyCompiledSort:
         """Compiles a pyrsql sort for SQLAlchemy.
 
         Returns:
@@ -85,7 +88,7 @@ class SQLAlchemyORM(base.ORM):
     @override
     def compile_page_request(
         self,
-        page_request: "PageRequest",
+        page_request: PageRequest,
     ) -> SQLAlchemyCompiledPageRequest:
         """Compiles a pyrsql page request for SQLAlchemy.
 

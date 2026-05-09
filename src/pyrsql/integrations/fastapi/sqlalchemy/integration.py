@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import replace
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -12,12 +11,10 @@ from sqlalchemy import select
 from pyrsql.adapters.fastapi import (
     CriteriaDependency,
     FastAPICriteriaConfig,
-    RequestCriteria,
 )
 from pyrsql.core.sort import Sort as PyrsqlSort
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 from .examples import (
     build_filter_examples,
@@ -33,6 +30,14 @@ from .helpers import (
 )
 from .payloads import SQLAlchemyPaginatedSelect
 from .resource import FastAPISQLAlchemyResource
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pyrsql.adapters.fastapi import (
+        RequestCriteria,
+    )
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 _DEFAULT_SQLALCHEMY_ORM = SQLAlchemyORM()
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
@@ -67,7 +72,8 @@ class FastAPISQLAlchemyIntegration:
         if orm is not None and not isinstance(orm, SQLAlchemyORM):
             raise TypeError("orm must be a SQLAlchemyORM or None.")
         if criteria_config is not None and not isinstance(
-            criteria_config, FastAPICriteriaConfig,
+            criteria_config,
+            FastAPICriteriaConfig,
         ):
             raise TypeError(
                 "criteria_config must be a FastAPICriteriaConfig or None.",
@@ -78,13 +84,16 @@ class FastAPISQLAlchemyIntegration:
         )
         self._criteria_dependency = CriteriaDependency(self.criteria_config)
         self._select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemySelect],
+            SQLAlchemyModel,
+            Callable[..., SQLAlchemySelect],
         ] = {}
         self._count_select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemySelect],
+            SQLAlchemyModel,
+            Callable[..., SQLAlchemySelect],
         ] = {}
         self._paginated_select_dependencies: dict[
-            SQLAlchemyModel, Callable[..., SQLAlchemyPaginatedSelect],
+            SQLAlchemyModel,
+            Callable[..., SQLAlchemyPaginatedSelect],
         ] = {}
         self._base_selects: dict[SQLAlchemyModel, SQLAlchemySelect] = {}
 

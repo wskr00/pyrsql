@@ -1,24 +1,20 @@
 """JSON path expression building for the SQLAlchemy orm."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 import json
 import re
 from types import MappingProxyType
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import msgspec
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.core.json.options import (
     DEFAULT_JSON_OPTIONS,
-    JSONOptions,
     JSONSortScalarType,
 )
-from pyrsql.core.json.path import JSONPath
-from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.core.json.values import JSONScalarValue
 from pyrsql.orms.sqlalchemy.errors import (
     SQLAlchemyJSONSupportError,
     SQLAlchemyORMError,
@@ -42,6 +38,18 @@ from pyrsql.parsing.operators import (
     NOT_LIKE,
     NOT_NULL,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from pyrsql.core.json.options import (
+        JSONOptions,
+    )
+    from pyrsql.core.json.path import JSONPath
+    from pyrsql.core.json.query import JSONPathComparison
+    from pyrsql.core.json.values import JSONScalarValue
 
 _ISO_DATE_TIME_PATTERN_TZ = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$",
@@ -361,7 +369,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         comparison: JSONPathComparison,
         *,
         options: JSONOptions,
-    ) -> "_JSONPathFilterCall":
+    ) -> _JSONPathFilterCall:
         """Builds the function call payload for one jsonpath predicate.
 
         Returns:

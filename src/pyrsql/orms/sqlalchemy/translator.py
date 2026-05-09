@@ -1,25 +1,21 @@
 """Bound query IR lowering for SQLAlchemy."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from types import MappingProxyType
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import sqlalchemy as sa
-from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.core.options import QueryOptions
 from pyrsql.ir.query import (
     BoundComparison,
     BoundField,
     BoundFunction,
     BoundLiteral,
-    BoundLogical,
-    BoundSelectorNode,
 )
 from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.orms.sqlalchemy.custom import (
-    SQLAlchemyCustomPredicate,
     SQLAlchemyCustomPredicateInput,
 )
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
@@ -30,10 +26,6 @@ from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
 from pyrsql.orms.sqlalchemy.type_inference import (
     infer_sql_function_python_type,
     is_string_python_type,
-)
-from pyrsql.orms.sqlalchemy.types import (
-    SQLAlchemyJoinPlan,
-    SQLAlchemyResolvedPath,
 )
 from pyrsql.parsing.ast import LogicalOperator
 from pyrsql.parsing.operators import (
@@ -55,6 +47,24 @@ from pyrsql.parsing.operators import (
     NOT_LIKE,
     NOT_NULL,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from pyrsql.core.options import QueryOptions
+    from pyrsql.ir.query import (
+        BoundLogical,
+        BoundSelectorNode,
+    )
+    from pyrsql.orms.sqlalchemy.custom import (
+        SQLAlchemyCustomPredicate,
+    )
+    from pyrsql.orms.sqlalchemy.types import (
+        SQLAlchemyJoinPlan,
+        SQLAlchemyResolvedPath,
+    )
 
 
 class SQLAlchemyExpressionTranslator:
@@ -190,12 +200,9 @@ class SQLAlchemyExpressionTranslator:
                 if self._json_path_builder.supports_document_predicate(
                     json_comparison,
                 ):
-                    predicate = (
-                        self._json_path_builder
-                        .build_document_filter_expression(
-                            selector_expression,
-                            json_comparison,
-                        )
+                    predicate = self._json_path_builder.build_document_filter_expression(
+                        selector_expression,
+                        json_comparison,
                     )
                 else:
                     predicate = self._json_path_builder.build_filter_expression(
@@ -407,11 +414,13 @@ class SQLAlchemyExpressionTranslator:
                 return self._build_contains_predicate(
                     expression,
                     str(values[0]),
-                    ignore_case=operator_name in {
+                    ignore_case=operator_name
+                    in {
                         IGNORE_CASE_LIKE.name,
                         IGNORE_CASE_NOT_LIKE.name,
                     },
-                    negated=operator_name in {
+                    negated=operator_name
+                    in {
                         NOT_LIKE.name,
                         IGNORE_CASE_NOT_LIKE.name,
                     },

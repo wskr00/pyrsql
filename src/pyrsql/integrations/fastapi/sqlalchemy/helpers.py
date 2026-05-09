@@ -1,12 +1,16 @@
 """Shared helpers for FastAPI + SQLAlchemy integrations."""
 
-from typing import cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import func, select
 
 from pyrsql.adapters.fastapi import RequestCriteria
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
 def require_request_criteria(criteria: RequestCriteria) -> RequestCriteria:

@@ -1,12 +1,21 @@
 """Helpers for mutating SQLAlchemy Select statements."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy.sql import Select
 
 from pyrsql.core.joins import JoinHint
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyJoinPlan, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from pyrsql.orms.sqlalchemy.types import (
+        SQLAlchemyJoinPlan,
+        SQLAlchemySelect,
+    )
 
 
 def require_sqlalchemy_select(target: object) -> SQLAlchemySelect:

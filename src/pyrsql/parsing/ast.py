@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 import msgspec
 
-from pyrsql.parsing.operators import ComparisonOperator
-from pyrsql.parsing.source import SourceSpan
-from pyrsql.selector.ast import SelectorNode
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from pyrsql.parsing.operators import ComparisonOperator
+    from pyrsql.parsing.source import SourceSpan
+    from pyrsql.selector.ast import SelectorNode
 
 
 class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):

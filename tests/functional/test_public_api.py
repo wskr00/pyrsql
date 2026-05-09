@@ -1,5 +1,9 @@
 """Functional tests for the package-level public API."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from typing_extensions import override
 
@@ -8,15 +12,17 @@ from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS
 from pyrsql.core.options import QueryOptions
-from pyrsql.core.page import PageRequest
-from pyrsql.core.query import Query
-from pyrsql.core.sort import Sort
 from pyrsql.orms.base import ORM
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
     ComparisonOperator,
     OperatorRegistry,
 )
+
+if TYPE_CHECKING:
+    from pyrsql.core.page import PageRequest
+    from pyrsql.core.query import Query
+    from pyrsql.core.sort import Sort
 
 pytestmark = [pytest.mark.functional]
 

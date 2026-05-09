@@ -1,15 +1,21 @@
 """Compiled query support for SQLAlchemy."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
-from pyrsql.core.options import QueryOptions
-from pyrsql.ir.query import BoundComparison, BoundLogical
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,
     require_sqlalchemy_select,
 )
-from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.core.options import QueryOptions
+    from pyrsql.ir.query import BoundComparison, BoundLogical
+    from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
 class SQLAlchemyCompiledQuery(

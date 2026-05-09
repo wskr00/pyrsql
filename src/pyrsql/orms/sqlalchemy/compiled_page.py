@@ -1,10 +1,16 @@
 """Compiled pagination support for SQLAlchemy."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import msgspec
 
-from pyrsql.ir.page import BoundPage
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.ir.page import BoundPage
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
 class SQLAlchemyCompiledPageRequest(

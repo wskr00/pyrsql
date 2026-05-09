@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import datetime as dt
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pytest
@@ -15,6 +15,9 @@ from pyrsql.core.conversion import (
     ValueConversionError,
     ValueConverterRegistry,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Status(Enum):
@@ -97,8 +100,7 @@ def test_default_registry_converts_enums(
 ) -> None:
     """Converts enums by member name first, then by value."""
     assert (
-        DEFAULT_VALUE_CONVERTER_REGISTRY.convert(raw_value, Status)
-        is expected
+        DEFAULT_VALUE_CONVERTER_REGISTRY.convert(raw_value, Status) is expected
     )
 
 

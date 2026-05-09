@@ -1,28 +1,38 @@
 """Shared query options."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Final, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
 
 from pyrsql.core.conversion import (
     DEFAULT_FIELD_VALUE_CONVERTER_SET,
     DEFAULT_VALUE_CONVERTER_REGISTRY,
     FieldValueConverterSet,
-    ValueConverter,
-    ValueConverterRegistry,
 )
-from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import DEFAULT_FIELD_POLICY_SET, FieldPolicySet
-from pyrsql.core.joins import JoinHint
-from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS
 from pyrsql.core.procedure_policy import (
     DEFAULT_PROCEDURE_ACCESS_POLICY,
     ProcedureAccessPolicy,
 )
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY, OperatorRegistry
-from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from pyrsql.core.conversion import (
+        ValueConverter,
+        ValueConverterRegistry,
+    )
+    from pyrsql.core.custom import CustomPredicateDefinition
+    from pyrsql.core.joins import JoinHint
+    from pyrsql.core.json.options import JSONOptions
+    from pyrsql.parsing.limits import ParseLimits
+    from pyrsql.sorting.limits import SortLimits
 
 _NestedValueT = TypeVar("_NestedValueT")
 _EMPTY_TUPLE: Final[tuple[str, ...]] = ()
@@ -235,7 +245,8 @@ class QueryOptions:
         default_factory=dict,
     )
     model_field_value_converters: Mapping[
-        type[Any], Mapping[str, ValueConverter],
+        type[Any],
+        Mapping[str, ValueConverter],
     ] = field(default_factory=dict)
     json_options: JSONOptions = DEFAULT_JSON_OPTIONS
     _field_policy: FieldPolicySet = field(

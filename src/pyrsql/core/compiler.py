@@ -1,10 +1,17 @@
 """ORM-neutral compilation result objects."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 
-from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort
+if TYPE_CHECKING:
+    from pyrsql.orms.base import (
+        CompiledPageRequest,
+        CompiledQuery,
+        CompiledSort,
+    )
 
 
 def _validate_orm_name(orm_name: str, *, context: str) -> None:

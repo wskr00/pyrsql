@@ -1,19 +1,17 @@
 """Bound sort IR lowering for SQLAlchemy."""
 
-from typing import Any, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
 
 import sqlalchemy as sa
-from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONSortScalarType
-from pyrsql.core.options import SortOptions
 from pyrsql.ir.query import (
     BoundField,
     BoundFunction,
     BoundLiteral,
-    BoundSelectorNode,
 )
-from pyrsql.ir.sort import BoundSort, BoundSortField
 from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
@@ -22,11 +20,20 @@ from pyrsql.orms.sqlalchemy.type_inference import (
     infer_sql_function_python_type,
     is_string_python_type,
 )
-from pyrsql.orms.sqlalchemy.types import (
-    SQLAlchemyJoinPlan,
-    SQLAlchemyResolvedPath,
-)
 from pyrsql.sorting.ast import SortDirection
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
+
+    from pyrsql.core.options import SortOptions
+    from pyrsql.ir.query import (
+        BoundSelectorNode,
+    )
+    from pyrsql.ir.sort import BoundSort, BoundSortField
+    from pyrsql.orms.sqlalchemy.types import (
+        SQLAlchemyJoinPlan,
+        SQLAlchemyResolvedPath,
+    )
 
 
 class SQLAlchemySortTranslator:

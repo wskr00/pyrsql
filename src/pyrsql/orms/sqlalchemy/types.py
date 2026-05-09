@@ -1,7 +1,9 @@
 """Shared SQLAlchemy ORM value objects and type aliases."""
 
+from __future__ import annotations
+
 from enum import Enum, auto
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 import msgspec
 from sqlalchemy.orm import Mapper
@@ -9,8 +11,10 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
+
+if TYPE_CHECKING:
+    from pyrsql.core.joins import JoinHint
 
 SQLAlchemyModel: TypeAlias = type[Any]
 SQLAlchemySelect: TypeAlias = Select[Any]

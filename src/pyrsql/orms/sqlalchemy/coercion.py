@@ -1,13 +1,19 @@
 """SQLAlchemy ORM value coercion."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from pyrsql.core.conversion import (
-    FieldValueConverterSet,
     ValueConversionError,
-    ValueConverterRegistry,
 )
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
+
+if TYPE_CHECKING:
+    from pyrsql.core.conversion import (
+        FieldValueConverterSet,
+        ValueConverterRegistry,
+    )
 
 
 class SQLAlchemyValueCoercer:

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
 from pyrsql.core.page import PageRequest
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pyrsql.orms.base import ORM
 
 
 def test_page_request_of_builds_offset_and_limit() -> None:

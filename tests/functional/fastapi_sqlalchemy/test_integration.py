@@ -103,7 +103,9 @@ def test_paginated_select_dependency_returns_both_statements() -> None:
     ) -> dict[str, str]:
         return {
             "statement": str(
-                bundle.statement.compile(compile_kwargs={"literal_binds": True}),
+                bundle.statement.compile(
+                    compile_kwargs={"literal_binds": True}
+                ),
             ),
             "count_statement": str(
                 bundle.count_statement.compile(

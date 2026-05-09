@@ -1,11 +1,12 @@
 """SQLAlchemy ORM inspection helpers."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.orm import Mapper
-from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.sql.sqltypes import JSON
 
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyModelInspectionError
@@ -13,6 +14,9 @@ from pyrsql.orms.sqlalchemy.types import (
     SQLAlchemyAttributeKind,
     SQLAlchemyMappedAttribute,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm.properties import ColumnProperty
 
 
 class SQLAlchemyModelInspector:
@@ -24,7 +28,8 @@ class SQLAlchemyModelInspector:
         """Initializes empty caches for mapped models and attributes."""
         self._mapper_cache: dict[type[Any], Mapper[Any]] = {}
         self._attribute_cache: dict[
-            tuple[type[Any], str], SQLAlchemyMappedAttribute,
+            tuple[type[Any], str],
+            SQLAlchemyMappedAttribute,
         ] = {}
 
     def inspect_model(self, model: type[Any]) -> Mapper[Any]:

@@ -1,10 +1,18 @@
 """Single-pass lexer for pyrsql query strings."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pyrsql.parsing.errors import LexError
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS, ParseLimits
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY, OperatorRegistry
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
+from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
 from pyrsql.parsing.tokens import Token, TokenKind
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.limits import ParseLimits
+    from pyrsql.parsing.operators import OperatorRegistry
 
 
 class Lexer:

@@ -1,13 +1,17 @@
 """FastAPI request criteria objects."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from pyrsql.orms.base import ORM
 
 
 class RequestCriteria(

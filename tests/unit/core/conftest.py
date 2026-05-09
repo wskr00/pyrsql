@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pytest
 
-from pyrsql.core.page import PageRequest
-from pyrsql.core.query import Query
-from pyrsql.core.sort import Sort
 from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pyrsql.core.page import PageRequest
+    from pyrsql.core.query import Query
+    from pyrsql.core.sort import Sort
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,9 +56,7 @@ class FakeORM(ORM):
     def compile_query(self, query: Query) -> FakeCompiledResult:
         """Builds a fake compiled query result."""
         result = (
-            self.query_result
-            if self.query_result is not None
-            else query.text
+            self.query_result if self.query_result is not None else query.text
         )
         return FakeCompiledResult(result=result)
 

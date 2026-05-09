@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -12,8 +11,12 @@ from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
-from pyrsql.ir.query import BoundComparison
-from pyrsql.parsing.ast import Expression
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from pyrsql.ir.query import BoundComparison
+    from pyrsql.parsing.ast import Expression
 
 
 @pytest.fixture

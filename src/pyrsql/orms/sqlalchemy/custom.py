@@ -1,12 +1,15 @@
 """Custom predicate extension points for the SQLAlchemy orm."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.options import QueryOptions
+if TYPE_CHECKING:
+    from pyrsql.core.options import QueryOptions
 
 
 class SQLAlchemyCustomPredicateInput(

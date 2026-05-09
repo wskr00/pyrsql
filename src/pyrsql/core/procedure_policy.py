@@ -1,9 +1,14 @@
 """Shared procedure access-policy helpers."""
 
+from __future__ import annotations
+
 import re
-from re import Pattern
+from typing import TYPE_CHECKING
 
 import msgspec
+
+if TYPE_CHECKING:
+    from re import Pattern
 
 
 class ProcedureAccessPolicy(
@@ -30,7 +35,7 @@ class ProcedureAccessPolicy(
         cls,
         whitelist: tuple[str, ...],
         blacklist: tuple[str, ...],
-    ) -> "ProcedureAccessPolicy":
+    ) -> ProcedureAccessPolicy:
         """Builds a policy from raw regex pattern strings.
 
         Args:

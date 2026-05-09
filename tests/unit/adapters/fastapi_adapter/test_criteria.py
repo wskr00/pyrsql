@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from typing_extensions import override
@@ -17,10 +17,14 @@ from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.orms.base import (
     ORM,
-    CompiledPageRequest,
-    CompiledQuery,
-    CompiledSort,
 )
+
+if TYPE_CHECKING:
+    from pyrsql.orms.base import (
+        CompiledPageRequest,
+        CompiledQuery,
+        CompiledSort,
+    )
 
 pytestmark = [pytest.mark.fastapi]
 

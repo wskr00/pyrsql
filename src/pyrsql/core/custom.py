@@ -1,10 +1,13 @@
 """ORM-neutral custom predicate definitions."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 
-from pyrsql.parsing.operators import ComparisonOperator
+if TYPE_CHECKING:
+    from pyrsql.parsing.operators import ComparisonOperator
 
 
 class CustomPredicateDefinition(
