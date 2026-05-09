@@ -41,10 +41,8 @@ class SQLAlchemyORM(base.ORM):
 
     def compile_query(self, query: "Query") -> SQLAlchemyCompiledQuery:
         """Compiles a pyrsql query for SQLAlchemy."""
-        if query.semantic_expression is None:
-            raise ValueError("Query must carry a semantic expression.")
         return SQLAlchemyCompiledQuery(
-            expression=query.semantic_expression,
+            expression=query.bound_expression,
             options=query.options,
             translator=self._translator,
         )
@@ -52,7 +50,7 @@ class SQLAlchemyORM(base.ORM):
     def compile_sort(self, sort: "Sort") -> SQLAlchemyCompiledSort:
         """Compiles a pyrsql sort for SQLAlchemy."""
         return SQLAlchemyCompiledSort(
-            fields=sort.semantic_fields,
+            sort_plan=sort.bound_sort,
             options=sort.options,
             translator=self._sort_translator,
         )
@@ -62,4 +60,4 @@ class SQLAlchemyORM(base.ORM):
         page_request: "PageRequest",
     ) -> SQLAlchemyCompiledPageRequest:
         """Compiles a pyrsql page request for SQLAlchemy."""
-        return SQLAlchemyCompiledPageRequest(page_request=page_request)
+        return SQLAlchemyCompiledPageRequest(page=page_request.bound_page)

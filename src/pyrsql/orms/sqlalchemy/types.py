@@ -1,9 +1,9 @@
 """Shared SQLAlchemy ORM value objects and type aliases."""
 
-from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, TypeAlias
 
+import msgspec
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import Select
@@ -26,8 +26,12 @@ class SQLAlchemyAttributeKind(Enum):
     RELATIONSHIP = auto()
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyJoinPlan:
+class SQLAlchemyJoinPlan(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents one relationship join to be applied to a statement."""
 
     key: str
@@ -36,8 +40,12 @@ class SQLAlchemyJoinPlan:
     is_collection: bool
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyResolvedPath:
+class SQLAlchemyResolvedPath(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents a resolved ORM path."""
 
     root_model: SQLAlchemyModel
@@ -50,8 +58,12 @@ class SQLAlchemyResolvedPath:
     is_json: bool = False
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyMappedAttribute:
+class SQLAlchemyMappedAttribute(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents a single mapped attribute discovered by introspection."""
 
     name: str

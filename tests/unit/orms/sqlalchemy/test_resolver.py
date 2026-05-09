@@ -183,5 +183,5 @@ def test_path_resolver_resolves_json_path() -> None:
     resolver = SQLAlchemyPathResolver()
     resolved = resolver.resolve(Event, "payload.user.id")
     assert resolved.is_json is True
-    assert resolved.json_path == JSONPath(("user", "id"))
+    assert resolved.json_path == JSONPath(segments=("user", "id"))
     assert resolved.leaf_model is Event

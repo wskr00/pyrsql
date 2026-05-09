@@ -2,14 +2,14 @@
 
 import json
 import re
-from dataclasses import dataclass
 from typing import Any, cast
 
+import msgspec
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONOptions
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import JSONScalarValue
@@ -45,7 +45,6 @@ _ISO_DATE_TIME_PATTERN = re.compile(
 )
 _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
-_DEFAULT_JSON_OPTIONS = JSONOptions()
 
 
 class SQLAlchemyJSONPathExpressionBuilder:
@@ -61,7 +60,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         """Builds a PostgreSQL JSONB path-exists predicate."""
         function_call = self._build_filter_call(
             comparison,
-            options=options or _DEFAULT_JSON_OPTIONS,
+            options=options or DEFAULT_JSON_OPTIONS,
         )
         jsonb_column = cast(
             ColumnElement[Any],
@@ -342,8 +341,12 @@ class SQLAlchemyJSONPathExpressionBuilder:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class _JSONPathFilterCall:
+class _JSONPathFilterCall(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents one PostgreSQL JSON path filter call."""
 
     json_path_expression: str

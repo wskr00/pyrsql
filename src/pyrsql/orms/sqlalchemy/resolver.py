@@ -7,7 +7,10 @@ from sqlalchemy.sql.elements import ColumnElement
 from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
-from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
+from pyrsql.orms.sqlalchemy.errors import (
+    SQLAlchemyORMError,
+    SQLAlchemyPathResolutionError,
+)
 from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
 from pyrsql.orms.sqlalchemy.types import (
     SQLAlchemyAttributeKind,
@@ -18,7 +21,7 @@ from pyrsql.orms.sqlalchemy.types import (
 
 
 class SQLAlchemyPathResolver:
-    """Resolves semantic field paths into ORM joins and leaf attributes."""
+    """Resolves bound field paths into ORM joins and leaf attributes."""
 
     def __init__(
         self,
@@ -129,7 +132,9 @@ class SQLAlchemyPathResolver:
                     )
                 )
                 if mapped_attribute.mapper is None:
-                    raise RuntimeError("mapper cannot be None")
+                    raise SQLAlchemyORMError(
+                        "Relationship path resolution requires a mapper."
+                    )
                 current_model = mapped_attribute.mapper.class_
                 segment_index += 1
                 continue
@@ -147,7 +152,9 @@ class SQLAlchemyPathResolver:
                         ),
                         python_type=None,
                         json_path=JSONPath(
-                            tuple(segments_to_resolve[segment_index + 1 :])
+                            segments=tuple(
+                                segments_to_resolve[segment_index + 1 :]
+                            )
                         ),
                         is_json=True,
                     )
@@ -166,7 +173,9 @@ class SQLAlchemyPathResolver:
             segment_index += 1
 
         if leaf_attribute is None:
-            raise RuntimeError("leaf_attribute cannot be None")
+            raise SQLAlchemyORMError(
+                "Path resolution ended without a resolved leaf attribute."
+            )
         return SQLAlchemyResolvedPath(
             root_model=model,
             leaf_model=current_model,

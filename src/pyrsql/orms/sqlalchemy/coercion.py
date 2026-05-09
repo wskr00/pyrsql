@@ -11,7 +11,7 @@ from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 
 
 class SQLAlchemyValueCoercer:
-    """Coerces semantic argument values using resolved Python types."""
+    """Coerces bound argument values using resolved Python types."""
 
     def __init__(
         self,

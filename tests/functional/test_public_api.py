@@ -20,7 +20,7 @@ def test_parse_returns_query_object() -> None:
     assert query.text == "name==demo"
     assert query.options.strict_equality is False
     assert query.expression is not None
-    assert query.semantic_expression is not None
+    assert query.bound_expression is not None
 
 
 def test_parse_uses_custom_operator_registry() -> None:
@@ -39,6 +39,7 @@ def test_parse_uses_custom_operator_registry() -> None:
     query = pyrsql.parse("name=all=demo", options=options)
     assert query.expression is not None
     assert query.expression.operator.name == "all_match"
+    assert query.bound_expression.operator.name == "all_match"
 
 
 def test_parse_uses_custom_predicate_definition() -> None:
@@ -60,6 +61,7 @@ def test_parse_uses_custom_predicate_definition() -> None:
     query = pyrsql.parse("name=all=demo", options=options)
     assert query.expression is not None
     assert query.expression.operator.name == "all_match"
+    assert query.bound_expression.operator.name == "all_match"
 
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:

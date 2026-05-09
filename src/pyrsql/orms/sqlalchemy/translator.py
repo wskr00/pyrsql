@@ -1,4 +1,4 @@
-"""Semantic expression translation for SQLAlchemy."""
+"""Bound query IR lowering for SQLAlchemy."""
 
 from collections.abc import Mapping
 from types import MappingProxyType
@@ -9,6 +9,14 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.options import QueryOptions
+from pyrsql.ir.query import (
+    BoundComparison,
+    BoundField,
+    BoundFunction,
+    BoundLiteral,
+    BoundLogical,
+    BoundSelectorNode,
+)
 from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.orms.sqlalchemy.custom import (
     SQLAlchemyCustomPredicate,
@@ -27,6 +35,7 @@ from pyrsql.orms.sqlalchemy.types import (
     SQLAlchemyJoinPlan,
     SQLAlchemyResolvedPath,
 )
+from pyrsql.parsing.ast import LogicalOperator
 from pyrsql.parsing.operators import (
     BETWEEN,
     EQUAL,
@@ -46,24 +55,13 @@ from pyrsql.parsing.operators import (
     NOT_LIKE,
     NOT_NULL,
 )
-from pyrsql.selector.semantic import (
-    SemanticColumnSelector,
-    SemanticFunctionSelector,
-    SemanticLiteralSelector,
-    SemanticSelector,
-)
-from pyrsql.semantic.ast import (
-    SemanticComparison,
-    SemanticExpression,
-    SemanticLogical,
-)
 
 
 class SQLAlchemyExpressionTranslator:
-    """Translates semantic expressions to SQLAlchemy predicates.
+    """Lowers bound query IR to SQLAlchemy predicates.
 
     The translator resolves ORM paths, coerces values, and produces SQLAlchemy
-    join plans and predicates from semantic expressions.
+    join plans and predicates from bound query IR.
     """
 
     def __init__(
@@ -88,21 +86,21 @@ class SQLAlchemyExpressionTranslator:
     def translate(
         self,
         model: type[Any],
-        expression: SemanticExpression,
+        expression: BoundComparison | BoundLogical,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Translates a semantic expression for a mapped model.
+        """Lowers one bound query expression for a mapped model.
 
         Args:
             model: SQLAlchemy mapped class used to resolve fields.
-            expression: Semantic expression to translate.
+            expression: Bound query IR to lower.
             options: Query configuration used during translation.
 
         Returns:
             A tuple containing join plans and the SQLAlchemy predicate.
         """
-        if isinstance(expression, SemanticComparison):
+        if isinstance(expression, BoundComparison):
             return self._translate_comparison(
                 model,
                 expression,
@@ -113,37 +111,37 @@ class SQLAlchemyExpressionTranslator:
     def _translate_logical(
         self,
         model: type[Any],
-        expression: SemanticLogical,
+        expression: BoundLogical,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Translates a logical semantic expression."""
+        """Lowers one logical bound expression."""
         joins: list[SQLAlchemyJoinPlan] = []
         predicates: list[ColumnElement[bool]] = []
         for child in expression.children:
             child_joins, child_predicate = self.translate(
                 model,
-                child,
+                cast(BoundComparison | BoundLogical, child),
                 options=options,
             )
             joins.extend(child_joins)
             predicates.append(child_predicate)
-        if expression.operator.name == "AND":
+        if expression.operator is LogicalOperator.AND:
             return tuple(joins), sa.and_(*predicates)
         return tuple(joins), sa.or_(*predicates)
 
     def _translate_comparison(
         self,
         model: type[Any],
-        expression: SemanticComparison,
+        expression: BoundComparison,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
-        """Translates a comparison semantic expression."""
+        """Lowers one comparison bound expression."""
         field_model = None
         field_name = None
         field_path = None
-        if isinstance(expression.selector, SemanticColumnSelector):
+        if isinstance(expression.selector, BoundField):
             resolved_path = self._path_resolver.resolve(
                 model,
                 expression.selector.field_path,
@@ -226,7 +224,7 @@ class SQLAlchemyExpressionTranslator:
     def _translate_selector(
         self,
         model: type[Any],
-        selector: SemanticSelector,
+        selector: BoundSelectorNode,
         *,
         options: QueryOptions,
     ) -> tuple[
@@ -234,8 +232,8 @@ class SQLAlchemyExpressionTranslator:
         ColumnElement[Any],
         type[Any] | None,
     ]:
-        """Translates a semantic selector recursively."""
-        if isinstance(selector, SemanticColumnSelector):
+        """Lowers one bound selector recursively."""
+        if isinstance(selector, BoundField):
             resolved_path = self._path_resolver.resolve(
                 model,
                 selector.field_path,
@@ -246,14 +244,14 @@ class SQLAlchemyExpressionTranslator:
                 self._resolve_column_expression(resolved_path),
                 str if resolved_path.is_json else resolved_path.python_type,
             )
-        if isinstance(selector, SemanticLiteralSelector):
+        if isinstance(selector, BoundLiteral):
             python_type = (
                 type(selector.value) if selector.value is not None else None
             )
             return (), sa.literal(selector.value), python_type
 
-        if not isinstance(selector, SemanticFunctionSelector):
-            raise TypeError("Expected SemanticFunctionSelector")
+        if not isinstance(selector, BoundFunction):
+            raise TypeError("Expected BoundFunction")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []
@@ -268,9 +266,10 @@ class SQLAlchemyExpressionTranslator:
             joins.extend(argument_joins)
             argument_expressions.append(argument_expression)
             argument_types.append(argument_type)
-        function_expression = getattr(sa.func, selector.function_name)(
-            *argument_expressions
-        )
+        function_expression = getattr(
+            sa.func,
+            selector.function_name,
+        )(*argument_expressions)
         return (
             tuple(joins),
             cast(ColumnElement[Any], function_expression),
@@ -513,12 +512,6 @@ class SQLAlchemyExpressionTranslator:
             expression.like(pattern, escape=escape_character),
         )
 
-    def _is_string_type(self, python_type: type[Any] | None) -> bool:
-        """Returns whether the resolved Python type is string-compatible."""
-        if python_type is None:
-            return False
-        return issubclass(python_type, str)
-
     def _should_use_exists_predicate(
         self,
         joins: tuple[SQLAlchemyJoinPlan, ...],
@@ -543,18 +536,3 @@ class SQLAlchemyExpressionTranslator:
                 continue
             wrapped_predicate = join_plan.attribute.has(wrapped_predicate)
         return wrapped_predicate
-
-    def _infer_function_python_type(
-        self,
-        function_name: str,
-        argument_types: tuple[type[Any] | None, ...],
-    ) -> type[Any] | None:
-        """Infers the Python type for common SQL functions."""
-        normalized_name = function_name.lower()
-        if normalized_name in {"lower", "upper", "concat"}:
-            return str
-        if normalized_name == "coalesce":
-            for argument_type in argument_types:
-                if argument_type is not None:
-                    return argument_type
-        return None
