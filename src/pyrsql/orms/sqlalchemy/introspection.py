@@ -18,6 +18,8 @@ from pyrsql.orms.sqlalchemy.types import (
 class SQLAlchemyModelInspector:
     """Provides stable access to public SQLAlchemy ORM inspection APIs."""
 
+    __slots__ = ("_mapper_cache", "_attribute_cache")
+
     def __init__(self) -> None:
         self._mapper_cache: dict[type[Any], Mapper[Any]] = {}
         self._attribute_cache: dict[

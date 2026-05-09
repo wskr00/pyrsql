@@ -23,6 +23,8 @@ from pyrsql.orms.sqlalchemy.types import (
 class SQLAlchemyPathResolver:
     """Resolves bound field paths into ORM joins and leaf attributes."""
 
+    __slots__ = ("_inspector", "_default_resolution_cache")
+
     def __init__(
         self,
         *,
@@ -70,13 +72,12 @@ class SQLAlchemyPathResolver:
         if not field_path:
             raise SQLAlchemyPathResolutionError("Field path cannot be empty.")
 
-        segments = tuple(
-            segment for segment in field_path.split(".") if segment
-        )
-        if not segments:
+        raw_segments = tuple(field_path.split("."))
+        if not raw_segments or any(not segment for segment in raw_segments):
             raise SQLAlchemyPathResolutionError(
                 f"Field path {field_path!r} is invalid."
             )
+        segments = raw_segments
 
         current_model = model
         joins: list[SQLAlchemyJoinPlan] = []
@@ -93,10 +94,8 @@ class SQLAlchemyPathResolver:
                     segment,
                 )
                 if mapped_segment != segment:
-                    mapped_segments = tuple(
-                        part for part in mapped_segment.split(".") if part
-                    )
-                    if not mapped_segments:
+                    mapped_segments = tuple(mapped_segment.split("."))
+                    if any(not part for part in mapped_segments):
                         raise SQLAlchemyPathResolutionError(
                             f"Mapped field {segment!r} on "
                             f"{current_model.__name__!r} is invalid."

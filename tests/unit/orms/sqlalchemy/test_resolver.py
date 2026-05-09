@@ -141,6 +141,13 @@ def test_path_resolver_rejects_path_through_column() -> None:
         resolver.resolve(User, "name.value")
 
 
+def test_path_resolver_rejects_empty_path_segments() -> None:
+    """Rejects field paths with empty dotted segments."""
+    resolver = SQLAlchemyPathResolver()
+    with pytest.raises(SQLAlchemyPathResolutionError):
+        resolver.resolve(User, "company..name")
+
+
 def test_path_resolver_applies_model_field_mapping() -> None:
     """Resolves per-model field aliases during path traversal."""
     resolver = SQLAlchemyPathResolver()

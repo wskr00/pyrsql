@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 class SQLAlchemyORM(base.ORM):
     """ORM adapter for SQLAlchemy 2.0 integration."""
 
+    __slots__ = ("_translator", "_sort_translator")
+
     def __init__(
         self,
         *,

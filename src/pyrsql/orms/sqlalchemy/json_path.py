@@ -50,6 +50,8 @@ _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
 class SQLAlchemyJSONPathExpressionBuilder:
     """Builds PostgreSQL JSON path expressions for SQLAlchemy."""
 
+    __slots__ = ()
+
     def build_filter_expression(
         self,
         column: ColumnElement[Any],

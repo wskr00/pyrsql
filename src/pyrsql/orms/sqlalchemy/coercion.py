@@ -13,6 +13,8 @@ from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 class SQLAlchemyValueCoercer:
     """Coerces bound argument values using resolved Python types."""
 
+    __slots__ = ("_registry",)
+
     def __init__(
         self,
         *,

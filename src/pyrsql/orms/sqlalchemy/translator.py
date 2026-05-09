@@ -64,6 +64,13 @@ class SQLAlchemyExpressionTranslator:
     join plans and predicates from bound query IR.
     """
 
+    __slots__ = (
+        "_path_resolver",
+        "_value_coercer",
+        "_json_path_builder",
+        "_custom_predicates",
+    )
+
     def __init__(
         self,
         *,

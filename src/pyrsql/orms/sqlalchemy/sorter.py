@@ -31,6 +31,8 @@ from pyrsql.sorting.ast import SortDirection
 class SQLAlchemySortTranslator:
     """Lowers bound sort IR to SQLAlchemy order clauses."""
 
+    __slots__ = ("_path_resolver", "_json_path_builder")
+
     def __init__(
         self,
         *,
