@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Mapping
+
 import pytest
 
 from pyrsql.ir.query import BoundField, BoundFunction

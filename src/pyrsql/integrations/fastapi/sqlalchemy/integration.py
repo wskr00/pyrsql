@@ -61,9 +61,8 @@ class FastAPISQLAlchemyIntegration:
         """Creates an integration helper for FastAPI and SQLAlchemy."""
         if orm is not None and not isinstance(orm, SQLAlchemyORM):
             raise TypeError("orm must be a SQLAlchemyORM or None.")
-        if (
-            criteria_config is not None
-            and not isinstance(criteria_config, FastAPICriteriaConfig)
+        if criteria_config is not None and not isinstance(
+            criteria_config, FastAPICriteriaConfig
         ):
             raise TypeError(
                 "criteria_config must be a FastAPICriteriaConfig or None."

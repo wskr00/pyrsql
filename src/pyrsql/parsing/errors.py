@@ -1,10 +1,10 @@
 """Parsing error types."""
 
-from typing import ClassVar
 from dataclasses import dataclass
+from typing import ClassVar
 
-from pyrsql.parsing.source import SourceSpan
 from pyrsql.parsing.diagnostics import ParseDiagnostic
+from pyrsql.parsing.source import SourceSpan
 
 
 @dataclass(frozen=True, slots=True)

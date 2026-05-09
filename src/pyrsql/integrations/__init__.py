@@ -1,8 +1,8 @@
 """Framework and ORM integration helpers."""
 
 from pyrsql.integrations.fastapi import (
-    FastAPISQLAlchemyResource,
     FastAPISQLAlchemyIntegration,
+    FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
 

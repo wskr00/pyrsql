@@ -8,8 +8,8 @@ from pyrsql.ir.query import (
     BoundComparison,
     BoundField,
     BoundFunction,
-    BoundLogical,
     BoundLiteral,
+    BoundLogical,
     BoundSelectorNode,
 )
 from pyrsql.parsing.ast import ComparisonNode, Expression, LogicalNode

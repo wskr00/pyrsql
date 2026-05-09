@@ -95,18 +95,13 @@ class FastAPISQLAlchemyResource:
             integration,
         )
         if not isinstance(criteria_config, FastAPICriteriaConfig):
-            raise TypeError(
-                "criteria_config must be a FastAPICriteriaConfig."
-            )
-        if (
-            default_sort is not None
-            and not isinstance(default_sort, PyrsqlSort)
+            raise TypeError("criteria_config must be a FastAPICriteriaConfig.")
+        if default_sort is not None and not isinstance(
+            default_sort, PyrsqlSort
         ):
             raise TypeError("default_sort must be a Sort or None.")
         if statement_factory is not None and not callable(statement_factory):
-            raise TypeError(
-                "statement_factory must be a callable or None."
-            )
+            raise TypeError("statement_factory must be a callable or None.")
         self.integration = validated_integration
         self.model = model
         self.criteria_config = criteria_config

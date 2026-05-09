@@ -1,11 +1,16 @@
 """Unit tests for semantic binding."""
 
-from collections.abc import Mapping
 import re
+from collections.abc import Mapping
 
 import pytest
 
-from pyrsql.ir.query import BoundComparison, BoundField, BoundFunction, BoundLogical
+from pyrsql.ir.query import (
+    BoundComparison,
+    BoundField,
+    BoundFunction,
+    BoundLogical,
+)
 from pyrsql.parsing.ast import Expression
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY

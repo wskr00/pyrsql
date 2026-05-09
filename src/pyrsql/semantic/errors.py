@@ -1,8 +1,7 @@
 """Semantic analysis exceptions."""
 
-from typing import ClassVar
-
 from dataclasses import dataclass
+from typing import ClassVar
 
 from pyrsql.parsing.source import SourceSpan
 from pyrsql.semantic.diagnostics import SemanticDiagnostic

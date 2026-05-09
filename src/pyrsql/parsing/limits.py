@@ -22,9 +22,7 @@ class ParseLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         if self.max_argument_length <= 0:
             raise ValueError("max_argument_length must be greater than 0.")
         if self.max_arguments_per_list <= 0:
-            raise ValueError(
-                "max_arguments_per_list must be greater than 0."
-            )
+            raise ValueError("max_arguments_per_list must be greater than 0.")
         if self.max_expression_depth <= 0:
             raise ValueError("max_expression_depth must be greater than 0.")
         if self.max_node_count <= 0:

@@ -13,8 +13,8 @@ from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.integrations.fastapi import (
-    FastAPISQLAlchemyResource,
     FastAPISQLAlchemyIntegration,
+    FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
@@ -189,9 +189,7 @@ def test_integration_builds_declarative_resource() -> None:
         == "name==demo"
     )
     assert (
-        resource.criteria_config.sort_openapi_examples["default_sort"][
-            "value"
-        ]
+        resource.criteria_config.sort_openapi_examples["default_sort"]["value"]
         == "name,desc"
     )
 
@@ -214,21 +212,19 @@ def test_resource_generates_automatic_examples() -> None:
         == "id==1"
     )
     assert (
-        resource.criteria_config.filter_openapi_examples[
-            "filter_by_name"
-        ]["value"]
+        resource.criteria_config.filter_openapi_examples["filter_by_name"][
+            "value"
+        ]
         == "name==demo"
     )
     assert (
-        resource.criteria_config.sort_openapi_examples[
-            "sort_by_name_asc"
-        ]["value"]
+        resource.criteria_config.sort_openapi_examples["sort_by_name_asc"][
+            "value"
+        ]
         == "name,asc"
     )
     assert (
-        resource.criteria_config.sort_openapi_examples["default_sort"][
-            "value"
-        ]
+        resource.criteria_config.sort_openapi_examples["default_sort"]["value"]
         == "name,desc"
     )
 
@@ -252,9 +248,7 @@ def test_resource_applier_transforms_existing_select() -> None:
     resource = integration.resource(User, default_sort="-name")
     criteria = resource.criteria_dependency()(RequestCriteria())
 
-    statement = resource.applier(criteria)(
-        select(User).where(User.id > 10)
-    )
+    statement = resource.applier(criteria)(select(User).where(User.id > 10))
     compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
 
     assert "WHERE users.id > 10" in compiled
@@ -355,8 +349,7 @@ def test_resource_reuses_cached_dependencies() -> None:
     assert resource.applier_dependency() is resource.applier_dependency()
     assert resource.select_dependency() is resource.select_dependency()
     assert (
-        resource.count_select_dependency()
-        is resource.count_select_dependency()
+        resource.count_select_dependency() is resource.count_select_dependency()
     )
     assert (
         resource.paginated_select_dependency()

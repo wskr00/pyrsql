@@ -4,11 +4,11 @@ from pyrsql.sorting.ast import SortDirection, SortField
 from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.diagnostics import SortDiagnostic
 from pyrsql.sorting.errors import (
+    SortError,
     SortFieldBlacklistedError,
     SortFieldNotWhitelistedError,
     SortFunctionBlacklistedError,
     SortFunctionNotWhitelistedError,
-    SortError,
     SortParseError,
 )
 from pyrsql.sorting.limits import SortLimits

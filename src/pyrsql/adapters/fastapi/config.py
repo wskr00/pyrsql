@@ -92,17 +92,11 @@ class FastAPICriteriaConfig(
                 "filter_openapi_examples must be a mapping instance."
             )
         if not isinstance(self.sort_openapi_examples, Mapping):
-            raise TypeError(
-                "sort_openapi_examples must be a mapping instance."
-            )
+            raise TypeError("sort_openapi_examples must be a mapping instance.")
         if not isinstance(self.page_openapi_examples, Mapping):
-            raise TypeError(
-                "page_openapi_examples must be a mapping instance."
-            )
+            raise TypeError("page_openapi_examples must be a mapping instance.")
         if not isinstance(self.size_openapi_examples, Mapping):
-            raise TypeError(
-                "size_openapi_examples must be a mapping instance."
-            )
+            raise TypeError("size_openapi_examples must be a mapping instance.")
         object.__setattr__(
             self,
             "filter_openapi_examples",

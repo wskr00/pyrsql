@@ -17,9 +17,7 @@ class SortLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         if self.max_fields <= 0:
             raise ValueError("max_fields must be greater than 0.")
         if self.max_field_path_length <= 0:
-            raise ValueError(
-                "max_field_path_length must be greater than 0."
-            )
+            raise ValueError("max_field_path_length must be greater than 0.")
 
 
 DEFAULT_SORT_LIMITS = SortLimits()

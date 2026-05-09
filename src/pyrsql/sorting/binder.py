@@ -3,7 +3,12 @@
 from collections.abc import Callable, Mapping
 from typing import Protocol
 
-from pyrsql.ir.query import BoundField, BoundFunction, BoundLiteral, BoundSelectorNode
+from pyrsql.ir.query import (
+    BoundField,
+    BoundFunction,
+    BoundLiteral,
+    BoundSelectorNode,
+)
 from pyrsql.ir.sort import BoundSort, BoundSortField
 from pyrsql.selector.ast import (
     FieldSelector,

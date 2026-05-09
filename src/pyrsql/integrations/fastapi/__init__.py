@@ -1,8 +1,8 @@
 """FastAPI integration helpers."""
 
 from pyrsql.integrations.fastapi.sqlalchemy import (
-    FastAPISQLAlchemyResource,
     FastAPISQLAlchemyIntegration,
+    FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
 

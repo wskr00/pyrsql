@@ -95,7 +95,4 @@ def test_lexer_uses_shared_default_limits_instance() -> None:
 
 def test_lexer_skips_operator_matching_for_non_prefix_characters() -> None:
     """Avoids scanning every operator when the prefix cannot match any."""
-    assert (
-        DEFAULT_OPERATOR_REGISTRY.match_candidates("n")
-        == ()
-    )
+    assert DEFAULT_OPERATOR_REGISTRY.match_candidates("n") == ()

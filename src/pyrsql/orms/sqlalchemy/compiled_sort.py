@@ -2,8 +2,8 @@
 
 import msgspec
 
-from pyrsql.ir.sort import BoundSort
 from pyrsql.core.options import SortOptions
+from pyrsql.ir.sort import BoundSort
 from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,

@@ -33,9 +33,7 @@ def test_sort_parser_supports_direction_and_ignore_case() -> None:
 
 def test_sort_parser_trims_clause_parts() -> None:
     """Parses clause parts with surrounding whitespace."""
-    fields = SortParser(
-        " company.name , desc , ic "
-    ).parse()
+    fields = SortParser(" company.name , desc , ic ").parse()
     assert len(fields) == 1
     assert isinstance(fields[0].selector, FieldSelector)
     assert fields[0].selector.raw_path == "company.name"

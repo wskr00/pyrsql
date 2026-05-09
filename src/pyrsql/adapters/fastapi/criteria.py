@@ -3,6 +3,7 @@
 from typing import Any
 
 import msgspec
+
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort

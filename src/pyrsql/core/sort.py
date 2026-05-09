@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from pyrsql.core.compiler import SortCompilationResult
-from pyrsql.ir.sort import BoundSort
 from pyrsql.core.options import SortOptions
+from pyrsql.ir.sort import BoundSort
 from pyrsql.orms.base import ORM
 from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.binder import SortBinder

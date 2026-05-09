@@ -4,9 +4,9 @@
 
 from pyrsql.api import apply, compile, parse
 from pyrsql.core import (
+    DEFAULT_JSON_OPTIONS,
     CompilationResult,
     CustomPredicateDefinition,
-    DEFAULT_JSON_OPTIONS,
     FieldPolicySet,
     FieldValueConverterSet,
     JSONOptions,

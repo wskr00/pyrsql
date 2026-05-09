@@ -1,5 +1,7 @@
 """Unit tests for bound logical sort nodes."""
 
+import pytest
+
 from pyrsql.ir.query import BoundField, BoundFunction
 from pyrsql.ir.sort import BoundSort, BoundSortField
 from pyrsql.sorting.ast import SortDirection
@@ -46,9 +48,8 @@ def test_bound_sort_supports_function_selectors() -> None:
 
 def test_bound_sort_rejects_empty_field_list() -> None:
     """Prevents invalid empty bound sort requests."""
-    try:
+    with pytest.raises(
+        ValueError,
+        match="at least one bound sort field",
+    ):
         BoundSort(fields=())
-    except ValueError as error:
-        assert "at least one bound sort field" in str(error)
-    else:
-        raise AssertionError("BoundSort should reject an empty field list.")

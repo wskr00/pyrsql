@@ -2,8 +2,8 @@
 
 import msgspec
 
-from pyrsql.ir.query import BoundComparison, BoundLogical
 from pyrsql.core.options import QueryOptions
+from pyrsql.ir.query import BoundComparison, BoundLogical
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,
     require_sqlalchemy_select,

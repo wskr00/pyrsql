@@ -158,8 +158,7 @@ def test_resource_dependency_exposes_examples() -> None:
     parameters = schema["paths"]["/users/resource"]["get"]["parameters"]
     parameter_map = {parameter["name"]: parameter for parameter in parameters}
     assert (
-        parameter_map["filter"]["examples"]["by_name"]["value"]
-        == "name==demo"
+        parameter_map["filter"]["examples"]["by_name"]["value"] == "name==demo"
     )
 
 
@@ -185,14 +184,11 @@ def test_resource_dependency_generates_examples_automatically() -> None:
         }
 
     schema = app.openapi()
-    parameters = schema["paths"]["/users/auto-examples"]["get"][
-        "parameters"
-    ]
+    parameters = schema["paths"]["/users/auto-examples"]["get"]["parameters"]
     parameter_map = {parameter["name"]: parameter for parameter in parameters}
 
     assert (
-        parameter_map["filter"]["examples"]["filter_by_id"]["value"]
-        == "id==1"
+        parameter_map["filter"]["examples"]["filter_by_id"]["value"] == "id==1"
     )
     assert (
         parameter_map["filter"]["examples"]["filter_by_name"]["value"]

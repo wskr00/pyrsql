@@ -256,7 +256,6 @@ def test_dependency_exposes_openapi_examples() -> None:
 
     assert "examples" in parameter_map["filter"]
     assert (
-        parameter_map["filter"]["examples"]["by_name"]["value"]
-        == "name==demo"
+        parameter_map["filter"]["examples"]["by_name"]["value"] == "name==demo"
     )
     assert "examples" in parameter_map["sort"]

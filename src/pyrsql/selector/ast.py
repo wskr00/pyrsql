@@ -40,9 +40,7 @@ class FieldSelector(SelectorNode, frozen=True, gc=False, kw_only=True):
                 "Field selector cannot contain empty path segments."
             )
         if tuple(self.raw_path.split(".")) != self.segments:
-            raise ValueError(
-                "Field selector segments must match the raw path."
-            )
+            raise ValueError("Field selector segments must match the raw path.")
 
 
 class LiteralSelector(SelectorNode, frozen=True, gc=False, kw_only=True):

@@ -70,7 +70,7 @@ class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
     """Logical expression with two or more child nodes."""
 
     operator: LogicalOperator
-    children: tuple["Expression", ...]
+    children: tuple[Expression, ...]
 
     def __post_init__(self) -> None:
         """Validates logical node invariants."""

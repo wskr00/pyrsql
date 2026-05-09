@@ -83,9 +83,7 @@ class OperatorRegistry:
             "operator_spellings_by_prefix",
             MappingProxyType(
                 {
-                    prefix: tuple(
-                        sorted(spellings, key=len, reverse=True)
-                    )
+                    prefix: tuple(sorted(spellings, key=len, reverse=True))
                     for prefix, spellings in spellings_by_prefix.items()
                 }
             ),

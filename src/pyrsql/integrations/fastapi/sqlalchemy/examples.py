@@ -22,8 +22,10 @@ def normalize_default_sort(default_sort: str) -> str:
 def field_example_value(field_path: str) -> str | int:
     """Builds a simple example value from a field path."""
     normalized = field_path.lower()
-    if normalized == "id" or normalized.endswith(".id") or normalized.endswith(
-        "_id"
+    if (
+        normalized == "id"
+        or normalized.endswith(".id")
+        or normalized.endswith("_id")
     ):
         return _DEFAULT_NUMERIC_EXAMPLE
     if any(

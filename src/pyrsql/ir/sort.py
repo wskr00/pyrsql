@@ -26,9 +26,7 @@ class BoundSortField(msgspec.Struct, frozen=True, gc=False, kw_only=True):
                 "Bound sort field direction must be a SortDirection."
             )
         if not isinstance(self.ignore_case, bool):
-            raise TypeError(
-                "Bound sort field ignore_case must be a bool."
-            )
+            raise TypeError("Bound sort field ignore_case must be a bool.")
 
 
 class BoundSort(msgspec.Struct, frozen=True, gc=False, kw_only=True):

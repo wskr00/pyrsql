@@ -1,5 +1,7 @@
 """Unit tests for bound logical query nodes."""
 
+import pytest
+
 from pyrsql.ir.query import (
     BoundArgument,
     BoundComparison,
@@ -94,13 +96,9 @@ def test_bound_logical_rejects_single_child() -> None:
         operator=EQUAL,
         arguments=(BoundArgument(text="demo", quoted=False, span=_span()),),
     )
-    try:
+    with pytest.raises(ValueError, match="at least two children"):
         BoundLogical(
             span=_span(),
             operator=LogicalOperator.AND,
             children=(child,),
         )
-    except ValueError as error:
-        assert "at least two children" in str(error)
-    else:
-        raise AssertionError("BoundLogical should reject a single child.")

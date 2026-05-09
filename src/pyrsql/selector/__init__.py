@@ -4,8 +4,8 @@ from pyrsql.selector.ast import (
     FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    SelectorNode,
     SelectorLiteral,
+    SelectorNode,
 )
 from pyrsql.selector.parser import (
     DEFAULT_SELECTOR_PARSER,
