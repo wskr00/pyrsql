@@ -451,7 +451,7 @@ class SQLAlchemyExpressionTranslator:
         self,
         expression: ColumnElement[Any],
         python_type: type[Any] | None,
-        value: Any,
+        value: object,
         *,
         negated: bool,
         options: QueryOptions,

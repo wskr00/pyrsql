@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
@@ -12,6 +12,9 @@ from pyrsql.core.sort import Sort
 
 if TYPE_CHECKING:
     from pyrsql.orms.base import ORM
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
 class RequestCriteria(
@@ -59,11 +62,11 @@ class RequestCriteria(
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
+    ) -> _TargetT:
         """Applies the criteria to an ORM-specific target.
 
         Returns:

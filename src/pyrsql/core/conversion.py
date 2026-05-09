@@ -8,7 +8,7 @@ import datetime as dt
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import ciso8601
@@ -17,7 +17,7 @@ import msgspec
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-ValueConverter = Callable[[str], Any]
+ValueConverter = Callable[[str], object]
 
 
 class ValueConversionError(ValueError):
@@ -73,7 +73,7 @@ def _convert_datetime(raw_value: str) -> dt.datetime:
 class ValueConverterRegistry:
     """Immutable registry of orm-neutral string-to-type converters."""
 
-    converters: Mapping[type[Any], ValueConverter]
+    converters: Mapping[type[object], ValueConverter]
 
     def __post_init__(self) -> None:
         """Normalizes the converter mapping into an immutable view."""
@@ -85,7 +85,7 @@ class ValueConverterRegistry:
 
     def with_converter(
         self,
-        target_type: type[Any],
+        target_type: type[object],
         converter: ValueConverter,
     ) -> ValueConverterRegistry:
         """Returns a new registry with one additional converter.
@@ -100,8 +100,8 @@ class ValueConverterRegistry:
     def convert(
         self,
         raw_value: str,
-        target_type: type[Any] | None,
-    ) -> Any:
+        target_type: type[object] | None,
+    ) -> object:
         """Converts a raw string into the requested target type.
 
         Returns:
@@ -143,7 +143,7 @@ class ValueConverterRegistry:
 
     def _find_registered_converter(
         self,
-        target_type: type[Any],
+        target_type: type[object],
     ) -> ValueConverter | None:
         """Finds the most specific registered converter for a type.
 
@@ -159,8 +159,8 @@ class ValueConverterRegistry:
     @staticmethod
     def _convert_enum(
         raw_value: str,
-        target_type: type[Any],
-    ) -> Any:
+        target_type: type[object],
+    ) -> object:
         """Converts a string into an enum member by name first.
 
         Returns:
@@ -183,8 +183,8 @@ class ValueConverterRegistry:
     @staticmethod
     def _construct_from_string(
         raw_value: str,
-        target_type: type[Any],
-    ) -> Any:
+        target_type: type[object],
+    ) -> object:
         """Attempts a plain constructor-based conversion as a fallback.
 
         Returns:
@@ -203,8 +203,8 @@ class ValueConverterRegistry:
     @staticmethod
     def _convert_json_container(
         raw_value: str,
-        target_type: type[Any],
-    ) -> Any:
+        target_type: type[object],
+    ) -> object:
         """Converts a JSON string into a mapping or sequence container.
 
         Returns:
@@ -221,7 +221,7 @@ class ValueConverterRegistry:
                 f"Failed to convert {raw_value!r} to {target_type.__name__}.",
             ) from error
 
-        expected_type: type[Any]
+        expected_type: type[object]
         if issubclass(target_type, dict):
             expected_type = dict
         elif issubclass(target_type, list):
@@ -250,7 +250,7 @@ class FieldValueConverterSet:
     """Immutable field-scoped value converter configuration."""
 
     field_converters: Mapping[str, ValueConverter]
-    model_field_converters: Mapping[type[Any], Mapping[str, ValueConverter]]
+    model_field_converters: Mapping[type[object], Mapping[str, ValueConverter]]
 
     def __post_init__(self) -> None:
         """Normalizes nested converter mappings into immutable views."""
@@ -273,7 +273,7 @@ class FieldValueConverterSet:
     def resolve(
         self,
         *,
-        model: type[Any] | None,
+        model: type[object] | None,
         field_name: str | None,
         field_path: str | None,
     ) -> ValueConverter | None:

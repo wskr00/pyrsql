@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pyrsql.ir.sort import BoundSort
     from pyrsql.orms.base import ORM
     from pyrsql.sorting.ast import SortField
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 _DEFAULT_SORT_OPTIONS = SortOptions()
 
@@ -153,11 +156,11 @@ class Sort:
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
+    ) -> _TargetT:
         """Compiles and applies the sort using the provided ORM.
 
         Args:

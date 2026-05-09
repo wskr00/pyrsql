@@ -1,7 +1,9 @@
 """ORM-neutral JSON value normalization."""
 
+from __future__ import annotations
+
 import re
-from typing import Any
+from typing import TypeAlias
 
 import msgspec
 
@@ -10,13 +12,17 @@ _FLOAT_PATTERN = re.compile(
     r"^-?(?:\d+\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)$",
 )
 
+JSONValue: TypeAlias = (
+    bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"] | None
+)
+
 
 class JSONScalarValue(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents one normalized JSON scalar or structured value."""
 
-    value: Any
+    value: JSONValue
     json_literal: str
-    python_type: type[Any] | None
+    python_type: type[object] | None
 
 
 class JSONScalarNormalizer:
@@ -55,7 +61,7 @@ class JSONScalarNormalizer:
         return self._from_python_value(raw_value)
 
     @staticmethod
-    def _from_python_value(value: Any) -> JSONScalarValue:
+    def _from_python_value(value: JSONValue) -> JSONScalarValue:
         """Creates a normalized JSON value from a Python object.
 
         Returns:
@@ -68,7 +74,7 @@ class JSONScalarNormalizer:
         )
 
     @staticmethod
-    def _try_parse_json(raw_value: str) -> Any | None:
+    def _try_parse_json(raw_value: str) -> JSONValue | None:
         """Parses quoted JSON arguments when they contain JSON values.
 
         Returns:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
@@ -12,6 +12,9 @@ if TYPE_CHECKING:
         CompiledQuery,
         CompiledSort,
     )
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
 def _validate_orm_name(orm_name: str, *, context: str) -> None:
@@ -39,7 +42,7 @@ class CompilationResult(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         """Validates compilation result invariants."""
         _validate_orm_name(self.orm_name, context="Compilation result")
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled query to an ORM-specific target.
 
         Args:
@@ -75,7 +78,7 @@ class SortCompilationResult(
             context="Sort compilation result",
         )
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled sort to an ORM-specific target.
 
         Args:
@@ -111,7 +114,7 @@ class PageCompilationResult(
             context="Page compilation result",
         )
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled page request to an ORM-specific target.
 
         Args:

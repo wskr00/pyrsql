@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
@@ -11,6 +11,9 @@ from pyrsql.ir.page import BoundPage
 
 if TYPE_CHECKING:
     from pyrsql.orms.base import ORM
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
 class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -131,11 +134,11 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
+    ) -> _TargetT:
         """Compiles and applies the page request using the ORM.
 
         Args:

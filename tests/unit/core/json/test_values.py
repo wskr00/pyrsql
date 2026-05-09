@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
 
 from pyrsql.core.json.values import JSONScalarNormalizer
@@ -15,7 +13,7 @@ from pyrsql.core.json.values import JSONScalarNormalizer
         pytest.param("true", False, True, id="bool-true"),
         pytest.param("null", False, None, id="null"),
         pytest.param("42", False, 42, id="int"),
-        pytest.param("3.14", False, math.pi, id="float"),
+        pytest.param("3.12", False, 3.12, id="float"),
         pytest.param("1e3", False, 1000.0, id="scientific-positive"),
         pytest.param("-2.5E-2", False, -0.025, id="scientific-negative"),
         pytest.param("[1, 2]", True, [1, 2], id="quoted-array"),

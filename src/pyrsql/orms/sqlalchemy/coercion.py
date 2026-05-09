@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pyrsql.core.conversion import (
     ValueConversionError,
@@ -32,14 +32,14 @@ class SQLAlchemyValueCoercer:
     def coerce(
         self,
         raw_value: str,
-        python_type: type[Any] | None,
+        python_type: type[object] | None,
         *,
         field_converter_set: FieldValueConverterSet | None = None,
-        model: type[Any] | None = None,
+        model: type[object] | None = None,
         field_name: str | None = None,
         field_path: str | None = None,
         registry: ValueConverterRegistry | None = None,
-    ) -> Any:
+    ) -> object:
         """Coerces a raw argument into a typed Python value.
 
         Returns:

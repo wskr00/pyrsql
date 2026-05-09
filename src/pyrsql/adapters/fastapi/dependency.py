@@ -1,7 +1,7 @@
 """Dependency factories for FastAPI request integration."""
 
 from inspect import signature
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated
 
 import msgspec
 
@@ -52,7 +52,9 @@ _SORT_ERROR_TYPES = (
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 
-def _raise_http_error(payload: "FastAPIAdapterErrorPayload") -> None:
+def _raise_http_error(
+    payload: "FastAPIAdapterErrorPayload",  # noqa: UP037
+) -> None:
     """Raises a standardized FastAPI HTTP exception for adapter failures.
 
     Raises:
@@ -125,7 +127,7 @@ def _build_page_request(
 
 def _build_criteria_callable(
     config: FastAPICriteriaConfig,
-) -> "Callable[..., RequestCriteria]":
+) -> "Callable[..., RequestCriteria]":  # noqa: UP037
     """Builds the concrete dependency callable for a fixed configuration.
 
     Returns:
@@ -227,7 +229,7 @@ class CriteriaDependency:
         self._dependency = _build_criteria_callable(self.config)
         self.__signature__: Signature = signature(self._dependency)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> RequestCriteria:
+    def __call__(self, *args: object, **kwargs: object) -> RequestCriteria:
         """Delegates FastAPI dependency resolution to the generated callable.
 
         Returns:

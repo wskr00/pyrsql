@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypeVar
 
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pyrsql.ir.query import BoundComparison, BoundLogical
     from pyrsql.orms.base import ORM
     from pyrsql.parsing.ast import Expression
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 
@@ -158,11 +161,11 @@ class Query:
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
+    ) -> _TargetT:
         """Compiles and applies the query using the provided ORM.
 
         Args:

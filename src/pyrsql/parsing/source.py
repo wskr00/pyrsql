@@ -1,5 +1,7 @@
 """Source location models for parsing."""
 
+from __future__ import annotations
+
 import msgspec
 
 
@@ -40,7 +42,7 @@ class SourceSpan(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             raise ValueError("Source span end cannot precede start.")
 
     @classmethod
-    def cover(cls, start: "SourceSpan", end: "SourceSpan") -> "SourceSpan":
+    def cover(cls, start: SourceSpan, end: SourceSpan) -> SourceSpan:
         """Builds a span that covers two existing spans.
 
         Returns:

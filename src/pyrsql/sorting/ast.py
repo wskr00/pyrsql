@@ -1,5 +1,7 @@
 """AST nodes for pyrsql sort expressions."""
 
+from __future__ import annotations
+
 from enum import Enum
 
 import msgspec
@@ -14,7 +16,7 @@ class SortDirection(Enum):
     DESCENDING = "desc"
 
     @classmethod
-    def from_raw(cls, raw_direction: str) -> "SortDirection | None":
+    def from_raw(cls, raw_direction: str) -> SortDirection | None:
         """Matches a raw token to a supported sort direction.
 
         Args:
