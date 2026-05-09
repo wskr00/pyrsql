@@ -1,5 +1,7 @@
 """Unit tests for bound logical pagination nodes."""
 
+from __future__ import annotations
+
 import pytest
 
 from pyrsql.ir.page import BoundPage
@@ -8,17 +10,23 @@ from pyrsql.ir.page import BoundPage
 def test_bound_page_exposes_offset_and_limit() -> None:
     """Computes offset and limit from page number and size."""
     page = BoundPage(page_number=2, page_size=25)
+
     assert page.offset == 50
     assert page.limit == 25
 
 
-def test_bound_page_rejects_negative_page_number() -> None:
-    """Rejects invalid negative page numbers."""
-    with pytest.raises(ValueError, match="page_number"):
-        BoundPage(page_number=-1, page_size=10)
-
-
-def test_bound_page_rejects_non_positive_page_size() -> None:
-    """Rejects invalid non-positive page sizes."""
-    with pytest.raises(ValueError, match="page_size"):
-        BoundPage(page_number=0, page_size=0)
+@pytest.mark.parametrize(
+    ("page_number", "page_size", "pattern"),
+    [
+        pytest.param(-1, 10, r"page_number", id="negative-page-number"),
+        pytest.param(0, 0, r"page_size", id="non-positive-page-size"),
+    ],
+)
+def test_bound_page_rejects_invalid_values(
+    page_number: int,
+    page_size: int,
+    pattern: str,
+) -> None:
+    """Rejects invalid pagination values."""
+    with pytest.raises(ValueError, match=pattern):
+        BoundPage(page_number=page_number, page_size=page_size)

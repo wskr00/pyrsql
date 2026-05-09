@@ -1,42 +1,76 @@
 """Unit tests for the shared selector parser."""
 
+from __future__ import annotations
+
 import pytest
 
 from pyrsql.selector.ast import FieldSelector, FunctionSelector, LiteralSelector
 from pyrsql.selector.parser import SelectorParseError, SelectorParser
 
 
-def test_split_top_level_trims_and_discards_blank_fragments() -> None:
+@pytest.mark.parametrize(
+    ("text", "delimiter", "expected"),
+    [
+        pytest.param(
+            "  name  | @upper[ city ] |   | #123  ",
+            "|",
+            ("name", "@upper[ city ]", "#123"),
+            id="trim-and-drop-blank-fragments",
+        ),
+    ],
+)
+def test_split_top_level_normalizes_fragments(
+    text: str,
+    delimiter: str,
+    expected: tuple[str, ...],
+) -> None:
     """Splits top-level fragments into normalized non-empty parts."""
     parser = SelectorParser()
-    fragments = parser.split_top_level(
-        "  name  | @upper[ city ] |   | #123  ",
-        delimiter="|",
-    )
-    assert fragments == ("name", "@upper[ city ]", "#123")
+
+    assert parser.split_top_level(text, delimiter=delimiter) == expected
 
 
-def test_parse_field_selector_preserves_segments() -> None:
-    """Parses field selectors into raw path and path segments."""
+@pytest.mark.parametrize(
+    ("raw_selector", "expected_type", "expected_value"),
+    [
+        pytest.param(
+            "company.name",
+            FieldSelector,
+            "company.name",
+            id="field-selector",
+        ),
+        pytest.param(
+            "  company.name  ",
+            FieldSelector,
+            "company.name",
+            id="trimmed-field-selector",
+        ),
+        pytest.param(
+            "#true",
+            LiteralSelector,
+            True,
+            id="literal-selector",
+        ),
+    ],
+)
+def test_parse_supports_field_and_literal_selectors(
+    raw_selector: str,
+    expected_type: type[FieldSelector] | type[LiteralSelector],
+    expected_value: object,
+) -> None:
+    """Parses field and literal selectors into the expected node types."""
     selector = SelectorParser().parse(
-        "company.name",
+        raw_selector,
         max_length=100,
         context="selector",
     )
-    assert isinstance(selector, FieldSelector)
-    assert selector.raw_path == "company.name"
-    assert selector.segments == ("company", "name")
 
-
-def test_parse_literal_selector_keeps_literal_value() -> None:
-    """Parses literal selectors into typed literal nodes."""
-    selector = SelectorParser().parse(
-        "#true",
-        max_length=100,
-        context="selector",
-    )
-    assert isinstance(selector, LiteralSelector)
-    assert selector.value is True
+    assert isinstance(selector, expected_type)
+    if isinstance(selector, FieldSelector):
+        assert selector.raw_path == expected_value
+        assert selector.segments == ("company", "name")
+    else:
+        assert selector.value is expected_value
 
 
 def test_parse_function_selector_walks_nested_arguments() -> None:
@@ -46,38 +80,45 @@ def test_parse_function_selector_walks_nested_arguments() -> None:
         max_length=100,
         context="selector",
     )
-    assert isinstance(selector, FunctionSelector)
     walked = tuple(selector.walk())
+
+    assert isinstance(selector, FunctionSelector)
     assert isinstance(walked[1], FieldSelector)
     assert isinstance(walked[2], LiteralSelector)
 
 
-def test_parse_trims_outer_whitespace() -> None:
-    """Normalizes outer whitespace before building selector nodes."""
-    selector = SelectorParser().parse(
-        "  company.name  ",
-        max_length=100,
-        context="selector",
-    )
-    assert isinstance(selector, FieldSelector)
-    assert selector.raw_path == "company.name"
-
-
-def test_parse_rejects_empty_selector() -> None:
-    """Rejects empty selectors after whitespace normalization."""
-    with pytest.raises(SelectorParseError, match="cannot be empty"):
-        SelectorParser().parse(
+@pytest.mark.parametrize(
+    ("raw_selector", "pattern", "expected_error"),
+    [
+        pytest.param(
             "   ",
-            max_length=100,
-            context="selector",
-        )
-
-
-def test_parse_rejects_empty_field_path_segments() -> None:
-    """Rejects malformed field selectors with empty segments."""
-    with pytest.raises(ValueError, match="empty path segments"):
-        SelectorParser().parse(
+            r"cannot be empty",
+            SelectorParseError,
+            id="empty-selector",
+        ),
+        pytest.param(
             "company..name",
+            r"empty path segments",
+            ValueError,
+            id="empty-field-segment",
+        ),
+        pytest.param(
+            "@upper[name",
+            r"invalid function selector|unbalanced brackets",
+            SelectorParseError,
+            id="invalid-function-selector",
+        ),
+    ],
+)
+def test_parse_rejects_invalid_selectors(
+    raw_selector: str,
+    pattern: str,
+    expected_error: type[Exception],
+) -> None:
+    """Rejects invalid selector shapes through structured errors."""
+    with pytest.raises(expected_error, match=pattern):
+        SelectorParser().parse(
+            raw_selector,
             max_length=100,
             context="selector",
         )

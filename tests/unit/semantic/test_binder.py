@@ -1,19 +1,14 @@
 """Unit tests for semantic binding."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Mapping
 
 import pytest
 
-from pyrsql.ir.query import (
-    BoundComparison,
-    BoundField,
-    BoundFunction,
-    BoundLogical,
-)
+from pyrsql.ir.query import BoundComparison, BoundField, BoundFunction, BoundLogical
 from pyrsql.parsing.ast import Expression
-from pyrsql.parsing.limits import ParseLimits
-from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder
 from pyrsql.semantic.errors import (
@@ -75,11 +70,8 @@ class _SemanticOptions:
 
 
 def _parse(query_text: str) -> Expression:
-    return Parser(
-        query_text,
-        limits=ParseLimits(),
-        operator_registry=DEFAULT_OPERATOR_REGISTRY,
-    ).parse()
+    """Parses one semantic test expression through the public parser."""
+    return Parser(query_text).parse()
 
 
 def test_semantic_binder_applies_field_mapping() -> None:
@@ -87,6 +79,7 @@ def test_semantic_binder_applies_field_mapping() -> None:
     expression = _parse("username==demo")
     options = _SemanticOptions(field_mapping={"username": "user.name"})
     bound_expression = SemanticBinder(options).bind(expression)
+
     assert isinstance(bound_expression, BoundComparison)
     assert isinstance(bound_expression.selector, BoundField)
     assert bound_expression.selector.raw_path == "username"
@@ -98,6 +91,7 @@ def test_semantic_binder_preserves_logical_shape() -> None:
     expression = _parse("username==demo;city==sp")
     options = _SemanticOptions(field_mapping={"username": "user.name"})
     bound_expression = SemanticBinder(options).bind(expression)
+
     assert isinstance(bound_expression, BoundLogical)
     first_child = bound_expression.children[0]
     assert isinstance(first_child, BoundComparison)
@@ -105,19 +99,29 @@ def test_semantic_binder_preserves_logical_shape() -> None:
     assert first_child.selector.field_path == "user.name"
 
 
-def test_semantic_binder_enforces_whitelist() -> None:
-    """Rejects fields outside the configured whitelist."""
+@pytest.mark.parametrize(
+    ("options", "expected_error"),
+    [
+        pytest.param(
+            _SemanticOptions(field_whitelist=frozenset({"city"})),
+            FieldNotWhitelistedError,
+            id="field-whitelist",
+        ),
+        pytest.param(
+            _SemanticOptions(field_blacklist=frozenset({"name"})),
+            FieldBlacklistedError,
+            id="field-blacklist",
+        ),
+    ],
+)
+def test_semantic_binder_enforces_field_policies(
+    options: _SemanticOptions,
+    expected_error: type[Exception],
+) -> None:
+    """Rejects fields that violate whitelist or blacklist rules."""
     expression = _parse("name==demo")
-    options = _SemanticOptions(field_whitelist=frozenset({"city"}))
-    with pytest.raises(FieldNotWhitelistedError, match="not allowed"):
-        SemanticBinder(options).bind(expression)
 
-
-def test_semantic_binder_enforces_blacklist() -> None:
-    """Rejects fields inside the configured blacklist."""
-    expression = _parse("name==demo")
-    options = _SemanticOptions(field_blacklist=frozenset({"name"}))
-    with pytest.raises(FieldBlacklistedError, match="blocked"):
+    with pytest.raises(expected_error, match=r"not allowed|blocked"):
         SemanticBinder(options).bind(expression)
 
 
@@ -129,35 +133,51 @@ def test_semantic_binder_maps_field_selectors_inside_functions() -> None:
         procedure_whitelist=("upper",),
     )
     bound_expression = SemanticBinder(options).bind(expression)
+
     assert isinstance(bound_expression, BoundComparison)
     assert isinstance(bound_expression.selector, BoundFunction)
     assert isinstance(bound_expression.selector.arguments[0], BoundField)
     assert bound_expression.selector.arguments[0].field_path == "user.name"
 
 
-def test_semantic_binder_rejects_non_whitelisted_functions() -> None:
-    """Rejects function selectors outside the configured whitelist."""
-    expression = _parse("@upper[name]==demo")
-    with pytest.raises(FunctionNotWhitelistedError):
-        SemanticBinder(_SemanticOptions()).bind(expression)
-
-
-def test_semantic_binder_rejects_blacklisted_functions() -> None:
-    """Rejects function selectors inside the configured blacklist."""
-    expression = _parse("@upper[@lower[name]]==demo")
-    with pytest.raises(FunctionBlacklistedError):
-        SemanticBinder(
+@pytest.mark.parametrize(
+    ("source", "options", "expected_error"),
+    [
+        pytest.param(
+            "@upper[name]==demo",
+            _SemanticOptions(),
+            FunctionNotWhitelistedError,
+            id="function-not-whitelisted",
+        ),
+        pytest.param(
+            "@upper[@lower[name]]==demo",
             _SemanticOptions(
                 procedure_whitelist=(".*er",),
                 procedure_blacklist=("lower",),
-            )
-        ).bind(expression)
+            ),
+            FunctionBlacklistedError,
+            id="function-blacklisted",
+        ),
+    ],
+)
+def test_semantic_binder_enforces_function_policies(
+    source: str,
+    options: _SemanticOptions,
+    expected_error: type[Exception],
+) -> None:
+    """Rejects functions that violate whitelist or blacklist rules."""
+    expression = _parse(source)
+
+    with pytest.raises(expected_error):
+        SemanticBinder(options).bind(expression)
 
 
 def test_semantic_errors_expose_structured_diagnostic() -> None:
     """Exposes structured diagnostics from semantic errors."""
     expression = _parse("@upper[name]==demo")
+
     with pytest.raises(FunctionNotWhitelistedError) as exc_info:
         SemanticBinder(_SemanticOptions()).bind(expression)
+
     assert exc_info.value.code == "function_not_whitelisted"
     assert exc_info.value.diagnostic.code == "function_not_whitelisted"

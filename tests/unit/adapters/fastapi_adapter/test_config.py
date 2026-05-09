@@ -10,7 +10,7 @@ import pytest
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig
 from pyrsql.core.options import QueryOptions, SortOptions
 
-pytestmark = [pytest.mark.unit, pytest.mark.fastapi]
+pytestmark = [pytest.mark.fastapi]
 
 
 @pytest.mark.parametrize(

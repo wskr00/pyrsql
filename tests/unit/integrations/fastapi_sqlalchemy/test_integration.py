@@ -22,7 +22,7 @@ from .conftest import OtherModel, User
 
 pytest.importorskip("fastapi")
 
-pytestmark = [pytest.mark.unit, pytest.mark.fastapi, pytest.mark.sqlalchemy]
+pytestmark = [pytest.mark.fastapi, pytest.mark.sqlalchemy]
 
 
 def test_integration_exposes_configured_criteria_dependency(

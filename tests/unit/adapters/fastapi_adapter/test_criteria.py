@@ -16,7 +16,7 @@ from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort, ORM
 
-pytestmark = [pytest.mark.unit, pytest.mark.fastapi]
+pytestmark = [pytest.mark.fastapi]
 
 
 class _UnusedORM(ORM):

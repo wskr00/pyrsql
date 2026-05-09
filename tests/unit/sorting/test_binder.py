@@ -1,5 +1,7 @@
 """Unit tests for sort binding."""
 
+from __future__ import annotations
+
 import re
 from collections.abc import Mapping
 
@@ -72,27 +74,36 @@ def test_sort_binder_applies_field_mapping() -> None:
     options = _SortOptions(field_mapping={"companyName": "company.name"})
     bound_sort = SortBinder(options).bind(fields)
     selector = bound_sort.fields[0].selector
+
     assert isinstance(selector, BoundField)
     assert selector.raw_path == "companyName"
     assert selector.field_path == "company.name"
 
 
-def test_sort_binder_enforces_whitelist() -> None:
-    """Rejects sort fields outside the configured whitelist."""
+@pytest.mark.parametrize(
+    ("options", "expected_error"),
+    [
+        pytest.param(
+            _SortOptions(field_whitelist=frozenset({"city"})),
+            SortFieldNotWhitelistedError,
+            id="field-whitelist",
+        ),
+        pytest.param(
+            _SortOptions(field_blacklist=frozenset({"name"})),
+            SortFieldBlacklistedError,
+            id="field-blacklist",
+        ),
+    ],
+)
+def test_sort_binder_enforces_field_policies(
+    options: _SortOptions,
+    expected_error: type[Exception],
+) -> None:
+    """Rejects fields that violate whitelist or blacklist rules."""
     fields = SortParser("name").parse()
-    with pytest.raises(SortFieldNotWhitelistedError):
-        SortBinder(_SortOptions(field_whitelist=frozenset({"city"}))).bind(
-            fields
-        )
 
-
-def test_sort_binder_enforces_blacklist() -> None:
-    """Rejects sort fields inside the configured blacklist."""
-    fields = SortParser("name").parse()
-    with pytest.raises(SortFieldBlacklistedError):
-        SortBinder(_SortOptions(field_blacklist=frozenset({"name"}))).bind(
-            fields
-        )
+    with pytest.raises(expected_error):
+        SortBinder(options).bind(fields)
 
 
 def test_sort_binder_maps_field_selectors_inside_functions() -> None:
@@ -105,25 +116,39 @@ def test_sort_binder_maps_field_selectors_inside_functions() -> None:
         )
     ).bind(fields)
     selector = bound_sort.fields[0].selector
+
     assert isinstance(selector, BoundFunction)
     assert isinstance(selector.arguments[0], BoundField)
     assert selector.arguments[0].field_path == "company.name"
 
 
-def test_sort_binder_rejects_non_whitelisted_functions() -> None:
-    """Rejects function selectors that are not in the whitelist."""
-    fields = SortParser("@upper[name],asc").parse()
-    with pytest.raises(SortFunctionNotWhitelistedError):
-        SortBinder(_SortOptions()).bind(fields)
-
-
-def test_sort_binder_rejects_blacklisted_functions() -> None:
-    """Rejects function selectors that are blacklisted."""
-    fields = SortParser("@upper[@lower[name]],asc").parse()
-    with pytest.raises(SortFunctionBlacklistedError):
-        SortBinder(
+@pytest.mark.parametrize(
+    ("source", "options", "expected_error"),
+    [
+        pytest.param(
+            "@upper[name],asc",
+            _SortOptions(),
+            SortFunctionNotWhitelistedError,
+            id="function-not-whitelisted",
+        ),
+        pytest.param(
+            "@upper[@lower[name]],asc",
             _SortOptions(
                 procedure_whitelist=(".*er",),
                 procedure_blacklist=("lower",),
-            )
-        ).bind(fields)
+            ),
+            SortFunctionBlacklistedError,
+            id="function-blacklisted",
+        ),
+    ],
+)
+def test_sort_binder_enforces_function_policies(
+    source: str,
+    options: _SortOptions,
+    expected_error: type[Exception],
+) -> None:
+    """Rejects functions that violate whitelist or blacklist rules."""
+    fields = SortParser(source).parse()
+
+    with pytest.raises(expected_error):
+        SortBinder(options).bind(fields)
