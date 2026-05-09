@@ -349,7 +349,8 @@ def test_orm_applies_jsonb_where_clause() -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
-    assert " @? " in sql
+    assert "jsonb_path_exists" in sql
+    assert "CAST(%(param_1)s AS JSONPATH)" in sql
     assert "CAST(json_event.payload AS JSONB)" in sql
 
 
@@ -363,7 +364,8 @@ def test_orm_applies_json_where_clause_via_jsonb_cast() -> None:
     )
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
-    assert " @? " in sql
+    assert "jsonb_path_exists" in sql
+    assert "CAST(%(param_1)s AS JSONPATH)" in sql
     assert "CAST(json_document.payload AS JSONB)" in sql
 
 
@@ -439,10 +441,19 @@ def test_orm_applies_json_quoted_array_predicate() -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
-    assert any(
-        "$.tags ? (@ == [1,2])" == str(value)
-        for value in compiled.params.values()
-    )
+    assert compiled.params["param_1"] == "$.tags ? (@ == $value_0)"
+    assert compiled.params["param_2"] == {"value_0": [1, 2]}
+
+
+def test_orm_applies_root_json_array_predicate() -> None:
+    """Parses quoted root JSON arrays through the JSON-aware pipeline."""
+    orm = SQLAlchemyORM()
+    query = pyrsql.parse("payload=='[1,2]'")
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert compiled.params["param_1"] == "$ ? (@ == $value_0)"
+    assert compiled.params["param_2"] == {"value_0": [1, 2]}
 
 
 def test_orm_applies_json_quoted_object_predicate() -> None:
@@ -452,10 +463,19 @@ def test_orm_applies_json_quoted_object_predicate() -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     compiled = statement.compile(dialect=dialect)
-    assert any(
-        '$.meta ? (@ == {"id":1})' == str(value)
-        for value in compiled.params.values()
-    )
+    assert compiled.params["param_1"] == "$.meta ? (@ == $value_0)"
+    assert compiled.params["param_2"] == {"value_0": {"id": 1}}
+
+
+def test_orm_applies_root_json_object_predicate() -> None:
+    """Parses quoted root JSON objects through the JSON-aware pipeline."""
+    orm = SQLAlchemyORM()
+    query = pyrsql.parse("payload=='{\"id\":1}'")
+    statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
+    dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
+    compiled = statement.compile(dialect=dialect)
+    assert compiled.params["param_1"] == "$ ? (@ == $value_0)"
+    assert compiled.params["param_2"] == {"value_0": {"id": 1}}
 
 
 def test_orm_applies_json_datetime_path_predicate() -> None:
@@ -476,7 +496,8 @@ def test_orm_applies_json_datetime_path_predicate() -> None:
     sql = str(compiled)
     assert "@.datetime()" in compiled.params["param_1"]
     assert ".datetime()" in compiled.params["param_1"]
-    assert " @? " in sql
+    assert "jsonb_path_exists" in sql
+    assert "CAST(%(param_1)s AS JSONPATH)" in sql
 
 
 def test_orm_applies_json_datetime_tz_path_predicate() -> None:
@@ -519,3 +540,4 @@ def test_orm_uses_custom_json_path_function_names() -> None:
     dialect: Any = postgresql.dialect()  # type: ignore[no-untyped-call]
     sql = str(statement.compile(dialect=dialect))
     assert "custom_json_path_exists" in sql
+    assert "CAST(%(param_1)s AS JSONPATH)" in sql

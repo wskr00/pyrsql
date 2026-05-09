@@ -2,6 +2,8 @@
 
 import json
 import re
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any, cast
 
 import msgspec
@@ -68,13 +70,18 @@ class SQLAlchemyJSONPathExpressionBuilder:
             ColumnElement[Any],
             sa.cast(column, postgresql.JSONB),
         )
+        json_path_literal = self._jsonpath_literal(
+            function_call.json_path_expression
+        )
+        vars_payload = self._jsonpath_vars_payload(function_call.vars_payload)
         if function_call.use_timezone_function:
             function_expression = getattr(
                 sa.func,
                 function_call.path_exists_tz_function,
             )(
                 jsonb_column,
-                sa.literal(function_call.json_path_expression),
+                json_path_literal,
+                vars_payload,
             )
             return cast(ColumnElement[bool], function_expression)
         if options and options.path_exists_function != "jsonb_path_exists":
@@ -83,13 +90,36 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 options.path_exists_function,
             )(
                 jsonb_column,
-                sa.literal(function_call.json_path_expression),
+                json_path_literal,
+                vars_payload,
             )
             return cast(ColumnElement[bool], function_expression)
         return cast(
             ColumnElement[bool],
-            jsonb_column.path_exists(
-                sa.literal(function_call.json_path_expression)
+            sa.func.jsonb_path_exists(  # pylint: disable=not-callable
+                jsonb_column,
+                json_path_literal,
+                vars_payload,
+            ),
+        )
+
+    def _jsonpath_literal(self, expression: str) -> ColumnElement[Any]:
+        """Builds one JSONPATH-typed literal for PostgreSQL predicates."""
+        return cast(
+            ColumnElement[Any],
+            sa.cast(sa.literal(expression), postgresql.JSONPATH),
+        )
+
+    def _jsonpath_vars_payload(
+        self,
+        vars_payload: Mapping[str, Any],
+    ) -> ColumnElement[Any]:
+        """Builds the JSONB vars payload passed to PostgreSQL jsonpath funcs."""
+        return cast(
+            ColumnElement[Any],
+            sa.cast(
+                sa.literal(dict(vars_payload), type_=postgresql.JSONB),
+                postgresql.JSONB,
             ),
         )
 
@@ -117,16 +147,13 @@ class SQLAlchemyJSONPathExpressionBuilder:
         options: JSONOptions,
     ) -> "_JSONPathFilterCall":
         """Builds the function call payload for one jsonpath predicate."""
-        target_path = (
-            "$"
-            if comparison.path.is_root
-            else "$." + comparison.path.to_dot_path()
-        )
+        target_path = comparison.path.to_postgresql_jsonpath()
         use_datetime = options.use_datetime
         use_timezone_function = use_datetime and any(
             self._is_timezone_datetime_value(value)
             for value in comparison.values
         )
+        vars_payload: dict[str, Any] = {}
         value_reference = "@"
         if use_datetime and any(
             self._is_datetime_value(value) for value in comparison.values
@@ -137,35 +164,47 @@ class SQLAlchemyJSONPathExpressionBuilder:
         elif comparison.operator_name == EQUAL.name:
             comparison_clause = self._equality_comparison(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
         elif comparison.operator_name == NOT_EQUAL.name:
             equality_clause = self._equality_comparison(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = f"!{equality_clause}"
         elif comparison.operator_name == GREATER_THAN.name:
-            value_literal = self._print_value(
+            value_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = f"({value_reference} > {value_literal})"
         elif comparison.operator_name == GREATER_THAN_OR_EQUAL.name:
-            value_literal = self._print_value(
+            value_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = f"({value_reference} >= {value_literal})"
         elif comparison.operator_name == LESS_THAN.name:
-            value_literal = self._print_value(
+            value_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = f"({value_reference} < {value_literal})"
         elif comparison.operator_name == LESS_THAN_OR_EQUAL.name:
-            value_literal = self._print_value(
+            value_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = f"({value_reference} <= {value_literal})"
@@ -175,6 +214,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 comparison.values,
                 operator="==",
                 join_operator="||",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
         elif comparison.operator_name == NOT_IN.name:
@@ -183,6 +223,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 comparison.values,
                 operator="!=",
                 join_operator="&&",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
         elif comparison.operator_name == IS_NULL.name:
@@ -213,12 +254,16 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 ignore_case=True,
             )
         elif comparison.operator_name == BETWEEN.name:
-            lower_literal = self._print_value(
+            lower_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
-            upper_literal = self._print_value(
+            upper_literal = self._render_value_operand(
                 comparison.values[1],
+                variable_name="value_1",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = (
@@ -226,12 +271,16 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 f" && {value_reference} <= {upper_literal})"
             )
         elif comparison.operator_name == NOT_BETWEEN.name:
-            lower_literal = self._print_value(
+            lower_literal = self._render_value_operand(
                 comparison.values[0],
+                variable_name="value_0",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
-            upper_literal = self._print_value(
+            upper_literal = self._render_value_operand(
                 comparison.values[1],
+                variable_name="value_1",
+                vars_payload=vars_payload,
                 use_datetime=use_datetime,
             )
             comparison_clause = (
@@ -246,12 +295,15 @@ class SQLAlchemyJSONPathExpressionBuilder:
             json_path_expression=f"{target_path} ? {comparison_clause}",
             use_timezone_function=use_timezone_function,
             path_exists_tz_function=options.path_exists_tz_function,
+            vars_payload=vars_payload,
         )
 
     def _equality_comparison(
         self,
         value: JSONScalarValue,
         *,
+        variable_name: str,
+        vars_payload: dict[str, Any],
         use_datetime: bool,
     ) -> str:
         """Builds equality or wildcard comparison for JSON values."""
@@ -267,7 +319,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         )
         return (
             f"({value_reference} == "
-            f"{self._print_value(value, use_datetime=use_datetime)})"
+            f"{self._render_value_operand(value, variable_name=variable_name, vars_payload=vars_payload, use_datetime=use_datetime)})"
         )
 
     def _regex_comparison(
@@ -297,25 +349,33 @@ class SQLAlchemyJSONPathExpressionBuilder:
         *,
         operator: str,
         join_operator: str,
+        vars_payload: dict[str, Any],
         use_datetime: bool,
     ) -> str:
         """Builds one JSON membership comparison clause."""
         comparisons = (
             (
                 f"({value_reference} {operator} "
-                f"{self._print_value(value, use_datetime=use_datetime)})"
+                f"{self._render_value_operand(value, variable_name=f'value_{index}', vars_payload=vars_payload, use_datetime=use_datetime)})"
             )
-            for value in values
+            for index, value in enumerate(values)
         )
         return "(" + f" {join_operator} ".join(comparisons) + ")"
 
-    def _print_value(
+    def _render_value_operand(
         self,
         value: JSONScalarValue,
         *,
+        variable_name: str,
+        vars_payload: dict[str, Any],
         use_datetime: bool,
     ) -> str:
-        """Prints one JSON value for PostgreSQL jsonpath expressions."""
+        """Builds one JSON value operand for PostgreSQL jsonpath."""
+        if value.python_type in (dict, list):
+            vars_payload[variable_name] = value.value
+            if use_datetime and self._is_datetime_value(value):
+                return f"${variable_name}.datetime()"
+            return f"${variable_name}"
         if use_datetime and self._is_datetime_value(value):
             return f'"{value.value}".datetime()'
         return value.json_literal
@@ -354,3 +414,12 @@ class _JSONPathFilterCall(
     json_path_expression: str
     use_timezone_function: bool
     path_exists_tz_function: str
+    vars_payload: Mapping[str, Any]
+
+    def __post_init__(self) -> None:
+        """Normalizes vars payload into an immutable mapping."""
+        object.__setattr__(
+            self,
+            "vars_payload",
+            MappingProxyType(dict(self.vars_payload)),
+        )

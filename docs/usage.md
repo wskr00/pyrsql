@@ -58,6 +58,14 @@ import pyrsql
 query = pyrsql.parse("name==demo")
 ```
 
+`Query.parse(...)` returns a `Query` carrying:
+
+- `source`
+- `expression`
+- `bound_expression`
+
+`bound_expression` is the logical IR consumed by ORM backends.
+
 ## Sort Query
 
 ```python
@@ -65,6 +73,12 @@ from pyrsql import Sort
 
 sort = Sort.parse("name,asc;company.name,desc")
 ```
+
+`Sort.parse(...)` returns a `Sort` carrying:
+
+- `source`
+- `fields`
+- `bound_sort`
 
 ## Pagination
 
@@ -74,12 +88,14 @@ from pyrsql import PageRequest
 page = PageRequest.of(0, 25)
 ```
 
+`PageRequest` also exposes `bound_page`.
+
 ## SQLAlchemy
 
 ```python
 from sqlalchemy import select
 
-from pyrsql import Query, Sort, PageRequest
+from pyrsql import PageRequest, Query, Sort
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 orm = SQLAlchemyORM()
@@ -115,7 +131,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 
-from pyrsql.adapters.fastapi import criteria_dependency
+from pyrsql.adapters.fastapi import RequestCriteria, criteria_dependency
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 router = APIRouter()
@@ -123,7 +139,9 @@ orm = SQLAlchemyORM()
 criteria_dep = criteria_dependency()
 
 @router.get("/users")
-def list_users(criteria: Annotated[object, Depends(criteria_dep)]):
+def list_users(
+    criteria: Annotated[RequestCriteria, Depends(criteria_dep)],
+):
     stmt = select(User)
     return criteria.apply(stmt, User, orm=orm)
 ```
@@ -135,11 +153,17 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from pyrsql.adapters.fastapi import CriteriaDependency, FastAPICriteriaConfig
+from pyrsql.adapters.fastapi import (
+    CriteriaDependency,
+    FastAPICriteriaConfig,
+    RequestCriteria,
+)
 
 dependency = CriteriaDependency(FastAPICriteriaConfig(default_page_size=25))
 
-async def endpoint(criteria: Annotated[object, Depends(dependency)]):
+async def endpoint(
+    criteria: Annotated[RequestCriteria, Depends(dependency)],
+):
     ...
 ```
 
@@ -158,6 +182,7 @@ Configuration options include:
 - zero-based or one-based paging
 - `QueryOptions`
 - `SortOptions`
+- OpenAPI examples for `filter`, `sort`, `page`, and `size`
 
 Example:
 
@@ -174,16 +199,50 @@ criteria_dep = criteria_dependency(
         default_page_size=20,
         one_based_paging=True,
         query_options=QueryOptions(strict_equality=True),
+        filter_openapi_examples={
+            "by_name": {
+                "summary": "By name",
+                "value": "name==demo",
+            }
+        },
     )
 )
 ```
 
 The adapter translates pyrsql parse and semantic failures into `HTTP 422`
-responses using FastAPI `HTTPException`. The error payload includes:
+responses using FastAPI `HTTPException`.
+
+Current error payload shape:
+
+```json
+{
+  "detail": {
+    "parameter": "filter",
+    "error_type": "query_semantic_error",
+    "message": "Field 'password' is not allowed.",
+    "details": [
+      {
+        "code": "field_not_whitelisted",
+        "message": "Field 'password' is not allowed.",
+        "field": "password"
+      }
+    ]
+  }
+}
+```
+
+Top-level payload fields:
 
 - `parameter`
-- `type`
+- `error_type`
 - `message`
+- `details`
+
+Detail item fields:
+
+- `code`
+- `message`
+- `field`
 
 ## FastAPI + SQLAlchemy Integration
 
@@ -232,49 +291,142 @@ def list_users(
     return session.execute(stmt)
 ```
 
-Current scope:
+The integration also exposes:
 
-- compose the FastAPI adapter with `SQLAlchemyORM`
-- expose `criteria_dependency()`
-- expose `apply(...)`
-- expose `select(...)`
-- expose `select_dependency(...)`
-- expose `count_select(...)`
-- expose `count_select_dependency(...)`
-- expose `paginated_select(...)`
-- expose `paginated_select_dependency(...)`
+- `apply(statement, model, criteria)`
+- `count_select(model, criteria)`
+- `count_select_dependency(model)`
+- `paginated_select(model, criteria)`
+- `paginated_select_dependency(model)`
 
-Out of scope:
-
-- executing queries automatically
-- serializing responses
-- repository abstractions
-- export and summarization helpers
-
-For pagination flows, the integration helper can also build a count query that
-preserves filter semantics while ignoring sort and page:
-
-```python
-count_stmt = integration.count_select(User, criteria)
-```
-
-And the dependency form:
-
-```python
-@router.get("/users/count")
-def count_users(
-    stmt = Depends(integration.count_select_dependency(User)),
-):
-    return session.execute(stmt).scalar_one()
-```
-
-If you want both statements together, use the paginated bundle:
+For pagination flows:
 
 ```python
 bundle = integration.paginated_select(User, criteria)
 
 items = session.execute(bundle.statement).all()
 total = session.execute(bundle.count_statement).scalar_one()
+```
+
+## Declarative FastAPI Resources
+
+For endpoint-oriented FastAPI usage, the preferred API is the declarative
+resource layer.
+
+```python
+from fastapi import Depends
+
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+integration = FastAPISQLAlchemyIntegration()
+
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name", "company.name"},
+    sortable_fields={"name", "created_at"},
+    default_sort="-created_at",
+    max_page_size=100,
+)
+```
+
+This resource object exposes:
+
+- `criteria_dependency()`
+- `select_dependency()`
+- `count_select_dependency()`
+- `paginated_select_dependency()`
+- `applier_dependency()`
+- `select(criteria)`
+- `count_select(criteria)`
+- `paginated_select(criteria)`
+- `applier(criteria)`
+
+### Route-ready `Select`
+
+```python
+@router.get("/users")
+def list_users(
+    stmt = Depends(users.select_dependency()),
+):
+    return session.execute(stmt)
+```
+
+### Apply criteria to an existing statement
+
+Use `applier_dependency()` when the route already has a base statement:
+
+```python
+@router.get("/users")
+def list_users(
+    apply_query = Depends(users.applier_dependency()),
+):
+    stmt = apply_query(
+        select(User).where(User.tenant_id == current_user.tenant_id)
+    )
+    return session.execute(stmt)
+```
+
+This is the correct path for:
+
+- tenant scoping
+- soft-delete base filters
+- eager loading
+- custom `select(...)` shapes
+
+### Statement factory
+
+If many routes share the same base statement, configure it once on the
+resource:
+
+```python
+users = integration.resource(
+    User,
+    default_sort="-created_at",
+    statement_factory=lambda: (
+        select(User).where(User.deleted_at.is_(None))
+    ),
+)
+```
+
+The `statement_factory` contract is:
+
+- it must be callable
+- it must return a SQLAlchemy `Select`
+- it must return a `Select` compatible with the resource `model`
+- it is called per use and should stay cheap and side-effect free
+
+### Automatic OpenAPI examples
+
+The resource layer can publish OpenAPI examples automatically from declarative
+configuration:
+
+```python
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name"},
+    sortable_fields={"name"},
+    default_sort="-name",
+)
+```
+
+Custom examples can still be provided explicitly:
+
+```python
+users = integration.resource(
+    User,
+    filter_examples={
+        "by_name": {
+            "summary": "By name",
+            "value": "name==demo",
+        }
+    },
+    sort_examples={
+        "by_name_desc": {
+            "summary": "Newest first",
+            "value": "name,desc",
+        }
+    },
+)
 ```
 
 ## JSON / JSONB
@@ -318,314 +470,3 @@ Current options:
 - `path_exists_function`
 - `path_exists_tz_function`
 - `use_datetime`
-
-Example:
-
-```python
-from pyrsql import QueryOptions
-from pyrsql.core.json.options import JSONOptions
-
-query = Query.parse(
-    "payload.created_at=gt=2026-05-02T10:30:00",
-    options=QueryOptions(
-        json_options=JSONOptions(
-            use_datetime=True,
-            path_exists_function="jsonb_path_exists",
-            path_exists_tz_function="jsonb_path_exists_tz",
-        ),
-    ),
-)
-```
-
-When `use_datetime=True`:
-
-- ISO date/time strings use PostgreSQL `datetime()` jsonpath semantics
-- timezone-aware values use `jsonb_path_exists_tz`
-
-Examples:
-
-```python
-Query.parse("payload.roles.id==1")
-Query.parse("payload.active==true")
-Query.parse("payload.score=bt=(10,20)")
-Query.parse("payload.tags=='[1,2]'")
-Query.parse("payload.meta=='{\"id\":1}'")
-```
-
-Current limitations:
-
-- framework adapters
-- non-SQLAlchemy ORMs for JSON compilation
-
-## Selector Functions
-
-Filter selectors support functions:
-
-```python
-Query.parse(
-    "@upper[name]==DEMO",
-    options=QueryOptions(procedure_whitelist=("upper",)),
-)
-```
-
-Sort selectors support functions:
-
-```python
-Sort.parse(
-    "@upper[name],asc",
-    options=SortOptions(procedure_whitelist=("upper",)),
-)
-```
-
-Nested selectors are supported:
-
-```python
-Query.parse(
-    "@concat[@upper[code]|#123]==ABC123",
-    options=QueryOptions(procedure_whitelist=("upper", "concat")),
-)
-```
-
-## Literal Selectors
-
-Supported selector literals include:
-
-- `#123`
-- `#true`
-- `#false`
-- `#null`
-- `##text`
-
-Example:
-
-```python
-Sort.parse(
-    "@concat[name|##-suffix],asc",
-    options=SortOptions(procedure_whitelist=("concat",)),
-)
-```
-
-## Options
-
-`QueryOptions` supports:
-
-- `strict_equality`
-- `distinct`
-- `like_escape_character`
-- `field_mapping`
-- `model_field_mapping`
-- `join_hints`
-- `field_whitelist`
-- `field_blacklist`
-- `model_field_whitelist`
-- `model_field_blacklist`
-- `procedure_whitelist`
-- `procedure_blacklist`
-- `operator_registry`
-- `custom_predicates`
-- `value_converter_registry`
-- `field_value_converters`
-- `model_field_value_converters`
-- `parse_limits`
-
-`SortOptions` supports:
-
-- `field_mapping`
-- `model_field_mapping`
-- `join_hints`
-- `field_whitelist`
-- `field_blacklist`
-- `model_field_whitelist`
-- `model_field_blacklist`
-- `procedure_whitelist`
-- `procedure_blacklist`
-- `sort_limits`
-
-## Distinct
-
-```python
-from pyrsql import QueryOptions
-
-query = Query.parse(
-    "company.name==acme",
-    options=QueryOptions(distinct=True),
-)
-```
-
-## Join Hints
-
-```python
-from pyrsql import QueryOptions
-from pyrsql.core.joins import JoinHint
-
-query = Query.parse(
-    "company.name==acme",
-    options=QueryOptions(
-        join_hints={"User.company": JoinHint.LEFT},
-    ),
-)
-```
-
-Current SQLAlchemy support:
-
-- `JoinHint.INNER`
-- `JoinHint.LEFT`
-
-`JoinHint.RIGHT` is not supported by the current SQLAlchemy orm.
-
-## Field Mapping
-
-Global field mapping:
-
-```python
-Query.parse(
-    "companyName==acme",
-    options=QueryOptions(
-        field_mapping={"companyName": "company.name"},
-    ),
-)
-```
-
-Model-specific field mapping:
-
-```python
-Query.parse(
-    "company.companyName==acme",
-    options=QueryOptions(
-        model_field_mapping={
-            Company: {"companyName": "name"},
-        },
-    ),
-)
-```
-
-## Field Access Control
-
-Global whitelist:
-
-```python
-Query.parse(
-    "name==demo",
-    options=QueryOptions(
-        field_whitelist=frozenset({"name"}),
-    ),
-)
-```
-
-Model-specific whitelist:
-
-```python
-Query.parse(
-    "company.name==acme",
-    options=QueryOptions(
-        model_field_whitelist={
-            Company: frozenset({"id", "name"}),
-        },
-    ),
-)
-```
-
-## Value Conversion
-
-The default converter registry supports:
-
-- `str`
-- `bool`
-- `int`
-- `float`
-- `Decimal`
-- `UUID`
-- `date`
-- `time`
-- `datetime`
-- `Enum`
-- fallback constructor conversion
-
-`datetime` also supports a date-only fallback:
-
-- `"2026-05-02"` -> `datetime(2026, 5, 2, 0, 0)`
-
-Custom type converter:
-
-```python
-from pyrsql import QueryOptions, ValueConverterRegistry
-from pyrsql.core.conversion import DEFAULT_VALUE_CONVERTER_REGISTRY
-
-registry = DEFAULT_VALUE_CONVERTER_REGISTRY.with_converter(
-    MyType,
-    MyType.parse,
-)
-
-query = Query.parse(
-    "status==active",
-    options=QueryOptions(value_converter_registry=registry),
-)
-```
-
-Field-specific converter:
-
-```python
-query = Query.parse(
-    "created_at==02/05/2026",
-    options=QueryOptions(
-        field_value_converters={
-            "created_at": lambda raw: datetime.strptime(raw, "%d/%m/%Y"),
-        },
-    ),
-)
-```
-
-Model-specific field converter:
-
-```python
-query = Query.parse(
-    "company.name==demo",
-    options=QueryOptions(
-        model_field_value_converters={
-            Company: {"name": lambda raw: raw.upper()},
-        },
-    ),
-)
-```
-
-## Custom Predicates
-
-Custom predicates have two parts:
-
-1. core definition in `QueryOptions`
-2. ORM implementation in the ORM instance
-
-```python
-from pyrsql import QueryOptions, CustomPredicateDefinition
-from pyrsql.parsing.operators import ComparisonOperator
-
-all_match = ComparisonOperator(
-    name="all_match",
-    spellings=("=all=",),
-    minimum_arguments=1,
-    maximum_arguments=1,
-)
-
-options = QueryOptions(
-    custom_predicates={
-        "all_match": CustomPredicateDefinition(
-            operator=all_match,
-            argument_type=str,
-        ),
-    },
-)
-```
-
-For SQLAlchemy:
-
-```python
-from sqlalchemy import func
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
-
-orm = SQLAlchemyORM(
-    custom_predicates={
-        "all_match": lambda payload: func.lower(payload.expression)
-        == str(payload.values[0]).lower()
-    }
-)
-```

@@ -185,6 +185,8 @@ class SQLAlchemyPathResolver:
                 leaf_attribute.attribute,
             ),
             python_type=leaf_attribute.python_type,
+            json_path=JSONPath(),
+            is_json=leaf_attribute.is_json,
         )
 
     @staticmethod

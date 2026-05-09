@@ -6,7 +6,9 @@ from typing import Any
 import msgspec
 
 _INTEGER_PATTERN = re.compile(r"^-?\d+$")
-_FLOAT_PATTERN = re.compile(r"^-?\d+\.\d+$")
+_FLOAT_PATTERN = re.compile(
+    r"^-?(?:\d+\.\d+|\d+(?:\.\d+)?[eE][+-]?\d+)$"
+)
 
 
 class JSONScalarValue(msgspec.Struct, frozen=True, gc=False, kw_only=True):

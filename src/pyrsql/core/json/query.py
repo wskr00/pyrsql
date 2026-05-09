@@ -22,6 +22,15 @@ class JSONPathComparison(
     operator_name: str
     values: tuple[JSONScalarValue, ...]
 
+    def __post_init__(self) -> None:
+        """Validates logical JSON comparison invariants."""
+        if not self.operator_name:
+            raise ValueError("operator_name cannot be empty.")
+        if self.operator_name != self.operator_name.strip():
+            raise ValueError(
+                "operator_name must not contain outer whitespace."
+            )
+
     @classmethod
     def from_raw_arguments(
         cls,

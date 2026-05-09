@@ -192,3 +192,12 @@ def test_path_resolver_resolves_json_path() -> None:
     assert resolved.is_json is True
     assert resolved.json_path == JSONPath(segments=("user", "id"))
     assert resolved.leaf_model is Event
+
+
+def test_path_resolver_marks_root_json_column_as_json() -> None:
+    """Marks direct JSON columns as JSON-aware resolved paths."""
+    resolver = SQLAlchemyPathResolver()
+    resolved = resolver.resolve(Event, "payload")
+    assert resolved.is_json is True
+    assert resolved.json_path == JSONPath()
+    assert resolved.leaf_model is Event

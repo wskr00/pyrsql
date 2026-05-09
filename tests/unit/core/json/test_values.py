@@ -19,3 +19,10 @@ def test_json_scalar_normalizer_parses_quoted_json_structures() -> None:
     assert normalizer.normalize('{"id": 1}', quoted=True).value == {
         "id": 1,
     }
+
+
+def test_json_scalar_normalizer_parses_scientific_notation() -> None:
+    """The normalizer parses exponent numbers as floats."""
+    normalizer = JSONScalarNormalizer()
+    assert normalizer.normalize("1e3", quoted=False).value == 1000.0
+    assert normalizer.normalize("-2.5E-2", quoted=False).value == -0.025

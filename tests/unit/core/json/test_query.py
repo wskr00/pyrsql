@@ -1,5 +1,7 @@
 """Unit tests for orm-neutral JSON query models."""
 
+import pytest
+
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import DEFAULT_JSON_SCALAR_NORMALIZER
@@ -26,3 +28,20 @@ def test_json_path_comparison_uses_shared_default_normalizer() -> None:
     )
     expected = DEFAULT_JSON_SCALAR_NORMALIZER.normalize("true", quoted=False)
     assert comparison.values == (expected,)
+
+
+def test_json_path_comparison_rejects_invalid_operator_names() -> None:
+    """JSON comparisons reject invalid operator names."""
+    with pytest.raises(ValueError, match="cannot be empty"):
+        JSONPathComparison(
+            path=JSONPath(segments=("user", "id")),
+            operator_name="",
+            values=(),
+        )
+
+    with pytest.raises(ValueError, match="outer whitespace"):
+        JSONPathComparison(
+            path=JSONPath(segments=("user", "id")),
+            operator_name=" equal ",
+            values=(),
+        )

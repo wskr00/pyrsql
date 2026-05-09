@@ -1,6 +1,10 @@
 """ORM-neutral JSON options."""
 
+import re
+
 import msgspec
+
+_SQL_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -24,10 +28,28 @@ class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         Raises:
             ValueError: If either configured SQL function name is empty.
         """
-        if not self.path_exists_function:
-            raise ValueError("path_exists_function cannot be empty.")
-        if not self.path_exists_tz_function:
-            raise ValueError("path_exists_tz_function cannot be empty.")
+        self._validate_sql_identifier(
+            self.path_exists_function,
+            field_name="path_exists_function",
+        )
+        self._validate_sql_identifier(
+            self.path_exists_tz_function,
+            field_name="path_exists_tz_function",
+        )
+
+    @staticmethod
+    def _validate_sql_identifier(value: str, *, field_name: str) -> None:
+        """Validates one SQL function identifier."""
+        if not value:
+            raise ValueError(f"{field_name} cannot be empty.")
+        if value != value.strip():
+            raise ValueError(
+                f"{field_name} must not contain outer whitespace."
+            )
+        if _SQL_IDENTIFIER_PATTERN.fullmatch(value) is None:
+            raise ValueError(
+                f"{field_name} must be a valid SQL identifier."
+            )
 
 
 DEFAULT_JSON_OPTIONS = JSONOptions()

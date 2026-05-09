@@ -20,8 +20,14 @@
 - `ValueConverterRegistry`
 - `FieldValueConverterSet`
 - `FieldPolicySet`
+- `ProcedureAccessPolicy`
 - `CustomPredicateDefinition`
 - `JSONOptions`
+- `DEFAULT_JSON_OPTIONS`
+- `JSONPath`
+- `JSONPathComparison`
+- `JSONScalarNormalizer`
+- `JSONScalarValue`
 
 ## Subpackages
 
@@ -30,6 +36,7 @@ Useful subpackages:
 - `pyrsql.orms`
 - `pyrsql.orms.sqlalchemy`
 - `pyrsql.core`
+- `pyrsql.ir`
 - `pyrsql.parsing`
 - `pyrsql.selector`
 - `pyrsql.semantic`
@@ -38,6 +45,7 @@ Useful subpackages:
 - `pyrsql.adapters.fastapi`
 - `pyrsql.integrations`
 - `pyrsql.integrations.fastapi`
+- `pyrsql.integrations.fastapi.sqlalchemy`
 
 ## Query Operators
 
@@ -110,7 +118,6 @@ Supported:
 
 Not currently supported:
 
-- framework adapters
 - non-SQLAlchemy ORMs
 
 ## FastAPI Adapter
@@ -135,6 +142,10 @@ Supported configuration:
 - `one_based_paging`
 - `query_options`
 - `sort_options`
+- `filter_openapi_examples`
+- `sort_openapi_examples`
+- `page_openapi_examples`
+- `size_openapi_examples`
 
 Derived properties:
 
@@ -166,12 +177,38 @@ signature and returns `RequestCriteria`.
 
 Convenience factory that returns `CriteriaDependency`.
 
+### FastAPI adapter error payload
+
+The adapter raises `HTTPException(status_code=422, detail=...)` with:
+
+- `parameter`
+- `error_type`
+- `message`
+- `details`
+
+Each `details` item carries:
+
+- `code`
+- `message`
+- `field`
+
+Current error categories include:
+
+- `query_parse_error`
+- `query_semantic_error`
+- `sort_parse_error`
+- `sort_semantic_error`
+- page-related validation errors
+
 ## FastAPI + SQLAlchemy Integration
 
 `pyrsql.integrations.fastapi` exports:
 
 - `FastAPISQLAlchemyIntegration`
+- `FastAPISQLAlchemyResource`
 - `SQLAlchemyPaginatedSelect`
+
+`pyrsql.integrations.fastapi.sqlalchemy` exports the same public names.
 
 ### FastAPISQLAlchemyIntegration
 
@@ -190,6 +227,45 @@ Methods:
 - `count_select_dependency(model)`
 - `paginated_select(model, criteria)`
 - `paginated_select_dependency(model)`
+- `resource(model, ...)`
+- `base_select(model)`
+
+### FastAPISQLAlchemyResource
+
+Constructor-owned state:
+
+- `integration`
+- `model`
+- `criteria_config`
+
+Supported resource configuration through `integration.resource(...)`:
+
+- `filterable_fields`
+- `sortable_fields`
+- `default_sort`
+- `statement_factory`
+- `max_page_size`
+- custom query parameter names
+- explicit filter and sort OpenAPI examples
+
+Methods:
+
+- `criteria_dependency()`
+- `select(criteria)`
+- `count_select(criteria)`
+- `paginated_select(criteria)`
+- `applier(criteria)`
+- `select_dependency()`
+- `count_select_dependency()`
+- `paginated_select_dependency()`
+- `applier_dependency()`
+
+Notes:
+
+- `default_sort` accepts forms like `-created_at` and `+name`
+- `statement_factory` must return a SQLAlchemy `Select`
+- `statement_factory` must return a `Select` compatible with the resource model
+- `statement_factory` is invoked per use and is not cached
 
 ### SQLAlchemyPaginatedSelect
 
@@ -197,3 +273,29 @@ Carries:
 
 - `statement`
 - `count_statement`
+
+## Core query objects
+
+### Query
+
+Carries:
+
+- `source`
+- `expression`
+- `bound_expression`
+
+### Sort
+
+Carries:
+
+- `source`
+- `fields`
+- `bound_sort`
+
+### PageRequest
+
+Carries:
+
+- `page_number`
+- `page_size`
+- `bound_page`
