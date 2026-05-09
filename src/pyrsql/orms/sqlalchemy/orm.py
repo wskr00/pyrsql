@@ -3,6 +3,8 @@
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from typing_extensions import override
+
 from pyrsql.orms import base
 from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_page import SQLAlchemyCompiledPageRequest
@@ -80,6 +82,7 @@ class SQLAlchemyORM(base.ORM):
             translator=self._sort_translator,
         )
 
+    @override
     def compile_page_request(
         self,
         page_request: "PageRequest",

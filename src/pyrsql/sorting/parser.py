@@ -118,8 +118,8 @@ class SortParser:
             ignore_case=ignore_case,
         )
 
+    @staticmethod
     def _parse_direction(
-        self,
         raw_direction: str,
         clause: str,
         *,
@@ -141,8 +141,8 @@ class SortParser:
             f"{raw_direction!r}.",
         )
 
+    @staticmethod
     def _parse_ignore_case(
-        self,
         raw_flag: str,
         clause: str,
         *,

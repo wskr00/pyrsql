@@ -203,8 +203,8 @@ class SQLAlchemySortTranslator:
             case _:
                 return None
 
+    @staticmethod
     def _build_order_clause(
-        self,
         expression: ColumnElement[Any],
         python_type: type[Any] | None,
         field: BoundSortField,

@@ -499,8 +499,8 @@ class SQLAlchemyExpressionTranslator:
             )
         return expression == normalized_value
 
+    @staticmethod
     def _build_case_insensitive_equality_predicate(
-        self,
         expression: ColumnElement[Any],
         value: str,
         *,
@@ -539,8 +539,8 @@ class SQLAlchemyExpressionTranslator:
             options=options,
         )
 
+    @staticmethod
     def _build_pattern_predicate(
-        self,
         expression: ColumnElement[Any],
         pattern: str,
         *,
@@ -574,8 +574,8 @@ class SQLAlchemyExpressionTranslator:
             expression.like(pattern, escape=escape_character),
         )
 
+    @staticmethod
     def _should_use_exists_predicate(
-        self,
         joins: tuple[SQLAlchemyJoinPlan, ...],
         *,
         options: QueryOptions,
@@ -605,8 +605,8 @@ class SQLAlchemyExpressionTranslator:
             return (), self._wrap_exists_predicate(joins, predicate)
         return joins, predicate
 
+    @staticmethod
     def _wrap_exists_predicate(
-        self,
         joins: tuple[SQLAlchemyJoinPlan, ...],
         predicate: ColumnElement[bool],
     ) -> ColumnElement[bool]:

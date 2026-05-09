@@ -213,8 +213,8 @@ class Parser:
             )
             return tuple(arguments)
 
+    @staticmethod
     def _validate_argument_count(
-        self,
         operator_token: Token,
         operator: ComparisonOperator,
         arguments: tuple[Argument, ...],
@@ -283,7 +283,8 @@ class Parser:
             arguments=arguments,
         )
 
-    def _make_argument(self, token: Token) -> Argument:
+    @staticmethod
+    def _make_argument(token: Token) -> Argument:
         """Builds an argument node from a value token.
 
         Returns:

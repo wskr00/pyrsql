@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 import pytest
+from typing_extensions import override
 
 from pyrsql.adapters.fastapi import (
     CriteriaDependency,
@@ -28,21 +29,25 @@ class _UnusedORM(ORM):
     """Minimal ORM placeholder for isolated RequestCriteria.apply tests."""
 
     @property
+    @override
     def name(self) -> str:
         return "unused"
 
+    @override
     def compile_query(self, query: Query) -> CompiledQuery:
         del query
         raise AssertionError(
             "compile_query should not be called in this unit test",
         )
 
+    @override
     def compile_sort(self, sort: Sort) -> CompiledSort:
         del sort
         raise AssertionError(
             "compile_sort should not be called in this unit test",
         )
 
+    @override
     def compile_page_request(
         self,
         page_request: PageRequest,

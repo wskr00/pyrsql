@@ -151,8 +151,8 @@ class ValueConverterRegistry:
                 return converter
         return None
 
+    @staticmethod
     def _convert_enum(
-        self,
         raw_value: str,
         target_type: type[Any],
     ) -> Any:
@@ -175,8 +175,8 @@ class ValueConverterRegistry:
                     f"{target_type.__name__}.",
                 ) from error
 
+    @staticmethod
     def _construct_from_string(
-        self,
         raw_value: str,
         target_type: type[Any],
     ) -> Any:
@@ -195,8 +195,8 @@ class ValueConverterRegistry:
                 f"Failed to convert {raw_value!r} to {target_type.__name__}.",
             ) from error
 
+    @staticmethod
     def _convert_json_container(
-        self,
         raw_value: str,
         target_type: type[Any],
     ) -> Any:

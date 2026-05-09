@@ -65,8 +65,8 @@ class ProcedureAccessPolicy(
         """
         return self._matches_any(procedure_name, self.blacklist_patterns)
 
+    @staticmethod
     def _matches_any(
-        self,
         procedure_name: str,
         patterns: tuple[Pattern[str], ...],
     ) -> bool:

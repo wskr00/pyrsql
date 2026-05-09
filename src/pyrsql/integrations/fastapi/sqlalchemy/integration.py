@@ -165,8 +165,8 @@ class FastAPISQLAlchemyIntegration:
         """
         return self._base_select(model)
 
+    @staticmethod
     def _count_from_filtered_select(
-        self,
         filtered_statement: SQLAlchemySelect,
     ) -> SQLAlchemySelect:
         """Builds a count statement from an already-filtered select.

@@ -192,7 +192,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             ),
         )
 
-    def _jsonpath_literal(self, expression: str) -> ColumnElement[Any]:
+    @staticmethod
+    def _jsonpath_literal(expression: str) -> ColumnElement[Any]:
         """Builds one JSONPATH-typed literal for PostgreSQL predicates.
 
         Returns:
@@ -203,8 +204,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             sa.cast(sa.literal(expression), postgresql.JSONPATH),
         )
 
+    @staticmethod
     def _jsonpath_vars_payload(
-        self,
         vars_payload: Mapping[str, Any],
     ) -> ColumnElement[Any]:
         """Builds the JSONB vars payload passed to PostgreSQL jsonpath funcs.
@@ -220,8 +221,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             ),
         )
 
+    @staticmethod
     def _jsonb_value_literal(
-        self,
         value: JSONScalarValue,
     ) -> ColumnElement[Any]:
         """Builds one JSONB-typed literal from a normalized JSON value.
@@ -234,7 +235,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             sa.cast(sa.literal(value.json_literal), postgresql.JSONB),
         )
 
-    def _jsonb_null_literal(self) -> ColumnElement[Any]:
+    @staticmethod
+    def _jsonb_null_literal() -> ColumnElement[Any]:
         """Builds one JSONB literal representing JSON null.
 
         Returns:
@@ -285,8 +287,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             sort_type=sort_type,
         )
 
+    @staticmethod
     def _build_root_sort_expression(
-        self,
         jsonb_column: ColumnElement[Any],
         *,
         field_path: str,
@@ -314,8 +316,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             )
         return cast("ColumnElement[Any]", sa.cast(jsonb_column, sa.Text()))
 
+    @staticmethod
     def _cast_sort_expression(
-        self,
         expression: ColumnElement[Any],
         *,
         sort_type: JSONSortScalarType,
@@ -523,8 +525,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             f"{self._render_value_operand(value, variable_name=variable_name, vars_payload=vars_payload, use_datetime=use_datetime)})"
         )
 
+    @staticmethod
     def _regex_comparison(
-        self,
         value: JSONScalarValue,
         *,
         ignore_case: bool,
@@ -612,7 +614,8 @@ class SQLAlchemyJSONPathExpressionBuilder:
             or self._is_timezone_datetime_value(value)
         )
 
-    def _is_timezone_datetime_value(self, value: JSONScalarValue) -> bool:
+    @staticmethod
+    def _is_timezone_datetime_value(value: JSONScalarValue) -> bool:
         """Returns whether a value is a timezone-aware ISO temporal string.
 
         Returns:

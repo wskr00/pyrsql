@@ -62,7 +62,8 @@ class SelectorParser:
             segments=tuple(normalized_selector.split(".")),
         )
 
-    def split_top_level(self, text: str, *, delimiter: str) -> tuple[str, ...]:
+    @staticmethod
+    def split_top_level(text: str, *, delimiter: str) -> tuple[str, ...]:
         """Splits text on a delimiter while respecting nested brackets.
 
         Returns:

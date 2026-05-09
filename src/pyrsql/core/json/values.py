@@ -54,7 +54,8 @@ class JSONScalarNormalizer:
             return self._from_python_value(float(raw_value))
         return self._from_python_value(raw_value)
 
-    def _from_python_value(self, value: Any) -> JSONScalarValue:
+    @staticmethod
+    def _from_python_value(value: Any) -> JSONScalarValue:
         """Creates a normalized JSON value from a Python object.
 
         Returns:
@@ -66,7 +67,8 @@ class JSONScalarNormalizer:
             python_type=type(value) if value is not None else None,
         )
 
-    def _try_parse_json(self, raw_value: str) -> Any | None:
+    @staticmethod
+    def _try_parse_json(raw_value: str) -> Any | None:
         """Parses quoted JSON arguments when they contain JSON values.
 
         Returns:

@@ -1,6 +1,7 @@
 """Functional tests for the package-level public API."""
 
 import pytest
+from typing_extensions import override
 
 import pyrsql
 from pyrsql.core.compiler import CompilationResult
@@ -23,8 +24,8 @@ pytestmark = [pytest.mark.functional]
 class _CompiledQuery:
     """Minimal compiled query fake for public API tests."""
 
+    @staticmethod
     def apply(
-        self,
         target: object,
         model: type[object],
     ) -> tuple[object, type[object]]:
@@ -45,11 +46,13 @@ class _ORM(ORM):
         self.last_query = query
         return _CompiledQuery()
 
+    @override
     def compile_sort(self, sort: Sort) -> _CompiledQuery:
         """Unused in this test module."""
         del sort
         return _CompiledQuery()
 
+    @override
     def compile_page_request(
         self,
         page_request: PageRequest,
