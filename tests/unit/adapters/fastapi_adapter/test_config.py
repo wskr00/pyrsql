@@ -44,3 +44,14 @@ def test_config_exposes_derived_page_numbers() -> None:
     one_based = FastAPICriteriaConfig(one_based_paging=True)
     assert one_based.minimum_page_number == 1
     assert one_based.default_page_number == 1
+
+
+def test_config_keeps_openapi_examples() -> None:
+    """Stores OpenAPI examples as immutable mappings."""
+    config = FastAPICriteriaConfig(
+        filter_openapi_examples={
+            "by_name": {"summary": "By name", "value": "name==demo"}
+        }
+    )
+
+    assert config.filter_openapi_examples["by_name"]["value"] == "name==demo"

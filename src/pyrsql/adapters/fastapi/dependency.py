@@ -4,6 +4,8 @@ from collections.abc import Callable
 from inspect import Signature, signature
 from typing import Annotated, Any
 
+import msgspec
+
 try:
     from fastapi import HTTPException, Query
 except ImportError as error:  # pragma: no cover - import guard
@@ -52,6 +54,7 @@ def _raise_http_error(payload: FastAPIAdapterErrorPayload) -> None:
             "parameter": payload.parameter,
             "type": payload.error_type,
             "message": payload.message,
+            "detail": [msgspec.to_builtins(item) for item in payload.details],
         },
     )
 
@@ -112,17 +115,24 @@ def _build_criteria_callable(
     def dependency(
         filter_value: Annotated[
             str | None,
-            Query(alias=config.filter_parameter),
+            Query(
+                alias=config.filter_parameter,
+                openapi_examples=config.filter_openapi_examples or None,
+            ),
         ] = None,
         sort_value: Annotated[
             str | None,
-            Query(alias=config.sort_parameter),
+            Query(
+                alias=config.sort_parameter,
+                openapi_examples=config.sort_openapi_examples or None,
+            ),
         ] = None,
         page_value: Annotated[
             int | None,
             Query(
                 alias=config.page_parameter,
                 ge=config.minimum_page_number,
+                openapi_examples=config.page_openapi_examples or None,
             ),
         ] = None,
         size_value: Annotated[
@@ -131,6 +141,7 @@ def _build_criteria_callable(
                 alias=config.size_parameter,
                 gt=0,
                 le=config.max_page_size,
+                openapi_examples=config.size_openapi_examples or None,
             ),
         ] = None,
     ) -> RequestCriteria:

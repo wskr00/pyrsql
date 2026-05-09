@@ -1,0 +1,61 @@
+"""Shared helpers for FastAPI + SQLAlchemy integrations."""
+
+from typing import cast
+
+from sqlalchemy import func, select
+
+from pyrsql.adapters.fastapi import RequestCriteria
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+
+def require_request_criteria(criteria: RequestCriteria) -> RequestCriteria:
+    """Validates and returns request criteria objects."""
+    if not isinstance(criteria, RequestCriteria):
+        raise TypeError("criteria must be a RequestCriteria.")
+    return criteria
+
+
+def apply_query_with_orm(
+    statement: SQLAlchemySelect,
+    model: SQLAlchemyModel,
+    criteria: RequestCriteria,
+    orm: SQLAlchemyORM,
+) -> SQLAlchemySelect:
+    """Applies only query/filter semantics using the configured ORM."""
+    if criteria.query is None:
+        return statement
+    return cast(
+        SQLAlchemySelect,
+        criteria.query.apply(statement, model, orm=orm),
+    )
+
+
+def apply_sort_and_page_with_orm(
+    statement: SQLAlchemySelect,
+    model: SQLAlchemyModel,
+    criteria: RequestCriteria,
+    orm: SQLAlchemyORM,
+) -> SQLAlchemySelect:
+    """Applies sort and page semantics using the configured ORM."""
+    updated_statement = statement
+    if criteria.sort is not None:
+        updated_statement = cast(
+            SQLAlchemySelect,
+            criteria.sort.apply(updated_statement, model, orm=orm),
+        )
+    if criteria.page_request is not None:
+        updated_statement = cast(
+            SQLAlchemySelect,
+            criteria.page_request.apply(updated_statement, model, orm=orm),
+        )
+    return updated_statement
+
+
+def count_from_filtered_select(
+    filtered_statement: SQLAlchemySelect,
+) -> SQLAlchemySelect:
+    """Builds a count statement from an already-filtered select."""
+    return select(func.count()).select_from(  # pylint: disable=not-callable
+        filtered_statement.order_by(None).subquery()
+    )

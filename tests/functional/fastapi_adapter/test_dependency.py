@@ -112,6 +112,34 @@ def test_dependency_translates_query_parse_errors_to_http_422() -> None:
     assert response.status_code == 422
     assert response.json()["detail"]["parameter"] == "filter"
     assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.json()["detail"]["detail"][0]["code"] == "parse_error"
+
+
+def test_dependency_exposes_structured_field_policy_diagnostics() -> None:
+    """Publishes structured field diagnostics for blocked filter fields."""
+    app = FastAPI()
+    dependency = criteria_dependency(
+        FastAPICriteriaConfig(
+            query_options=QueryOptions(field_whitelist=frozenset({"name"}))
+        )
+    )
+
+    @app.get("/items")
+    def list_items(
+        criteria: Annotated[RequestCriteria, Depends(dependency)],
+    ) -> dict[str, bool]:
+        return {"is_empty": criteria.is_empty}
+
+    response = TestClient(app).get(
+        "/items",
+        params={"filter": "password==demo"},
+    )
+
+    assert response.status_code == 422
+    payload = response.json()["detail"]
+    assert payload["type"] == "query_semantic_error"
+    assert payload["detail"][0]["code"] == "field_not_whitelisted"
+    assert payload["detail"][0]["field"] == "password"
 
 
 def test_dependency_supports_one_based_paging() -> None:
@@ -194,3 +222,41 @@ def test_dependency_honors_custom_parameter_names() -> None:
         "page": 0,
         "size": 5,
     }
+
+
+def test_dependency_exposes_openapi_examples() -> None:
+    """Publishes configured OpenAPI examples on query parameters."""
+    app = FastAPI()
+    dependency = criteria_dependency(
+        FastAPICriteriaConfig(
+            filter_openapi_examples={
+                "by_name": {
+                    "summary": "By name",
+                    "value": "name==demo",
+                }
+            },
+            sort_openapi_examples={
+                "by_created_at": {
+                    "summary": "By created_at desc",
+                    "value": "created_at,desc",
+                }
+            },
+        )
+    )
+
+    @app.get("/items")
+    def list_items(
+        criteria: Annotated[RequestCriteria, Depends(dependency)],
+    ) -> dict[str, bool]:
+        return {"is_empty": criteria.is_empty}
+
+    schema = app.openapi()
+    parameters = schema["paths"]["/items"]["get"]["parameters"]
+    parameter_map = {parameter["name"]: parameter for parameter in parameters}
+
+    assert "examples" in parameter_map["filter"]
+    assert (
+        parameter_map["filter"]["examples"]["by_name"]["value"]
+        == "name==demo"
+    )
+    assert "examples" in parameter_map["sort"]

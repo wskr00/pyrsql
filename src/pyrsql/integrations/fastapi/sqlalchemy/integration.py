@@ -1,50 +1,42 @@
-"""FastAPI + SQLAlchemy integration helpers."""
+"""High-level FastAPI + SQLAlchemy integration helpers."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from typing import cast
 
-import msgspec
-
-try:
-    from fastapi import Depends
-except ImportError as error:  # pragma: no cover - import guard
-    raise ImportError(
-        "FastAPI integration requires installing the 'fastapi' extra: "
-        "pip install pyrsql[fastapi]"
-    ) from error
-
-from sqlalchemy import func, select
+from fastapi import Depends
+from sqlalchemy import select
 
 from pyrsql.adapters.fastapi import (
     CriteriaDependency,
     FastAPICriteriaConfig,
     RequestCriteria,
 )
+from pyrsql.core.sort import Sort as PyrsqlSort
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
+from .examples import (
+    build_filter_examples,
+    build_sort_examples,
+    merge_openapi_examples,
+    normalize_default_sort,
+)
+from .helpers import (
+    apply_query_with_orm,
+    apply_sort_and_page_with_orm,
+    count_from_filtered_select,
+    require_request_criteria,
+)
+from .payloads import SQLAlchemyPaginatedSelect
+from .resource import FastAPISQLAlchemyResource
+
 _DEFAULT_SQLALCHEMY_ORM = SQLAlchemyORM()
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
-
-
-class SQLAlchemyPaginatedSelect(
-    msgspec.Struct,
-    frozen=True,
-    gc=False,
-    kw_only=True,
-):
-    """Carries the list and count statements for a paginated query flow."""
-
-    statement: SQLAlchemySelect
-    count_statement: SQLAlchemySelect
-
-    def __post_init__(self) -> None:
-        """Validates the carried SQLAlchemy statements."""
-        require_sqlalchemy_select(self.statement)
-        require_sqlalchemy_select(self.count_statement)
+_EMPTY_OPENAPI_EXAMPLES: dict[str, dict[str, object]] = {}
 
 
 class FastAPISQLAlchemyIntegration:
@@ -96,13 +88,6 @@ class FastAPISQLAlchemyIntegration:
         """Returns a configured FastAPI dependency for request criteria."""
         return self._criteria_dependency
 
-    @staticmethod
-    def _require_request_criteria(criteria: RequestCriteria) -> RequestCriteria:
-        """Validates and returns request criteria objects."""
-        if not isinstance(criteria, RequestCriteria):
-            raise TypeError("criteria must be a RequestCriteria.")
-        return criteria
-
     def _apply_query(
         self,
         statement: SQLAlchemySelect,
@@ -110,11 +95,11 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Applies only the filtering part of request criteria."""
-        if criteria.query is None:
-            return statement
-        return cast(
-            SQLAlchemySelect,
-            criteria.query.apply(statement, model, orm=self.orm),
+        return apply_query_with_orm(
+            statement,
+            model,
+            criteria,
+            self.orm,
         )
 
     def _apply_sort_and_page(
@@ -124,22 +109,12 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Applies sort and page semantics on top of a filtered statement."""
-        updated_statement = statement
-        if criteria.sort is not None:
-            updated_statement = cast(
-                SQLAlchemySelect,
-                criteria.sort.apply(updated_statement, model, orm=self.orm),
-            )
-        if criteria.page_request is not None:
-            updated_statement = cast(
-                SQLAlchemySelect,
-                criteria.page_request.apply(
-                    updated_statement,
-                    model,
-                    orm=self.orm,
-                ),
-            )
-        return updated_statement
+        return apply_sort_and_page_with_orm(
+            statement,
+            model,
+            criteria,
+            self.orm,
+        )
 
     def _filtered_select(
         self,
@@ -158,14 +133,16 @@ class FastAPISQLAlchemyIntegration:
         self._base_selects[model] = statement
         return statement
 
+    def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
+        """Returns the cached base select for a model."""
+        return self._base_select(model)
+
     def _count_from_filtered_select(
         self,
         filtered_statement: SQLAlchemySelect,
     ) -> SQLAlchemySelect:
         """Builds a count statement from an already-filtered select."""
-        return select(func.count()).select_from(  # pylint: disable=not-callable
-            filtered_statement.order_by(None).subquery()
-        )
+        return count_from_filtered_select(filtered_statement)
 
     def apply(
         self,
@@ -175,7 +152,7 @@ class FastAPISQLAlchemyIntegration:
     ) -> SQLAlchemySelect:
         """Applies request criteria to an existing SQLAlchemy select."""
         require_sqlalchemy_select(statement)
-        criteria = self._require_request_criteria(criteria)
+        criteria = require_request_criteria(criteria)
         return cast(
             SQLAlchemySelect,
             criteria.apply(statement, model, orm=self.orm),
@@ -187,7 +164,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds a select statement for a model and applies criteria."""
-        criteria = self._require_request_criteria(criteria)
+        criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return self._apply_sort_and_page(
             filtered_statement,
@@ -201,7 +178,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemySelect:
         """Builds a count statement from the filtered query semantics only."""
-        criteria = self._require_request_criteria(criteria)
+        criteria = require_request_criteria(criteria)
         return self._count_from_filtered_select(
             self._filtered_select(model, criteria)
         )
@@ -212,7 +189,7 @@ class FastAPISQLAlchemyIntegration:
         criteria: RequestCriteria,
     ) -> SQLAlchemyPaginatedSelect:
         """Builds both list and count statements for a paginated flow."""
-        criteria = self._require_request_criteria(criteria)
+        criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return SQLAlchemyPaginatedSelect(
             statement=self._apply_sort_and_page(
@@ -278,3 +255,85 @@ class FastAPISQLAlchemyIntegration:
 
         self._paginated_select_dependencies[model] = dependency
         return dependency
+
+    def resource(
+        self,
+        model: SQLAlchemyModel,
+        *,
+        filterable_fields: set[str] | frozenset[str] | None = None,
+        sortable_fields: set[str] | frozenset[str] | None = None,
+        default_sort: str | None = None,
+        statement_factory: Callable[[], SQLAlchemySelect] | None = None,
+        max_page_size: int | None = None,
+        query_parameter_name: str | None = None,
+        sort_parameter_name: str | None = None,
+        page_parameter_name: str | None = None,
+        size_parameter_name: str | None = None,
+        filter_examples: dict[str, dict[str, object]] | None = None,
+        sort_examples: dict[str, dict[str, object]] | None = None,
+    ) -> FastAPISQLAlchemyResource:
+        """Builds a declarative route-ready resource for one model."""
+        query_options = self.criteria_config.query_options
+        sort_options = self.criteria_config.sort_options
+        if filterable_fields is not None:
+            query_options = replace(
+                query_options,
+                field_whitelist=frozenset(filterable_fields),
+            )
+        if sortable_fields is not None:
+            sort_options = replace(
+                sort_options,
+                field_whitelist=frozenset(sortable_fields),
+            )
+
+        filter_openapi_examples = merge_openapi_examples(
+            build_filter_examples(filterable_fields),
+            filter_examples,
+        )
+        sort_openapi_examples = merge_openapi_examples(
+            build_sort_examples(sortable_fields, default_sort),
+            sort_examples,
+        )
+
+        criteria_config = FastAPICriteriaConfig(
+            filter_parameter=(
+                query_parameter_name or self.criteria_config.filter_parameter
+            ),
+            sort_parameter=(
+                sort_parameter_name or self.criteria_config.sort_parameter
+            ),
+            page_parameter=(
+                page_parameter_name or self.criteria_config.page_parameter
+            ),
+            size_parameter=(
+                size_parameter_name or self.criteria_config.size_parameter
+            ),
+            default_page_size=self.criteria_config.default_page_size,
+            max_page_size=max_page_size or self.criteria_config.max_page_size,
+            one_based_paging=self.criteria_config.one_based_paging,
+            query_options=query_options,
+            sort_options=sort_options,
+            filter_openapi_examples=(
+                filter_openapi_examples or _EMPTY_OPENAPI_EXAMPLES
+            ),
+            sort_openapi_examples=(
+                sort_openapi_examples or _EMPTY_OPENAPI_EXAMPLES
+            ),
+            page_openapi_examples=self.criteria_config.page_openapi_examples,
+            size_openapi_examples=self.criteria_config.size_openapi_examples,
+        )
+
+        compiled_default_sort = None
+        if default_sort is not None:
+            compiled_default_sort = PyrsqlSort.parse(
+                normalize_default_sort(default_sort),
+                options=sort_options,
+            )
+
+        return FastAPISQLAlchemyResource(
+            integration=self,
+            model=model,
+            criteria_config=criteria_config,
+            default_sort=compiled_default_sort,
+            statement_factory=statement_factory,
+        )

@@ -13,6 +13,7 @@ from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 from pyrsql.integrations.fastapi import (
+    FastAPISQLAlchemyResource,
     FastAPISQLAlchemyIntegration,
     SQLAlchemyPaginatedSelect,
 )
@@ -36,6 +37,14 @@ class User(Base):
     name = Column(String, nullable=False)
 
 
+class OtherModel(Base):
+    """Second mapped model used for compatibility validation tests."""
+
+    __tablename__ = "other_models"
+
+    id = Column(Integer, primary_key=True)
+
+
 def test_integration_exposes_configured_criteria_dependency() -> None:
     """Returns a FastAPI criteria dependency using the stored config."""
     integration = FastAPISQLAlchemyIntegration(
@@ -55,6 +64,13 @@ def test_integration_rejects_invalid_public_configuration() -> None:
     with pytest.raises(TypeError):
         FastAPISQLAlchemyIntegration(
             criteria_config="invalid"  # type: ignore[arg-type]
+        )
+
+    with pytest.raises(TypeError):
+        FastAPISQLAlchemyResource(
+            integration=cast(Any, object()),
+            model=User,
+            criteria_config=FastAPICriteriaConfig(),
         )
 
 
@@ -147,6 +163,205 @@ def test_integration_builds_paginated_select_bundle() -> None:
     assert " LIMIT 10" in statement_sql
     assert "count(" in count_sql.lower()
     assert "ORDER BY" not in count_sql
+
+
+def test_integration_builds_declarative_resource() -> None:
+    """Builds a route-ready declarative resource object."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+
+    resource = integration.resource(
+        User,
+        filterable_fields={"name"},
+        sortable_fields={"name"},
+        default_sort="name,desc",
+        max_page_size=50,
+        filter_examples={
+            "by_name": {"summary": "By name", "value": "name==demo"}
+        },
+    )
+
+    assert isinstance(resource, FastAPISQLAlchemyResource)
+    assert resource.criteria_config.query_options.field_whitelist == {"name"}
+    assert resource.criteria_config.sort_options.field_whitelist == {"name"}
+    assert resource.criteria_config.max_page_size == 50
+    assert (
+        resource.criteria_config.filter_openapi_examples["by_name"]["value"]
+        == "name==demo"
+    )
+    assert (
+        resource.criteria_config.sort_openapi_examples["default_sort"][
+            "value"
+        ]
+        == "name,desc"
+    )
+
+
+def test_resource_generates_automatic_examples() -> None:
+    """Generates filter and sort examples from declarative config."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+
+    resource = integration.resource(
+        User,
+        filterable_fields={"id", "name"},
+        sortable_fields={"name"},
+        default_sort="-name",
+    )
+
+    assert (
+        resource.criteria_config.filter_openapi_examples["filter_by_id"][
+            "value"
+        ]
+        == "id==1"
+    )
+    assert (
+        resource.criteria_config.filter_openapi_examples[
+            "filter_by_name"
+        ]["value"]
+        == "name==demo"
+    )
+    assert (
+        resource.criteria_config.sort_openapi_examples[
+            "sort_by_name_asc"
+        ]["value"]
+        == "name,asc"
+    )
+    assert (
+        resource.criteria_config.sort_openapi_examples["default_sort"][
+            "value"
+        ]
+        == "name,desc"
+    )
+
+
+def test_resource_applies_default_sort_when_request_sort_is_absent() -> None:
+    """Applies declarative default sort when request sort is absent."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(User, default_sort="-name")
+
+    criteria_dependency = resource.criteria_dependency()
+    criteria = criteria_dependency(RequestCriteria())
+    statement = resource.select(criteria)
+    compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
+
+    assert "ORDER BY users.name DESC" in compiled
+
+
+def test_resource_applier_transforms_existing_select() -> None:
+    """Applies resource criteria to an existing base select."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(User, default_sort="-name")
+    criteria = resource.criteria_dependency()(RequestCriteria())
+
+    statement = resource.applier(criteria)(
+        select(User).where(User.id > 10)
+    )
+    compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
+
+    assert "WHERE users.id > 10" in compiled
+    assert "ORDER BY users.name DESC" in compiled
+
+
+def test_resource_uses_statement_factory_for_select_and_count() -> None:
+    """Uses a custom base statement for list and count flows."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(
+        User,
+        statement_factory=lambda: select(User).where(User.id > 10),
+        default_sort="-name",
+    )
+    criteria = resource.criteria_dependency()(RequestCriteria())
+
+    statement = resource.select(criteria)
+    count_statement = resource.count_select(criteria)
+    statement_sql = str(
+        statement.compile(compile_kwargs={"literal_binds": True})
+    )
+    count_sql = str(
+        count_statement.compile(compile_kwargs={"literal_binds": True})
+    )
+
+    assert "WHERE users.id > 10" in statement_sql
+    assert "ORDER BY users.name DESC" in statement_sql
+    assert "WHERE users.id > 10" in count_sql
+    assert "ORDER BY" not in count_sql
+
+
+def test_resource_uses_statement_factory_for_paginated_bundle() -> None:
+    """Uses a custom base statement in paginated bundle generation."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(
+        User,
+        statement_factory=lambda: select(User).where(User.id > 10),
+        default_sort="-name",
+    )
+    criteria = resource.criteria_dependency()(
+        RequestCriteria(page_request=PageRequest.of(0, 5))
+    )
+
+    bundle = resource.paginated_select(criteria)
+    statement_sql = str(
+        bundle.statement.compile(compile_kwargs={"literal_binds": True})
+    )
+    count_sql = str(
+        bundle.count_statement.compile(compile_kwargs={"literal_binds": True})
+    )
+
+    assert "WHERE users.id > 10" in statement_sql
+    assert " LIMIT 5" in statement_sql
+    assert "WHERE users.id > 10" in count_sql
+    assert "ORDER BY" not in count_sql
+
+
+def test_resource_rejects_invalid_statement_factory_result() -> None:
+    """Rejects statement factories that do not return SQLAlchemy Select."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(
+        User,
+        statement_factory=lambda: cast(Any, "invalid"),
+    )
+
+    with pytest.raises(TypeError):
+        resource.select(RequestCriteria())
+
+
+def test_resource_rejects_incompatible_statement_factory_model() -> None:
+    """Rejects statement factories that target a different mapped model."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(
+        User,
+        statement_factory=lambda: select(OtherModel),
+    )
+
+    with pytest.raises(
+        TypeError,
+        match="statement_factory must return a Select compatible",
+    ):
+        resource.select(RequestCriteria())
+
+
+def test_resource_reuses_integration_cached_base_select() -> None:
+    """Reuses the integration cached base select on the common path."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(User)
+
+    assert resource.select(RequestCriteria()) is integration.base_select(User)
+
+
+def test_resource_reuses_cached_dependencies() -> None:
+    """Reuses dependency objects created by a declarative resource."""
+    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
+    resource = integration.resource(User, default_sort="-name")
+
+    assert resource.applier_dependency() is resource.applier_dependency()
+    assert resource.select_dependency() is resource.select_dependency()
+    assert (
+        resource.count_select_dependency()
+        is resource.count_select_dependency()
+    )
+    assert (
+        resource.paginated_select_dependency()
+        is resource.paginated_select_dependency()
+    )
 
 
 def test_integration_rejects_invalid_request_criteria() -> None:

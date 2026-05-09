@@ -1,5 +1,9 @@
 """Configuration objects for the FastAPI adapter."""
 
+from collections.abc import Mapping
+from types import MappingProxyType
+from typing import Any
+
 import msgspec
 
 from pyrsql.core.options import QueryOptions, SortOptions
@@ -10,6 +14,7 @@ _DEFAULT_PAGE_PARAMETER = "page"
 _DEFAULT_SIZE_PARAMETER = "size"
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 _DEFAULT_SORT_OPTIONS = SortOptions()
+_EMPTY_OPENAPI_EXAMPLES: Mapping[str, Any] = MappingProxyType({})
 
 
 class FastAPICriteriaConfig(
@@ -41,6 +46,10 @@ class FastAPICriteriaConfig(
     one_based_paging: bool = False
     query_options: QueryOptions = _DEFAULT_QUERY_OPTIONS
     sort_options: SortOptions = _DEFAULT_SORT_OPTIONS
+    filter_openapi_examples: Mapping[str, Any] = _EMPTY_OPENAPI_EXAMPLES
+    sort_openapi_examples: Mapping[str, Any] = _EMPTY_OPENAPI_EXAMPLES
+    page_openapi_examples: Mapping[str, Any] = _EMPTY_OPENAPI_EXAMPLES
+    size_openapi_examples: Mapping[str, Any] = _EMPTY_OPENAPI_EXAMPLES
 
     def __post_init__(self) -> None:
         """Validates adapter configuration invariants.
@@ -78,6 +87,42 @@ class FastAPICriteriaConfig(
             raise TypeError("query_options must be a QueryOptions instance.")
         if not isinstance(self.sort_options, SortOptions):
             raise TypeError("sort_options must be a SortOptions instance.")
+        if not isinstance(self.filter_openapi_examples, Mapping):
+            raise TypeError(
+                "filter_openapi_examples must be a mapping instance."
+            )
+        if not isinstance(self.sort_openapi_examples, Mapping):
+            raise TypeError(
+                "sort_openapi_examples must be a mapping instance."
+            )
+        if not isinstance(self.page_openapi_examples, Mapping):
+            raise TypeError(
+                "page_openapi_examples must be a mapping instance."
+            )
+        if not isinstance(self.size_openapi_examples, Mapping):
+            raise TypeError(
+                "size_openapi_examples must be a mapping instance."
+            )
+        object.__setattr__(
+            self,
+            "filter_openapi_examples",
+            MappingProxyType(dict(self.filter_openapi_examples)),
+        )
+        object.__setattr__(
+            self,
+            "sort_openapi_examples",
+            MappingProxyType(dict(self.sort_openapi_examples)),
+        )
+        object.__setattr__(
+            self,
+            "page_openapi_examples",
+            MappingProxyType(dict(self.page_openapi_examples)),
+        )
+        object.__setattr__(
+            self,
+            "size_openapi_examples",
+            MappingProxyType(dict(self.size_openapi_examples)),
+        )
 
     @property
     def minimum_page_number(self) -> int:
