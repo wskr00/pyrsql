@@ -6,39 +6,17 @@ from timeit import timeit
 
 import pytest
 
-sqlalchemy = pytest.importorskip("sqlalchemy")
+pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey, String, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import select
 
 import pyrsql
+from pyrsql.core.page import PageRequest
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
+from .conftest import User
+
 pytestmark = [pytest.mark.performance, pytest.mark.sqlalchemy]
-
-
-class Base(DeclarativeBase):
-    """Base declarative class for performance translation tests."""
-
-
-class Company(Base):
-    """Test company model."""
-
-    __tablename__ = "company"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-
-
-class User(Base):
-    """Test user model."""
-
-    __tablename__ = "user_account"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-    company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
-    company: Mapped[Company] = relationship()
 
 
 def test_sqlalchemy_query_application_remains_fast() -> None:
@@ -63,3 +41,15 @@ def test_sqlalchemy_sort_application_remains_fast() -> None:
     )
     average_microseconds = elapsed / 3000 * 1_000_000
     assert average_microseconds < 250.0
+
+
+def test_sqlalchemy_page_application_remains_fast() -> None:
+    """Keeps page compilation plus Select application within budget."""
+    orm = SQLAlchemyORM()
+    page = PageRequest.of(2, 25)
+    elapsed = timeit(
+        lambda: page.apply(select(User), User, orm=orm),
+        number=5000,
+    )
+    average_microseconds = elapsed / 5000 * 1_000_000
+    assert average_microseconds < 100.0

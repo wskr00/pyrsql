@@ -12,15 +12,14 @@ from pyrsql.semantic.binder import SemanticBinder
 from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.parser import SortParser
 
-pytestmark = [pytest.mark.performance]
+from .conftest import QUERY_TEXT, SORT_TEXT
 
-_QUERY_TEXT = "@upper[name]==JOHN;company.name==demo;addresses.city==belem"
-_SORT_TEXT = "@upper[name],asc;company.name,desc;name,asc,ic"
+pytestmark = [pytest.mark.performance]
 
 
 def test_query_semantic_binding_remains_fast() -> None:
     """Keeps semantic query binding within a broad regression budget."""
-    expression = Parser(_QUERY_TEXT).parse()
+    expression = Parser(QUERY_TEXT).parse()
     binder = SemanticBinder(QueryOptions(procedure_whitelist=("upper",)))
     elapsed = timeit(lambda: binder.bind(expression), number=5000)
     average_microseconds = elapsed / 5000 * 1_000_000
@@ -29,7 +28,7 @@ def test_query_semantic_binding_remains_fast() -> None:
 
 def test_sort_semantic_binding_remains_fast() -> None:
     """Keeps semantic sort binding within a broad regression budget."""
-    fields = SortParser(_SORT_TEXT).parse()
+    fields = SortParser(SORT_TEXT).parse()
     binder = SortBinder(SortOptions(procedure_whitelist=("upper",)))
     elapsed = timeit(lambda: binder.bind(fields), number=5000)
     average_microseconds = elapsed / 5000 * 1_000_000

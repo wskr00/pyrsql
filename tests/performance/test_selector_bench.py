@@ -8,16 +8,16 @@ import pytest
 
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER
 
-pytestmark = [pytest.mark.performance]
+from .conftest import FUNCTION_SELECTOR
 
-_FUNCTION_SELECTOR = "@concat[@upper[name]|#123|##raw]"
+pytestmark = [pytest.mark.performance]
 
 
 def test_selector_function_parse_remains_fast() -> None:
     """Keeps recursive selector parsing within a broad regression budget."""
     elapsed = timeit(
         lambda: DEFAULT_SELECTOR_PARSER.parse(
-            _FUNCTION_SELECTOR,
+            FUNCTION_SELECTOR,
             max_length=256,
             context="selector benchmark",
         ),
