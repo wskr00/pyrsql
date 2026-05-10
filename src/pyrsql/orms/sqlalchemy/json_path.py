@@ -193,7 +193,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
             return cast("ColumnElement[bool]", function_expression)
         return cast(
             "ColumnElement[bool]",
-            sa.func.jsonb_path_exists(  # pylint: disable=not-callable
+            sa.func.jsonb_path_exists(
                 jsonb_column,
                 json_path_literal,
                 vars_payload,

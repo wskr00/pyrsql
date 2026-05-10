@@ -57,11 +57,15 @@ def apply_sort_and_page_with_orm(
     updated_statement = statement
     if criteria.sort is not None:
         updated_statement = criteria.sort.apply(
-            updated_statement, model, orm=orm,
+            updated_statement,
+            model,
+            orm=orm,
         )
     if criteria.page_request is not None:
         updated_statement = criteria.page_request.apply(
-            updated_statement, model, orm=orm,
+            updated_statement,
+            model,
+            orm=orm,
         )
     return updated_statement
 
@@ -74,6 +78,6 @@ def count_from_filtered_select(
     Returns:
         A count statement derived from the filtered select.
     """
-    return select(func.count()).select_from(  # pylint: disable=not-callable
+    return select(func.count()).select_from(
         filtered_statement.order_by(None).subquery(),
     )

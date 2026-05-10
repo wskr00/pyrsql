@@ -37,10 +37,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: uv run ruff check src tests
 
-      - name: Lint with Pylint
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: uv run pylint src
-
       - name: Run tests
         run: uv run pytest -q
 

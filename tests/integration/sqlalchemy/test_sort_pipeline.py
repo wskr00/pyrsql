@@ -1,7 +1,5 @@
 """Integration tests for the SQLAlchemy sort pipeline."""
 
-# pylint: disable=wrong-import-position,unsubscriptable-object
-
 from typing import Any
 
 import pytest

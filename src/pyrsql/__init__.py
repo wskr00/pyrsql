@@ -1,7 +1,5 @@
 """Public package interface for pyrsql."""
 
-# pylint: disable=redefined-builtin
-
 from pyrsql.api import apply, compile, parse  # noqa: A004
 from pyrsql.core import (
     DEFAULT_JSON_OPTIONS,

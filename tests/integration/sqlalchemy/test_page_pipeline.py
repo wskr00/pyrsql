@@ -1,7 +1,5 @@
 """Integration tests for the SQLAlchemy page pipeline."""
 
-# pylint: disable=wrong-import-position,unsubscriptable-object
-
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]

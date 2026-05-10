@@ -1,7 +1,5 @@
 """Functional tests for the FastAPI criteria dependency."""
 
-# pylint: disable=wrong-import-position
-
 from typing import Annotated, Any
 
 import pytest

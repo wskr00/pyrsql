@@ -6,9 +6,6 @@ from timeit import timeit
 
 import pytest
 
-# pylint: disable=wrong-import-position
-
-
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from sqlalchemy import ForeignKey, String, select

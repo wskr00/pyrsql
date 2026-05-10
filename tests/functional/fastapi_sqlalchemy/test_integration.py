@@ -4,9 +4,6 @@ from typing import Annotated, Any
 
 import pytest
 
-# pylint: disable=wrong-import-position
-
-
 pytest.importorskip("fastapi")
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient

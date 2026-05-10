@@ -1,7 +1,5 @@
 """Integration tests for the SQLAlchemy query pipeline."""
 
-# pylint: disable=wrong-import-position,unsubscriptable-object
-
 import datetime as dt
 from typing import Any
 
