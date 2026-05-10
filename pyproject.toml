@@ -1,6 +1,6 @@
 [project]
 name = "pyrsql"
-version = "0.0.1"
+version = "0.0.2"
 description = "Compiler-oriented RSQL query engine for safe, typed, and extensible Python ORM-backed APIs."
 readme = "README.md"
 requires-python = ">=3.10"
