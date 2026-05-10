@@ -1,5 +1,17 @@
 # pyrsql Reference
 
+- [Public Top-Level Exports](#public-top-level-exports)
+- [QueryOptions](#queryoptions)
+- [SortOptions](#sortoptions)
+- [Query Operators](#query-operators)
+- [Logical Operators](#logical-operators)
+- [Sort Syntax](#sort-syntax)
+- [JSON Options & Types](#json-options--types)
+- [Current ORM Notes](#current-orm-notes)
+- [FastAPI Adapter](#fastapi-adapter)
+- [FastAPI + SQLAlchemy Integration](#fastapi--sqlalchemy-integration)
+- [Subpackages](#subpackages)
+
 ## Public Top-Level Exports
 
 `pyrsql` exports:
@@ -94,7 +106,83 @@ Supported forms:
 - `company.name,desc`
 - `@upper[name],asc`
 
-## Current ORM Notes
+## QueryOptions
+
+Configuration fields for `Query.parse(...)`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `strict_equality` | `bool` | `False` | Disable wildcard matching in `==` |
+| `distinct` | `bool` | `False` | `SELECT DISTINCT` |
+| `like_escape_character` | `str\|None` | `None` | LIKE escape char (single char) |
+| `field_mapping` | `Mapping[str,str]` | `{}` | Global field aliases |
+| `model_field_mapping` | `Mapping[type,Mapping[str,str]]` | `{}` | Per-model aliases |
+| `join_hints` | `Mapping[str,JoinHint]` | `{}` | Relationship join hints |
+| `field_whitelist` | `frozenset[str]` | `frozenset()` | Allowed field paths |
+| `field_blacklist` | `frozenset[str]` | `frozenset()` | Blocked field paths |
+| `model_field_whitelist` | `Mapping[type,frozenset[str]]` | `{}` | Per-model allowed fields |
+| `model_field_blacklist` | `Mapping[type,frozenset[str]]` | `{}` | Per-model blocked fields |
+| `procedure_whitelist` | `tuple[str,...]` | `()` | Allowed function patterns (regex) |
+| `procedure_blacklist` | `tuple[str,...]` | `()` | Blocked function patterns (regex) |
+| `parse_limits` | `ParseLimits` | `DEFAULT_PARSE_LIMITS` | Parser safety limits |
+| `operator_registry` | `OperatorRegistry` | `DEFAULT_OPERATOR_REGISTRY` | Custom operators |
+| `custom_predicates` | `Mapping[str,CustomPredicateDefinition]` | `{}` | ORM-neutral predicates |
+| `value_converter_registry` | `ValueConverterRegistry` | `DEFAULT_*` | Type converters |
+| `field_value_converters` | `Mapping[str,ValueConverter]` | `{}` | Per-field-path converters |
+| `model_field_value_converters` | `Mapping[type,Mapping[str,ValueConverter]]` | `{}` | Per-model converters |
+| `json_options` | `JSONOptions` | `DEFAULT_JSON_OPTIONS` | JSON/JSONB behavior |
+
+## SortOptions
+
+Configuration fields for `Sort.parse(...)`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `field_mapping` | `Mapping[str,str]` | `{}` | Global field aliases |
+| `model_field_mapping` | `Mapping[type,Mapping[str,str]]` | `{}` | Per-model aliases |
+| `join_hints` | `Mapping[str,JoinHint]` | `{}` | Relationship join hints |
+| `field_whitelist` | `frozenset[str]` | `frozenset()` | Allowed field paths |
+| `field_blacklist` | `frozenset[str]` | `frozenset()` | Blocked field paths |
+| `model_field_whitelist` | `Mapping[type,frozenset[str]]` | `{}` | Per-model allowed fields |
+| `model_field_blacklist` | `Mapping[type,frozenset[str]]` | `{}` | Per-model blocked fields |
+| `procedure_whitelist` | `tuple[str,...]` | `()` | Allowed function patterns (regex) |
+| `procedure_blacklist` | `tuple[str,...]` | `()` | Blocked function patterns (regex) |
+| `sort_limits` | `SortLimits` | `DEFAULT_SORT_LIMITS` | Sort parser limits |
+| `json_options` | `JSONOptions` | `DEFAULT_JSON_OPTIONS` | JSON/JSONB behavior |
+
+## JSON Options & Types
+
+### JSONOptions
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `use_datetime` | `bool` | `False` | Enable `.datetime()` in jsonpath |
+| `path_exists_function` | `str` | `"jsonb_path_exists"` | PostgreSQL function name |
+| `path_exists_tz_function` | `str` | `"jsonb_path_exists_tz"` | TZ-aware function name |
+| `sort_field_types` | `Mapping[str,JSONSortScalarType]` | `{}` | Per-field sort scalar type |
+
+### JSONSortScalarType
+
+`TEXT`, `INTEGER`, `FLOAT`, `NUMERIC`, `BOOLEAN`, `DATE`, `TIME`,
+`DATETIME`, `DATETIME_TZ`.
+
+### JSONPath
+
+`JSONPath(segments=("user", "id"))` - represents a dotted JSON path.
+Methods: `to_dot_path()`, `to_postgresql_jsonpath()`, `is_root`.
+
+### JSONPathComparison
+
+`JSONPathComparison.from_raw_arguments(path, operator_name, raw_arguments)` -
+builds a JSON path comparison from raw RSQL arguments.
+
+### JSONScalarNormalizer / JSONScalarValue
+
+Normalizes raw RSQL arguments into JSON-aware typed values.
+
+### DEFAULT_JSON_OPTIONS
+
+Shared immutable `JSONOptions()` instance used as default.
 
 ### SQLAlchemy
 

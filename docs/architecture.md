@@ -1,18 +1,52 @@
 # pyrsql Architecture
 
+## Identity
+
+pyrsql is a **compiler-oriented RSQL query engine**. It compiles RSQL query
+strings into ORM-specific statement objects through a multi-stage pipeline:
+parsing → semantic binding → logical IR → backend lowering.
+
+The core is deliberately **ORM-neutral**. Adding a new backend (Django ORM,
+SQLModel, raw SQL) means implementing the `ORM` interface - the parser,
+semantic analyzer, and logical IR stay unchanged.
+
 ## Purpose
 
-`pyrsql` compiles an RSQL-like query language into ORM-specific query objects.
+pyrsql compiles an RSQL-like query language into ORM-specific query objects.
 
 The project is designed around:
 
-- a language frontend
-- semantic binding
-- a logical IR
-- backend lowering
-- optional framework adapters and integrations
+- a language frontend (parsing)
+- semantic binding (field policies, aliases, access control)
+- a logical IR (backend-independent query/sort/page representation)
+- backend lowering (ORM-specific statement construction)
+- optional framework adapters and integrations (FastAPI)
 
 The current production backend is `SQLAlchemy 2.0`.
+Planned backends include `Django ORM` and `SQLModel`.
+
+## Extensibility
+
+### Adding a new ORM backend
+
+Implement `pyrsql.orms.base.ORM`:
+
+```python
+class ORM(ABC):
+    def compile_query(self, query: Query) -> CompiledQuery: ...
+    def compile_sort(self, sort: Sort) -> CompiledSort: ...
+    def compile_page_request(self, page_request: PageRequest) -> CompiledPageRequest: ...
+```
+
+Each method receives the ORM-neutral IR and returns a compiled object with an
+`apply(target, model)` method. The core never imports ORM-specific code.
+
+### Adding a new framework adapter
+
+Implement `pyrsql.adapters.*` to extract RSQL parameters from HTTP requests.
+The FastAPI adapter is the reference implementation - it shows how to
+translate query params into `RequestCriteria` and raise `HTTP 422` on
+parse/semantic errors.
 
 ## Current Pipeline
 
@@ -94,9 +128,10 @@ Owns sort syntax and sort binding.
 
 Owns the backend-independent logical representation:
 
-- bound query nodes
-- bound sort nodes
-- bound page node
+- `BoundNode`, `BoundComparison`, `BoundLogical` (query)
+- `BoundSort`, `BoundSortField` (sort)
+- `BoundPage` (page)
+- `BoundField`, `BoundFunction`, `BoundLiteral`, `BoundArgument`
 
 This IR is the contract between semantic binding and ORM lowering.
 
@@ -104,13 +139,19 @@ This IR is the contract between semantic binding and ORM lowering.
 
 Owns user-facing ORM-agnostic objects:
 
-- `Query`
-- `Sort`
-- `PageRequest`
-- `QueryOptions`
-- `SortOptions`
-- conversion and policy infrastructure
-- JSON options and JSON helper types
+- `Query`, `Sort`, `PageRequest`
+- `QueryOptions`, `SortOptions`
+- `FieldPolicySet`, `ProcedureAccessPolicy`
+- `CustomPredicateDefinition`
+- `ValueConverterRegistry`, `FieldValueConverterSet`
+- `JSONOptions`, `JSONSortScalarType`
+- `JSONPath`, `JSONPathComparison`
+- `JSONScalarNormalizer`, `JSONScalarValue`
+- `JoinHint`
+- `CompilationResult`, `SortCompilationResult`, `PageCompilationResult`
+
+The `core/json/` package owns JSON-aware query comparison models and value
+normalization, keeping JSON semantics ORM-neutral.
 
 ### `orms`
 

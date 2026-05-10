@@ -85,144 +85,68 @@ Examples:
 - semantic normalization throughput
 - SQLAlchemy translation throughput
 
-## Current Directory Layout
-
-```text
-tests/
-  conftest.py
-  fixtures/
-    __init__.py
-    orms.py
-    query_samples.py
-    sqlalchemy_models.py
-
-  unit/
-    core/
-      json/
-    orms/
-      sqlalchemy/
-    parsing/
-    selector/
-    semantic/
-    sorting/
-
-  integration/
-    sqlalchemy/
-
-  functional/
-    test_public_api.py
-
-  performance/
-    test_parser_bench.py
-    test_selector_bench.py
-    test_semantic_bench.py
-    test_sqlalchemy_translation_bench.py
-```
-
-Current notable mappings:
-
-- `tests/unit/core/...` mirrors the `core` package
-- `tests/unit/parsing/...` mirrors the `parsing` package
-- `tests/unit/orms/sqlalchemy/test_resolver.py` covers isolated path
-  resolution and model inspection
-- `tests/integration/sqlalchemy/...` covers public pipeline interaction with
-  `SQLAlchemy`
-- `tests/functional/test_public_api.py` covers package-level public API
-- `tests/performance/...` covers regression-oriented hotspot benchmarks
-
 ## Mapping Rules
 
-### Unit tests
-
-Unit tests should mirror the production tree.
+Unit tests mirror the production tree. Integration tests group by pipeline.
+Functional tests group by capability. Performance tests group by hotspot.
 
 Examples:
 
-- `src/pyrsql/core/options.py`
-  -> `tests/unit/core/test_options.py`
-- `src/pyrsql/parsing/parser.py`
-  -> `tests/unit/parsing/test_parser.py`
-- `src/pyrsql/orms/sqlalchemy/translator.py`
-  -> `tests/unit/orms/sqlalchemy/test_translator.py`
+- `src/pyrsql/core/options.py` → `tests/unit/core/test_options.py`
+- `src/pyrsql/parsing/parser.py` → `tests/unit/parsing/test_parser.py`
+- `src/pyrsql/orms/sqlalchemy/resolver.py` → `tests/unit/orms/sqlalchemy/test_resolver.py`
 
-### Integration tests
+## Fixtures and Test Helpers
 
-Integration tests should be grouped by interaction boundary.
+### `conftest.py` hierarchy
 
-Current examples:
+pyrsql uses per-folder `conftest.py` files for scoped fixtures:
 
-- `tests/integration/sqlalchemy/test_query_pipeline.py`
-- `tests/integration/sqlalchemy/test_sort_pipeline.py`
-- `tests/integration/sqlalchemy/test_page_pipeline.py`
+| Level | Purpose |
+|-------|---------|
+| `tests/conftest.py` | Shared between all tests packages |
+| `tests/unit/conftest.py` | Auto-marks `@pytest.mark.unit` on all unit tests |
+| `tests/unit/core/conftest.py` | `FakeORM`, `FakeCompiledResult`, `fake_orm_factory` |
+| `tests/unit/orms/sqlalchemy/conftest.py` | SQLAlchemy test models, `model_inspector`, `path_resolver`, `json_path_builder`, `postgresql_dialect` |
+| `tests/unit/adapters/fastapi_adapter/conftest.py` | `query_stub`, `sort_stub`, `page_request`, `openapi_examples` |
+| `tests/unit/integrations/fastapi_sqlalchemy/conftest.py` | SQLAlchemy models, `sqlalchemy_orm`, `integration`, fixture-based criteria |
+| `tests/integration/sqlalchemy/conftest.py` | Shared SQLAlchemy models, `orm`, `pg_dialect`, `render_sql` helper |
+| `tests/functional/fastapi_sqlalchemy/conftest.py` | Shared `Base`/`User` models |
+| `tests/performance/conftest.py` | Shared test-data constants, SQLAlchemy models, `sqlalchemy_orm`, `pg_dialect` |
 
-### Functional tests
+### Mocking patterns
 
-Functional tests should be grouped by capability.
+Unit tests that verify **orchestration** (object A delegates to object B) use
+`unittest.mock` and `pytest.monkeypatch`:
 
-Current example:
+```python
+from unittest.mock import Mock, sentinel
 
-- `tests/functional/test_public_api.py`
+# Replacing a class method with a controlled return value
+parse_mock = Mock(return_value=sentinel.EXPRESSION)
+monkeypatch.setattr(Query, "parse_expression", staticmethod(parse_mock))
 
-### Performance tests
+# Assert the mock was called correctly
+parse_mock.assert_called_once_with("name==demo", options=options)
+```
 
-Performance tests should be grouped by hotspot.
+- **`sentinel`** replaces `object()` for named stub values - stack traces
+  show `sentinel.FIELDS` instead of `<object object at 0x...>`
+- **`Mock(return_value=...)`** replaces `staticmethod(lambda ...)` -
+  supports `assert_called_once_with` for argument verification
+- **`Mock(side_effect=...)`** replaces manual `calls: list` tracking -
+  built-in call recording with `assert_has_calls`
 
-Current examples:
-
-- `tests/performance/test_parser_bench.py`
-- `tests/performance/test_selector_bench.py`
-- `tests/performance/test_semantic_bench.py`
-- `tests/performance/test_sqlalchemy_translation_bench.py`
-
-## Fixtures
-
-Fixtures should be centralized when they are shared across multiple test
-layers or multiple modules.
-
-### `tests/conftest.py`
-
-Use for:
-
-- lightweight global fixtures
-- pytest hooks or markers
-- common assertion helpers that truly apply across the suite
-
-### `tests/fixtures/`
-
-Use for reusable domain-specific fixtures such as:
-
-- SQLAlchemy models for ORM tests
-- sample query and sort payloads
-- ORM factory helpers
-
-Avoid hiding important fixture setup in unrelated test modules.
+Tests that are **pure value tests** (create object, pass input, check output)
+do not use mocks - they use real instances directly.
 
 ## Pytest Markers
 
-The suite should use explicit markers:
+Registered markers (in `pyproject.toml`):
 
-- `unit`
-- `integration`
-- `functional`
-- `performance`
-- `sqlalchemy`
-
-`performance` tests should not be part of the default quick test loop.
-
-They are skipped by default and must be requested explicitly with:
-
-```bash
-pytest tests/performance --run-performance
-```
-
-## Status
-
-The suite now has all four layers in place:
-
-1. `unit`
-2. `integration`
-3. `functional`
-4. `performance`
-
-Further work should focus on refining boundaries within those layers rather
-than changing the top-level testing model.
+- `unit` - isolated module/class tests
+- `integration` - cross-component interaction
+- `functional` - user-visible behavior via public API
+- `performance` - hotspot benchmarks
+- `sqlalchemy` - SQLAlchemy-dependent tests
+- `fastapi` - FastAPI-dependent tests

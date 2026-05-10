@@ -5,10 +5,9 @@
 `pyrsql` follows:
 
 - Google Python Style Guide
-- `pylint` using the Google `pylintrc`
-- `pytest` for unit and integration tests
-- `mypy` for static typing
-- `ruff` for formatting, import organization, and fast linting
+- `ruff` for linting, formatting, and import organization
+- `mypy` for static typing (strict mode)
+- `pytest` for unit, integration, functional, and performance tests
 
 ## Practical Decisions
 
@@ -86,9 +85,9 @@ over speculative micro-optimizations.
 Representative local commands:
 
 ```text
+uv run ruff check .
+uv run ruff format .
+uv run mypy
 uv run pytest
-uv run pylint src tests
-uv run mypy src
-uv run ruff check --fix src tests
-uv run ruff format src tests
+uv run pytest --run-performance   # include benchmarks
 ```
