@@ -24,7 +24,7 @@ class JSONSortScalarType(str, Enum):
     DATETIME_TZ = "datetime_tz"
 
 
-class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
+class JSONOptions(msgspec.Struct, gc=False, kw_only=True):
     """ORM-neutral JSON behavior flags.
 
     Attributes:
@@ -56,19 +56,15 @@ class JSONOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         )
         if not isinstance(self.sort_field_types, Mapping):
             raise TypeError("sort_field_types must be a mapping.")
-        object.__setattr__(
-            self,
-            "sort_field_types",
-            MappingProxyType(
-                {
-                    self._normalize_sort_field_path(path): (
-                        sort_type
-                        if isinstance(sort_type, JSONSortScalarType)
-                        else JSONSortScalarType(sort_type)
-                    )
-                    for path, sort_type in self.sort_field_types.items()
-                },
-            ),
+        self.sort_field_types = MappingProxyType(
+            {
+                self._normalize_sort_field_path(path): (
+                    sort_type
+                    if isinstance(sort_type, JSONSortScalarType)
+                    else JSONSortScalarType(sort_type)
+                )
+                for path, sort_type in self.sort_field_types.items()
+            },
         )
 
     @staticmethod

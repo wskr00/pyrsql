@@ -58,7 +58,7 @@ class SQLAlchemyResolvedPath(
     joins: tuple[SQLAlchemyJoinPlan, ...]
     leaf_attribute: SQLAlchemyExpression
     python_type: type[Any] | None
-    json_path: JSONPath = JSONPath()
+    json_path: JSONPath = msgspec.field(default_factory=JSONPath)
     is_json: bool = False
 
 
