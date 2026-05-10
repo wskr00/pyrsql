@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import Mock, sentinel
 
 from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
@@ -20,65 +21,51 @@ def test_query_parse_builds_query_object_from_parser_and_binder(
 ) -> None:
     """Composes parsed syntax and bound IR into one Query object."""
     options = QueryOptions(strict_equality=True)
-    expression = object()
-    bound_expression = object()
+    parse_expression_mock = Mock(return_value=sentinel.EXPRESSION)
+    bind_expression_mock = Mock(return_value=sentinel.BOUND_EXPRESSION)
 
     monkeypatch.setattr(
-        Query,
-        "parse_expression",
-        staticmethod(lambda query_text, *, options: expression),
+        Query, "parse_expression", staticmethod(parse_expression_mock),
     )
     monkeypatch.setattr(
-        Query,
-        "bind_expression",
-        staticmethod(lambda parsed_expression, *, options: bound_expression),
+        Query, "bind_expression", staticmethod(bind_expression_mock),
     )
 
     query = Query.parse("name==demo", options=options)
 
     assert query.text == "name==demo"
     assert query.options is options
-    assert query.expression is expression
-    assert query.bound_expression is bound_expression
+    assert query.expression is sentinel.EXPRESSION
+    assert query.bound_expression is sentinel.BOUND_EXPRESSION
+    parse_expression_mock.assert_called_once_with("name==demo", options=options)
+    bind_expression_mock.assert_called_once_with(
+        sentinel.EXPRESSION, options=options,
+    )
 
 
 def test_query_parse_resolves_shared_default_options(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Uses the shared immutable default options when none are provided."""
-    captured_options: list[QueryOptions] = []
-    expression = object()
-    bound_expression = object()
-
-    def _parse_expression(query_text: str, *, options: QueryOptions) -> object:
-        del query_text
-        captured_options.append(options)
-        return expression
-
-    def _bind_expression(
-        parsed_expression: object,
-        *,
-        options: QueryOptions,
-    ) -> object:
-        assert parsed_expression is expression
-        captured_options.append(options)
-        return bound_expression
+    parse_expression_mock = Mock(return_value=sentinel.EXPRESSION)
+    bind_expression_mock = Mock(return_value=sentinel.BOUND_EXPRESSION)
 
     monkeypatch.setattr(
-        Query,
-        "parse_expression",
-        staticmethod(_parse_expression),
+        Query, "parse_expression", staticmethod(parse_expression_mock),
     )
     monkeypatch.setattr(
-        Query,
-        "bind_expression",
-        staticmethod(_bind_expression),
+        Query, "bind_expression", staticmethod(bind_expression_mock),
     )
 
     query = Query.parse("name==demo")
 
-    assert query.options is captured_options[0]
-    assert captured_options[0] is captured_options[1]
+    assert query.options is not None
+    parse_expression_mock.assert_called_once_with(
+        "name==demo", options=query.options,
+    )
+    bind_expression_mock.assert_called_once_with(
+        sentinel.EXPRESSION, options=query.options,
+    )
 
 
 def test_query_compile_uses_orm_name(

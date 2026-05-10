@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import Mock, sentinel
 
 import pytest
 from sqlalchemy import select
@@ -103,26 +104,16 @@ def test_integration_apply_delegates_to_request_criteria(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Delegates apply() to RequestCriteria.apply with the configured ORM."""
-    expected = object()
-    calls: list[tuple[object, type[Any], SQLAlchemyORM]] = []
+    apply_mock = Mock(return_value=sentinel.EXPECTED)
 
-    def fake_apply(
-        self: RequestCriteria,
-        target: object,
-        model: type[Any],
-        *,
-        orm: SQLAlchemyORM,
-    ) -> object:
-        assert self is query_criteria
-        calls.append((target, model, orm))
-        return expected
-
-    monkeypatch.setattr(RequestCriteria, "apply", fake_apply)
+    monkeypatch.setattr(RequestCriteria, "apply", staticmethod(apply_mock))
 
     applied = integration.apply(base_statement, User, query_criteria)
 
-    assert applied is expected
-    assert calls == [(base_statement, User, integration.orm)]
+    assert applied is sentinel.EXPECTED
+    apply_mock.assert_called_once_with(
+        base_statement, User, orm=integration.orm,
+    )
 
 
 def test_integration_select_builds_sorted_and_paged_select(
@@ -137,12 +128,12 @@ def test_integration_select_builds_sorted_and_paged_select(
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_filtered_select",
-        lambda self, model, criteria: filtered_statement,
+        Mock(return_value=filtered_statement),
     )
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_apply_sort_and_page",
-        lambda self, statement, model, criteria: final_statement,
+        Mock(return_value=final_statement),
     )
 
     statement = integration.select(User, full_criteria)
@@ -162,12 +153,12 @@ def test_integration_count_select_uses_filtered_select_only(
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_filtered_select",
-        lambda self, model, criteria: filtered_statement,
+        Mock(return_value=filtered_statement),
     )
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_count_from_filtered_select",
-        lambda self, statement: count_statement,
+        Mock(return_value=count_statement),
     )
 
     statement = integration.count_select(User, full_criteria)
@@ -188,17 +179,17 @@ def test_integration_paginated_select_builds_bundle_from_shared_filtered_select(
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_filtered_select",
-        lambda self, model, criteria: filtered_statement,
+        Mock(return_value=filtered_statement),
     )
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_apply_sort_and_page",
-        lambda self, statement, model, criteria: list_statement,
+        Mock(return_value=list_statement),
     )
     monkeypatch.setattr(
         FastAPISQLAlchemyIntegration,
         "_count_from_filtered_select",
-        lambda self, statement: count_statement,
+        Mock(return_value=count_statement),
     )
 
     bundle = integration.paginated_select(User, full_criteria)
@@ -293,30 +284,17 @@ def test_resource_applier_wraps_integration_apply(
     resource = integration.resource(User)
     base_statement = select(User)
     expected_statement = select(User).where(User.id > 10)
-    calls: list[tuple[Select[Any], type[Any], RequestCriteria]] = []
 
-    def fake_apply(
-        statement: Select[Any],
-        model: type[Any],
-        criteria: RequestCriteria,
-    ) -> Select[Any]:
-        calls.append((statement, model, criteria))
-        return expected_statement
+    apply_mock = Mock(return_value=expected_statement)
 
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration,
-        "apply",
-        lambda self, statement, model, criteria: fake_apply(
-            statement,
-            model,
-            criteria,
-        ),
+        FastAPISQLAlchemyIntegration, "apply", apply_mock,
     )
 
     applied = resource.applier(full_criteria)(base_statement)
 
     assert applied is expected_statement
-    assert calls == [(base_statement, User, full_criteria)]
+    apply_mock.assert_called_once_with(base_statement, User, full_criteria)
 
 
 def test_resource_count_select_uses_query_only_stage(
@@ -328,34 +306,26 @@ def test_resource_count_select_uses_query_only_stage(
     resource = integration.resource(User)
     filtered_statement = select(User).where(User.id > 10)
     count_statement = select(User.id)
-    calls: list[
-        tuple[Select[Any], type[Any], RequestCriteria, SQLAlchemyORM]
-    ] = []
 
-    def fake_apply_query_with_orm(
-        statement: Select[Any],
-        model: type[Any],
-        criteria: RequestCriteria,
-        orm: SQLAlchemyORM,
-    ) -> Select[Any]:
-        calls.append((statement, model, criteria, orm))
-        return filtered_statement
+    apply_query_mock = Mock(return_value=filtered_statement)
 
     monkeypatch.setattr(
-        resource_module,
-        "apply_query_with_orm",
-        fake_apply_query_with_orm,
+        resource_module, "apply_query_with_orm", apply_query_mock,
     )
     monkeypatch.setattr(
         resource_module,
         "count_from_filtered_select",
-        lambda statement: count_statement,
+        Mock(return_value=count_statement),
     )
 
     statement = resource.count_select(full_criteria)
 
     assert statement is count_statement
-    assert calls[0][1:] == (User, full_criteria, integration.orm)
+    apply_query_mock.assert_called_once()
+    _, model, criteria, orm = apply_query_mock.call_args.args
+    assert model is User
+    assert criteria is full_criteria
+    assert orm is integration.orm
 
 
 def test_resource_paginated_select_uses_shared_filtered_select(
@@ -372,17 +342,17 @@ def test_resource_paginated_select_uses_shared_filtered_select(
     monkeypatch.setattr(
         resource_module,
         "apply_query_with_orm",
-        lambda statement, model, criteria, orm: filtered_statement,
+        Mock(return_value=filtered_statement),
     )
     monkeypatch.setattr(
         resource_module,
         "apply_sort_and_page_with_orm",
-        lambda statement, model, criteria, orm: list_statement,
+        Mock(return_value=list_statement),
     )
     monkeypatch.setattr(
         resource_module,
         "count_from_filtered_select",
-        lambda statement: count_statement,
+        Mock(return_value=count_statement),
     )
 
     bundle = resource.paginated_select(full_criteria)
@@ -404,26 +374,14 @@ def test_resource_select_uses_statement_factory_for_base_statement(
         statement_factory=lambda: statement,
     )
 
-    calls: list[tuple[Select[Any], type[Any], RequestCriteria]] = []
-
-    def fake_apply(
-        integration_helper: FastAPISQLAlchemyIntegration,
-        base_statement: Select[Any],
-        model: type[Any],
-        criteria: RequestCriteria,
-    ) -> Select[Any]:
-        del integration_helper
-        calls.append((base_statement, model, criteria))
-        return expected_statement
+    apply_mock = Mock(return_value=expected_statement)
 
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration,
-        "apply",
-        fake_apply,
+        FastAPISQLAlchemyIntegration, "apply", apply_mock,
     )
 
     assert resource.select(query_criteria) is expected_statement
-    assert calls == [(statement, User, query_criteria)]
+    apply_mock.assert_called_once_with(statement, User, query_criteria)
 
 
 @pytest.mark.parametrize(

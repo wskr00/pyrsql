@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import Mock
 
 import pytest
 from typing_extensions import override
@@ -102,58 +103,29 @@ def test_request_criteria_applies_query_sort_and_page_in_order(
         sort=sort_stub,
         page_request=page_request,
     )
-    call_order: list[str] = []
 
-    def fake_query_apply(
-        self: Query,
-        target: list[str],
-        model: type[Any],
-        *,
-        orm: ORM,
-    ) -> list[str]:
-        assert self is query_stub
-        assert model is object
-        assert orm is not None
-        target.append("query")
-        call_order.append("query")
-        return target
+    fake_query = Mock(
+        side_effect=lambda target, model, *, orm: [*target, "query"],
+    )
+    fake_sort = Mock(
+        side_effect=lambda target, model, *, orm: [*target, "sort"],
+    )
+    fake_page = Mock(
+        side_effect=lambda target, model, *, orm: [*target, "page"],
+    )
 
-    def fake_sort_apply(
-        self: Sort,
-        target: list[str],
-        model: type[Any],
-        *,
-        orm: ORM,
-    ) -> list[str]:
-        assert self is sort_stub
-        assert model is object
-        assert orm is not None
-        target.append("sort")
-        call_order.append("sort")
-        return target
-
-    def fake_page_apply(
-        self: PageRequest,
-        target: list[str],
-        model: type[Any],
-        *,
-        orm: ORM,
-    ) -> list[str]:
-        assert self is page_request
-        assert model is object
-        assert orm is not None
-        target.append("page")
-        call_order.append("page")
-        return target
-
-    monkeypatch.setattr(Query, "apply", fake_query_apply)
-    monkeypatch.setattr(Sort, "apply", fake_sort_apply)
-    monkeypatch.setattr(PageRequest, "apply", fake_page_apply)
+    monkeypatch.setattr(Query, "apply", staticmethod(fake_query))
+    monkeypatch.setattr(Sort, "apply", staticmethod(fake_sort))
+    monkeypatch.setattr(PageRequest, "apply", staticmethod(fake_page))
 
     applied: list[object] = criteria.apply([], object, orm=orm)
 
     assert applied == ["query", "sort", "page"]
-    assert call_order == ["query", "sort", "page"]
+    fake_query.assert_called_once_with([], object, orm=orm)
+    fake_sort.assert_called_once_with(["query"], object, orm=orm)
+    fake_page.assert_called_once_with(
+        ["query", "sort"], object, orm=orm,
+    )
 
 
 def test_criteria_dependency_exposes_a_fastapi_signature() -> None:

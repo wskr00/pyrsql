@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
+from unittest.mock import Mock, sentinel
 
 from pyrsql.core.options import SortOptions
 from pyrsql.core.sort import Sort
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
     import pytest
 
     from pyrsql.orms.base import ORM
-    from pyrsql.sorting.ast import SortField
 
 
 def test_sort_parse_builds_sort_object_from_parser_and_binder(
@@ -21,72 +21,45 @@ def test_sort_parse_builds_sort_object_from_parser_and_binder(
 ) -> None:
     """Composes parsed sort fields and bound sort IR into one Sort object."""
     options = SortOptions()
-    fields = cast(
-        "tuple[SortField, ...]",
-        (object(), object()),
-    )
-    bound_sort = object()
+    parse_fields_mock = Mock(return_value=sentinel.FIELDS)
+    bind_fields_mock = Mock(return_value=sentinel.BOUND_SORT)
 
-    monkeypatch.setattr(
-        Sort,
-        "parse_fields",
-        staticmethod(lambda sort_text, *, options: fields),
-    )
-    monkeypatch.setattr(
-        Sort,
-        "bind_fields",
-        staticmethod(lambda parsed_fields, *, options: bound_sort),
-    )
+    monkeypatch.setattr(Sort, "parse_fields", staticmethod(parse_fields_mock))
+    monkeypatch.setattr(Sort, "bind_fields", staticmethod(bind_fields_mock))
 
     sort = Sort.parse("name,desc", options=options)
 
     assert sort.text == "name,desc"
     assert sort.options is options
-    assert sort.fields is fields
-    assert sort.bound_sort is bound_sort
+    assert sort.fields is sentinel.FIELDS
+    assert sort.bound_sort is sentinel.BOUND_SORT
+    parse_fields_mock.assert_called_once_with("name,desc", options=options)
+    bind_fields_mock.assert_called_once_with(
+        sentinel.FIELDS, options=options,
+    )
 
 
 def test_sort_parse_keeps_empty_bound_sort_when_no_fields_are_present(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Keeps the bound sort empty when parsing yields no fields."""
-    captured_options: list[SortOptions] = []
+    parse_fields_mock = Mock(return_value=())
+    bind_fields_mock = Mock(return_value=None)
 
-    def _parse_fields(
-        sort_text: str | None,
-        *,
-        options: SortOptions,
-    ) -> tuple[object, ...]:
-        del sort_text
-        captured_options.append(options)
-        return ()
-
-    def _bind_fields(
-        fields: tuple[object, ...],
-        *,
-        options: SortOptions,
-    ) -> object | None:
-        assert fields == ()
-        captured_options.append(options)
-        return None
-
-    monkeypatch.setattr(
-        Sort,
-        "parse_fields",
-        staticmethod(_parse_fields),
-    )
-    monkeypatch.setattr(
-        Sort,
-        "bind_fields",
-        staticmethod(_bind_fields),
-    )
+    monkeypatch.setattr(Sort, "parse_fields", staticmethod(parse_fields_mock))
+    monkeypatch.setattr(Sort, "bind_fields", staticmethod(bind_fields_mock))
 
     sort = Sort.parse(None)
 
     assert not sort.fields
     assert sort.bound_sort is None
-    assert sort.options is captured_options[0]
-    assert captured_options[0] is captured_options[1]
+    assert sort.options is not None
+    parse_fields_mock.assert_called_once_with(
+        None, options=sort.options,
+    )
+    bind_fields_mock.assert_called_once_with(
+        (), options=sort.options,
+    )
 
 
 def test_sort_compile_uses_orm_name(
