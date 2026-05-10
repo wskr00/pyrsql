@@ -164,11 +164,18 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 
 ## Documentation
 
-- [Usage Guide](docs/usage.md) - detailed examples for every feature
-- [API Reference](docs/reference.md) - complete public API surface
-- [Architecture](docs/architecture.md) - pipeline, module boundaries, design
-- [Testing](docs/testing.md) - test layers, mocks, benchmarks
-- [Quality & Tooling](docs/quality.md) - standards, linting, typing
+Full documentation at **[wskr00.github.io/pyrsql](https://wskr00.github.io/pyrsql/)**.
+
+| Section | Description |
+|---------|-------------|
+| [Quickstart](https://wskr00.github.io/pyrsql/quickstart/) | One-minute primer |
+| [Usage](https://wskr00.github.io/pyrsql/usage/query/) | Filter, sort, page, JSON, FastAPI, custom predicates |
+| [API Reference](https://wskr00.github.io/pyrsql/reference/api/) | Auto-generated from docstrings |
+| [Operators](https://wskr00.github.io/pyrsql/reference/operators/) | Complete operator table |
+| [Options](https://wskr00.github.io/pyrsql/reference/options/) | QueryOptions, SortOptions, JSONOptions |
+| [Architecture](https://wskr00.github.io/pyrsql/explanation/architecture/) | Pipeline, modules, design |
+| [Extensibility](https://wskr00.github.io/pyrsql/explanation/extensibility/) | Adding backends and adapters |
+| [Contributing](https://wskr00.github.io/pyrsql/contributing/) | Setup, workflow, standards |
 
 ## Development Principles
 
