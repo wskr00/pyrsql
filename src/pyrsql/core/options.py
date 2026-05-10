@@ -108,47 +108,47 @@ def _normalize_shared_policy_options(
     options: _SharedPolicyOptionsProtocol,
 ) -> None:
     """Normalizes option fields shared by query and sort configuration."""
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "field_mapping",
         _normalize_mapping(options.field_mapping),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "model_field_mapping",
         _normalize_nested_mapping(options.model_field_mapping),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "join_hints",
         _normalize_mapping(options.join_hints),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "field_whitelist",
         _normalize_frozenset(options.field_whitelist),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "field_blacklist",
         _normalize_frozenset(options.field_blacklist),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "model_field_whitelist",
         _normalize_nested_sets(options.model_field_whitelist),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "model_field_blacklist",
         _normalize_nested_sets(options.model_field_blacklist),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "procedure_whitelist",
         _normalize_tuple(options.procedure_whitelist),
     )
-    object.__setattr__(
+    object.__setattr__(  # noqa: PLC2801
         options,
         "procedure_blacklist",
         _normalize_tuple(options.procedure_blacklist),

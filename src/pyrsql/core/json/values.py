@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import TypeAlias
+from typing import TypeAlias, cast
 
 import msgspec
 
@@ -47,11 +47,11 @@ class JSONScalarNormalizer:
 
         match raw_value.lower():
             case "true":
-                return self._from_python_value(True)
+                return self._from_python_value(value=True)
             case "false":
-                return self._from_python_value(False)
+                return self._from_python_value(value=False)
             case "null":
-                return self._from_python_value(None)
+                return self._from_python_value(value=None)
             case _:
                 pass
         if _INTEGER_PATTERN.fullmatch(raw_value):
@@ -82,7 +82,7 @@ class JSONScalarNormalizer:
             a plain string.
         """
         try:
-            parsed = msgspec.json.decode(raw_value)
+            parsed = cast("JSONValue", msgspec.json.decode(raw_value))
         except msgspec.DecodeError:
             return None
         if isinstance(parsed, str):

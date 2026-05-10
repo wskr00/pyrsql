@@ -100,6 +100,6 @@ def test_query_apply_uses_orm(
         orm=fake_orm_factory(),
     )
 
-    assert applied["result"] == "name==demo"
-    assert applied["target"] == "statement"
-    assert applied["model"] is str
+    assert applied["result"] == "name==demo"  # type: ignore[index]
+    assert applied["target"] == "statement"  # type: ignore[index]
+    assert applied["model"] is str  # type: ignore[index,comparison-overlap]

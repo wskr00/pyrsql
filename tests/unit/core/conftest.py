@@ -53,19 +53,19 @@ class FakeORM(ORM):
         """Returns a stable fake ORM name."""
         return "fake"
 
-    def compile_query(self, query: Query) -> FakeCompiledResult:
+    def compile_query(self, query: Query) -> FakeCompiledResult:  # type: ignore[override]
         """Builds a fake compiled query result."""
         result = (
             self.query_result if self.query_result is not None else query.text
         )
         return FakeCompiledResult(result=result)
 
-    def compile_sort(self, sort: Sort) -> FakeCompiledResult:
+    def compile_sort(self, sort: Sort) -> FakeCompiledResult:  # type: ignore[override]
         """Builds a fake compiled sort result."""
         result = self.sort_result if self.sort_result is not None else sort.text
         return FakeCompiledResult(result=result)
 
-    def compile_page_request(
+    def compile_page_request(  # type: ignore[override]
         self,
         page_request: PageRequest,
     ) -> FakeCompiledResult:

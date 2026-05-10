@@ -47,19 +47,19 @@ class _ORM(ORM):
     def __init__(self) -> None:
         self.last_query: Query | None = None
 
-    def compile_query(self, query: Query) -> _CompiledQuery:
+    def compile_query(self, query: Query) -> _CompiledQuery:  # type: ignore[override]
         """Stores the received query and returns a fake compilation."""
         self.last_query = query
         return _CompiledQuery()
 
     @override
-    def compile_sort(self, sort: Sort) -> _CompiledQuery:
+    def compile_sort(self, sort: Sort) -> _CompiledQuery:  # type: ignore[override]
         """Unused in this test module."""
         del sort
         return _CompiledQuery()
 
     @override
-    def compile_page_request(
+    def compile_page_request(  # type: ignore[override]
         self,
         page_request: PageRequest,
     ) -> _CompiledQuery:
@@ -97,7 +97,7 @@ def test_parse_uses_custom_operator_registry() -> None:
     )
     options = QueryOptions(
         operator_registry=OperatorRegistry(
-            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,),
+            operators=(*DEFAULT_OPERATOR_REGISTRY.operators, all_match),
         ),
     )
     query = pyrsql.parse("name=all=demo", options=options)
@@ -130,7 +130,7 @@ def test_parse_uses_custom_predicate_definition() -> None:
 
 def test_query_options_reject_mismatched_custom_predicate_key() -> None:
     """Rejects custom predicate definitions keyed by the wrong name."""
-    with pytest.raises(ValueError, match="(?i)predicate"):
+    with pytest.raises(ValueError, match=r"(?i)predicate"):
         QueryOptions(
             custom_predicates={
                 "wrong_name": CustomPredicateDefinition(

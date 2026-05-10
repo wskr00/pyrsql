@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
@@ -40,10 +40,7 @@ def apply_query_with_orm(
     """
     if criteria.query is None:
         return statement
-    return cast(
-        "SQLAlchemySelect",
-        criteria.query.apply(statement, model, orm=orm),
-    )
+    return criteria.query.apply(statement, model, orm=orm)
 
 
 def apply_sort_and_page_with_orm(
@@ -59,14 +56,12 @@ def apply_sort_and_page_with_orm(
     """
     updated_statement = statement
     if criteria.sort is not None:
-        updated_statement = cast(
-            "SQLAlchemySelect",
-            criteria.sort.apply(updated_statement, model, orm=orm),
+        updated_statement = criteria.sort.apply(
+            updated_statement, model, orm=orm,
         )
     if criteria.page_request is not None:
-        updated_statement = cast(
-            "SQLAlchemySelect",
-            criteria.page_request.apply(updated_statement, model, orm=orm),
+        updated_statement = criteria.page_request.apply(
+            updated_statement, model, orm=orm,
         )
     return updated_statement
 

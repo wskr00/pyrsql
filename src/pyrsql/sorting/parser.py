@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from pyrsql.sorting.limits import SortLimits
 
 _EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
+_MAX_SORT_PARTS: Final = 3
+_MIN_SORT_PARTS_FOR_IGNORE_CASE: Final = 2
 
 
 class SortParser:
@@ -92,7 +94,7 @@ class SortParser:
         if not parts:
             return None
         parts = [part.strip() for part in parts]
-        if len(parts) > 3:
+        if len(parts) > _MAX_SORT_PARTS:
             raise SortParseError(
                 "Sort clause "
                 f"#{clause_index} {clause!r} has too many comma-separated "
@@ -110,7 +112,7 @@ class SortParser:
             )
 
         ignore_case = False
-        if len(parts) > 2:
+        if len(parts) > _MIN_SORT_PARTS_FOR_IGNORE_CASE:
             ignore_case = self._parse_ignore_case(
                 parts[2],
                 clause,

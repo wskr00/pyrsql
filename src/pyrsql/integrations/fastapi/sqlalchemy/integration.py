@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from fastapi import Depends
 from sqlalchemy import select
@@ -198,10 +198,7 @@ class FastAPISQLAlchemyIntegration:
         """
         require_sqlalchemy_select(statement)
         criteria = require_request_criteria(criteria)
-        return cast(
-            "SQLAlchemySelect",
-            criteria.apply(statement, model, orm=self.orm),
-        )
+        return criteria.apply(statement, model, orm=self.orm)
 
     def select(
         self,

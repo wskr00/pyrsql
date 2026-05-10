@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import datetime as dt
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pytest
@@ -16,9 +16,6 @@ from pyrsql.core.conversion import (
     ValueConverterRegistry,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
 
 class Status(Enum):
     """Example enum for value conversion tests."""
@@ -27,11 +24,11 @@ class Status(Enum):
     INACTIVE = "inactive"
 
 
+@dataclass
 class CustomIdentifier:
     """Simple constructor-based conversion target."""
 
-    def __init__(self, value: str) -> None:
-        self.value = value
+    value: str
 
 
 @pytest.mark.parametrize(
@@ -62,7 +59,7 @@ class CustomIdentifier:
         pytest.param(
             "2026-05-02T10:15:30",
             dt.datetime,
-            dt.datetime(2026, 5, 2, 10, 15, 30),
+            dt.datetime(2026, 5, 2, 10, 15, 30),  # noqa: DTZ001
             id="datetime",
         ),
     ],
@@ -84,7 +81,7 @@ def test_default_registry_falls_back_from_date_to_datetime() -> None:
     assert DEFAULT_VALUE_CONVERTER_REGISTRY.convert(
         "2026-05-02",
         dt.datetime,
-    ) == dt.datetime(2026, 5, 2, 0, 0)
+    ) == dt.datetime(2026, 5, 2, 0, 0)  # noqa: DTZ001
 
 
 @pytest.mark.parametrize(
@@ -163,7 +160,10 @@ def test_default_registry_raises_typed_errors_for_invalid_conversion(
 
 def test_registry_supports_custom_converter_registration() -> None:
     """Extends the registry immutably with custom converters."""
-    converter: Callable[[str], str] = lambda raw: raw.upper()
-    registry = ValueConverterRegistry({}).with_converter(str, converter)
+
+    def _to_upper(raw: str) -> str:
+        return raw.upper()
+
+    registry = ValueConverterRegistry({}).with_converter(str, _to_upper)
 
     assert registry.convert("demo", str) == "DEMO"

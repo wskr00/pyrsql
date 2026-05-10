@@ -109,7 +109,7 @@ def test_parser_accepts_custom_operator_registry() -> None:
         maximum_arguments=1,
     )
     registry = OperatorRegistry(
-        operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,),
+        operators=(*DEFAULT_OPERATOR_REGISTRY.operators, all_match),
     )
 
     expression = Parser(

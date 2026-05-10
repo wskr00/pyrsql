@@ -108,6 +108,6 @@ def test_sort_apply_uses_orm(
         orm=fake_orm_factory(),
     )
 
-    assert applied["result"] == "name,asc"
-    assert applied["target"] == "statement"
-    assert applied["model"] is str
+    assert applied["result"] == "name,asc"  # type: ignore[index]
+    assert applied["target"] == "statement"  # type: ignore[index]
+    assert applied["model"] is str  # type: ignore[index,comparison-overlap]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 import msgspec
 
@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from pyrsql.parsing.operators import ComparisonOperator
     from pyrsql.parsing.source import SourceSpan
     from pyrsql.selector.ast import SelectorNode
+
+_MIN_LOGICAL_CHILDREN: Final = 2
 
 
 class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -94,7 +96,7 @@ class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
         Raises:
             ValueError: If the logical node has fewer than two children.
         """
-        if len(self.children) < 2:
+        if len(self.children) < _MIN_LOGICAL_CHILDREN:
             raise ValueError(
                 "Logical nodes must contain at least two child expressions.",
             )

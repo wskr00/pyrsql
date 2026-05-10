@@ -318,7 +318,7 @@ class Parser:
             ParseError: If the current token is not a value token.
         """
         current = self._current()
-        if current.kind not in (TokenKind.UNQUOTED_TEXT, TokenKind.QUOTED_TEXT):
+        if current.kind not in {TokenKind.UNQUOTED_TEXT, TokenKind.QUOTED_TEXT}:
             raise ParseError(message=message, span=current.span)
         self._advance()
         return current

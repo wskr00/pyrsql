@@ -63,7 +63,7 @@ def test_page_request_of_rejects_invalid_inputs(
 
 def test_page_request_rejects_non_aligned_offset() -> None:
     """Rejects offsets that cannot map cleanly to page number and size."""
-    with pytest.raises(ValueError, match="(?i)offset"):
+    with pytest.raises(ValueError, match=r"(?i)offset"):
         PageRequest.from_offset(offset=15, limit=10)
 
 
@@ -86,6 +86,6 @@ def test_page_request_apply_uses_orm(
         orm=fake_orm_factory(),
     )
 
-    assert applied["result"] == 0
-    assert applied["target"] == "statement"
-    assert applied["model"] is str
+    assert applied["result"] == 0  # type: ignore[index,comparison-overlap]
+    assert applied["target"] == "statement"  # type: ignore[index]
+    assert applied["model"] is str  # type: ignore[index,comparison-overlap]

@@ -23,10 +23,10 @@ if TYPE_CHECKING:
 def query_stub() -> Query:
     """Provides a minimal Query instance without invoking parsing."""
     query = object.__new__(Query)
-    object.__setattr__(query, "text", "stub")
-    object.__setattr__(query, "options", QueryOptions())
-    object.__setattr__(query, "expression", cast("Expression", object()))
-    object.__setattr__(
+    object.__setattr__(query, "text", "stub")  # noqa: PLC2801
+    object.__setattr__(query, "options", QueryOptions())  # noqa: PLC2801
+    object.__setattr__(query, "expression", cast("Expression", object()))  # noqa: PLC2801
+    object.__setattr__(  # noqa: PLC2801
         query,
         "bound_expression",
         cast("BoundComparison", object()),
@@ -38,10 +38,10 @@ def query_stub() -> Query:
 def sort_stub() -> Sort:
     """Provides a minimal Sort instance without invoking parsing."""
     sort = object.__new__(Sort)
-    object.__setattr__(sort, "text", "name,asc")
-    object.__setattr__(sort, "options", SortOptions())
-    object.__setattr__(sort, "fields", ())
-    object.__setattr__(sort, "bound_sort", None)
+    object.__setattr__(sort, "text", "name,asc")  # noqa: PLC2801
+    object.__setattr__(sort, "options", SortOptions())  # noqa: PLC2801
+    object.__setattr__(sort, "fields", ())  # noqa: PLC2801
+    object.__setattr__(sort, "bound_sort", None)  # noqa: PLC2801
     return sort
 
 

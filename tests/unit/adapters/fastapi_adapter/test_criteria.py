@@ -150,7 +150,7 @@ def test_request_criteria_applies_query_sort_and_page_in_order(
     monkeypatch.setattr(Sort, "apply", fake_sort_apply)
     monkeypatch.setattr(PageRequest, "apply", fake_page_apply)
 
-    applied = criteria.apply([], object, orm=orm)
+    applied: list[object] = criteria.apply([], object, orm=orm)
 
     assert applied == ["query", "sort", "page"]
     assert call_order == ["query", "sort", "page"]

@@ -75,7 +75,10 @@ ignore = [
     "TRY003",
     "COM812",
     "ISC001",
-
+    "C901",
+    "PLR0913",
+    "PLR0911",
+    "PLR0912"
 ]
 
 future-annotations = true
@@ -140,6 +143,7 @@ mark-parentheses = false
 "tests/**/*.py" = [
     "ANN",
     "ARG",
+    "B008",
     "DOC201",
     "DOC501",
     "DOC502",

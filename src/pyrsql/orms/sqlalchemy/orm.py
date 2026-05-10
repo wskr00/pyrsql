@@ -61,7 +61,7 @@ class SQLAlchemyORM(base.ORM):
         """
         return "sqlalchemy"
 
-    def compile_query(self, query: Query) -> SQLAlchemyCompiledQuery:
+    def compile_query(self, query: Query) -> SQLAlchemyCompiledQuery:  # type: ignore[override]
         """Compiles a pyrsql query for SQLAlchemy.
 
         Returns:
@@ -73,7 +73,7 @@ class SQLAlchemyORM(base.ORM):
             translator=self._translator,
         )
 
-    def compile_sort(self, sort: Sort) -> SQLAlchemyCompiledSort:
+    def compile_sort(self, sort: Sort) -> SQLAlchemyCompiledSort:  # type: ignore[override]
         """Compiles a pyrsql sort for SQLAlchemy.
 
         Returns:
@@ -86,7 +86,7 @@ class SQLAlchemyORM(base.ORM):
         )
 
     @override
-    def compile_page_request(
+    def compile_page_request(  # type: ignore[override]
         self,
         page_request: PageRequest,
     ) -> SQLAlchemyCompiledPageRequest:

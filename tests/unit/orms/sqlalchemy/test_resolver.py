@@ -122,6 +122,7 @@ def test_model_inspector_marks_collection_relationships(
 )
 def test_path_resolver_resolves_supported_field_paths(
     path_resolver: SQLAlchemyPathResolver,
+    *,
     field_path: str,
     expected_join_count: int,
     expected_leaf_model: type[object],

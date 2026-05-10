@@ -33,11 +33,7 @@ def field_example_value(field_path: str) -> str | int:
         A simple scalar example value inferred from the field path.
     """
     normalized = field_path.lower()
-    if (
-        normalized == "id"
-        or normalized.endswith(".id")
-        or normalized.endswith("_id")
-    ):
+    if normalized == "id" or normalized.endswith((".id", "_id")):
         return _DEFAULT_NUMERIC_EXAMPLE
     if any(
         token in normalized
@@ -88,7 +84,7 @@ def build_sort_examples(
     """
     examples: dict[str, dict[str, object]] = {}
     if sortable_fields:
-        first_field = sorted(sortable_fields)[0]
+        first_field = min(sortable_fields)
         example_key = first_field.replace(".", "_")
         examples[f"sort_by_{example_key}_asc"] = {
             "summary": f"Sort by {first_field} ascending",

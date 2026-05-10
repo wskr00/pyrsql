@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from pyrsql.orms.sqlalchemy.types import (
         SQLAlchemyMappedAttribute,
     )
+
+_MAX_FIELD_MAPPING_EXPANSIONS: Final = 32
 
 
 class SQLAlchemyPathResolver:
@@ -125,7 +127,7 @@ class SQLAlchemyPathResolver:
                         mapped_segments
                     )
                     expansion_count += 1
-                    if expansion_count > 32:
+                    if expansion_count > _MAX_FIELD_MAPPING_EXPANSIONS:
                         raise SQLAlchemyPathResolutionError(
                             "Field mapping expansion exceeded the supported "
                             "limit.",
@@ -142,7 +144,7 @@ class SQLAlchemyPathResolver:
                     if is_last_segment:
                         raise SQLAlchemyPathResolutionError(
                             f"Field path {field_path!r} ends on relationship "
-                            f"{segment!r}; a column-like attribute is required.",
+                            f"{segment!r}; a column-like attribute is required.",  # noqa: E501
                         )
                     joins.append(
                         SQLAlchemyJoinPlan(

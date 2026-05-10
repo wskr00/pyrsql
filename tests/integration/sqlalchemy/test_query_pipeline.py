@@ -277,7 +277,7 @@ def test_orm_uses_core_datetime_conversion_fallback() -> None:
     query = pyrsql.parse("created_at==2026-05-02")
     statement = orm.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
-    assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
+    assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)  # noqa: DTZ001
 
 
 def test_orm_applies_model_field_mapping_in_where_clause() -> None:
@@ -317,13 +317,15 @@ def test_orm_applies_field_specific_converter() -> None:
                 "created_at": lambda raw: dt.datetime.strptime(
                     raw,
                     "%d/%m/%Y",
-                ),
+                ).replace(tzinfo=dt.timezone.utc),
             },
         ),
     )
     statement = orm.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
-    assert compiled.params["created_at_1"] == dt.datetime(2026, 5, 2, 0, 0)
+    assert compiled.params["created_at_1"] == dt.datetime(
+        2026, 5, 2, 0, 0, tzinfo=dt.timezone.utc
+    )
 
 
 def test_orm_applies_model_field_specific_converter() -> None:

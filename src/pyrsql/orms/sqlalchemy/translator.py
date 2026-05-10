@@ -200,7 +200,7 @@ class SQLAlchemyExpressionTranslator:
                 if self._json_path_builder.supports_document_predicate(
                     json_comparison,
                 ):
-                    predicate = self._json_path_builder.build_document_filter_expression(
+                    predicate = self._json_path_builder.build_document_filter_expression(  # noqa: E501
                         selector_expression,
                         json_comparison,
                     )
@@ -469,7 +469,7 @@ class SQLAlchemyExpressionTranslator:
                 options=options,
             )
         else:
-            predicate = cast("ColumnElement[bool]", expression == value)
+            predicate = expression == value
         if not negated:
             return predicate
         return cast("ColumnElement[bool]", sa.not_(predicate))

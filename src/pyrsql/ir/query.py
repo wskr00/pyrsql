@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 import msgspec
 
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from pyrsql.parsing.ast import LogicalOperator
     from pyrsql.parsing.operators import ComparisonOperator
     from pyrsql.selector.ast import SelectorLiteral
+
+_MIN_LOGICAL_CHILDREN: Final = 2
 
 
 class BoundNode(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -167,7 +169,7 @@ class BoundLogical(BoundNode, frozen=True, gc=False, kw_only=True):
             ValueError: If the logical node has fewer than two children.
         """
         super().__post_init__()
-        if len(self.children) < 2:
+        if len(self.children) < _MIN_LOGICAL_CHILDREN:
             raise ValueError(
                 "Bound logical nodes must contain at least two children.",
             )

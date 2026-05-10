@@ -530,7 +530,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         )
         return (
             f"({value_reference} == "
-            f"{self._render_value_operand(value, variable_name=variable_name, vars_payload=vars_payload, use_datetime=use_datetime)})"
+            f"{self._render_value_operand(value, variable_name=variable_name, vars_payload=vars_payload, use_datetime=use_datetime)})"  # noqa: E501
         )
 
     @staticmethod
@@ -578,7 +578,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         comparisons = (
             (
                 f"({value_reference} {operator} "
-                f"{self._render_value_operand(value, variable_name=f'value_{index}', vars_payload=vars_payload, use_datetime=use_datetime)})"
+                f"{self._render_value_operand(value, variable_name=f'value_{index}', vars_payload=vars_payload, use_datetime=use_datetime)})"  # noqa: E501
             )
             for index, value in enumerate(values)
         )
@@ -597,7 +597,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         Returns:
             A JSON path operand string.
         """
-        if value.python_type in (dict, list):
+        if value.python_type in {dict, list}:
             vars_payload[variable_name] = value.value
             if use_datetime and self._is_datetime_value(value):
                 return f"${variable_name}.datetime()"

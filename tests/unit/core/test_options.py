@@ -238,7 +238,7 @@ def test_query_options_extend_operator_registry_with_custom_operator() -> None:
     )
     options = QueryOptions(
         operator_registry=OperatorRegistry(
-            operators=DEFAULT_OPERATOR_REGISTRY.operators + (all_match,),
+            operators=(*DEFAULT_OPERATOR_REGISTRY.operators, all_match),
         ),
     )
 

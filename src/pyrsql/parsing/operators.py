@@ -69,7 +69,7 @@ class OperatorRegistry:
             for spelling in operator.spellings:
                 if spelling in operators_by_spelling:
                     raise ValueError(
-                        f"Duplicate operator spelling registered: {spelling!r}.",
+                        f"Duplicate operator spelling registered: {spelling!r}.",  # noqa: E501
                     )
                 operators_by_spelling[spelling] = operator
         spellings_by_prefix: dict[str, list[str]] = {}

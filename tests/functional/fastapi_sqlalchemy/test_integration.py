@@ -1,8 +1,6 @@
 """Functional tests for the FastAPI + SQLAlchemy integration helper."""
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 
@@ -44,7 +42,7 @@ def test_select_dependency_returns_a_filtered_statement() -> None:
 
     @app.get("/users")
     def list_users(
-        statement: Any = Depends(integration.select_dependency(User)),
+        statement: Annotated[Any, Depends(integration.select_dependency(User))],
     ) -> dict[str, str]:
         return {
             "sql": str(
@@ -71,7 +69,9 @@ def test_count_select_dependency_returns_a_count_statement() -> None:
 
     @app.get("/users/count")
     def count_users(
-        statement: Any = Depends(integration.count_select_dependency(User)),
+        statement: Annotated[
+            Any, Depends(integration.count_select_dependency(User))
+        ],
     ) -> dict[str, str]:
         return {
             "sql": str(
@@ -99,7 +99,9 @@ def test_paginated_select_dependency_returns_both_statements() -> None:
 
     @app.get("/users/paginated")
     def paginated_users(
-        bundle: Any = Depends(integration.paginated_select_dependency(User)),
+        bundle: Annotated[
+            Any, Depends(integration.paginated_select_dependency(User))
+        ],
     ) -> dict[str, str]:
         return {
             "statement": str(
@@ -143,7 +145,7 @@ def test_resource_dependency_exposes_examples() -> None:
 
     @app.get("/users/resource")
     def list_users(
-        statement: Any = Depends(users.select_dependency()),
+        statement: Annotated[Any, Depends(users.select_dependency())],
     ) -> dict[str, str]:
         return {
             "sql": str(
@@ -177,7 +179,7 @@ def test_resource_dependency_generates_examples_automatically() -> None:
 
     @app.get("/users/auto-examples")
     def list_users(
-        statement: Any = Depends(users.select_dependency()),
+        statement: Annotated[Any, Depends(users.select_dependency())],
     ) -> dict[str, str]:
         return {
             "sql": str(
@@ -217,7 +219,7 @@ def test_resource_applier_dependency_transforms_base_select() -> None:
 
     @app.get("/users/applier")
     def list_users(
-        apply_query: Any = Depends(users.applier_dependency()),
+        apply_query: Annotated[Any, Depends(users.applier_dependency())],
     ) -> dict[str, str]:
         statement = apply_query(select(User).where(User.id > 10))
         return {
@@ -246,7 +248,7 @@ def test_resource_statement_factory_changes_select_dependency_base() -> None:
 
     @app.get("/users/base-statement")
     def list_users(
-        statement: Any = Depends(users.select_dependency()),
+        statement: Annotated[Any, Depends(users.select_dependency())],
     ) -> dict[str, str]:
         return {
             "sql": str(
