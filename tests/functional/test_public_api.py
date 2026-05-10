@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import sentinel
 
 import pytest
 from typing_extensions import override
@@ -164,11 +165,11 @@ def test_apply_compiles_and_applies_query_to_target() -> None:
     class _Model:
         pass
 
-    target = object()
+    target = sentinel.TARGET
     applied = pyrsql.apply(
         target,
         _Model,
         "name==demo",
         orm=orm,
     )
-    assert applied == (target, _Model)
+    assert applied == (sentinel.TARGET, _Model)

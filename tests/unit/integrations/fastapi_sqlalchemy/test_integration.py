@@ -112,7 +112,9 @@ def test_integration_apply_delegates_to_request_criteria(
 
     assert applied is sentinel.EXPECTED
     apply_mock.assert_called_once_with(
-        base_statement, User, orm=integration.orm,
+        base_statement,
+        User,
+        orm=integration.orm,
     )
 
 
@@ -288,7 +290,9 @@ def test_resource_applier_wraps_integration_apply(
     apply_mock = Mock(return_value=expected_statement)
 
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration, "apply", apply_mock,
+        FastAPISQLAlchemyIntegration,
+        "apply",
+        apply_mock,
     )
 
     applied = resource.applier(full_criteria)(base_statement)
@@ -310,7 +314,9 @@ def test_resource_count_select_uses_query_only_stage(
     apply_query_mock = Mock(return_value=filtered_statement)
 
     monkeypatch.setattr(
-        resource_module, "apply_query_with_orm", apply_query_mock,
+        resource_module,
+        "apply_query_with_orm",
+        apply_query_mock,
     )
     monkeypatch.setattr(
         resource_module,
@@ -377,7 +383,9 @@ def test_resource_select_uses_statement_factory_for_base_statement(
     apply_mock = Mock(return_value=expected_statement)
 
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration, "apply", apply_mock,
+        FastAPISQLAlchemyIntegration,
+        "apply",
+        apply_mock,
     )
 
     assert resource.select(query_criteria) is expected_statement

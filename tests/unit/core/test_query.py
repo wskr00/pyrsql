@@ -25,10 +25,14 @@ def test_query_parse_builds_query_object_from_parser_and_binder(
     bind_expression_mock = Mock(return_value=sentinel.BOUND_EXPRESSION)
 
     monkeypatch.setattr(
-        Query, "parse_expression", staticmethod(parse_expression_mock),
+        Query,
+        "parse_expression",
+        staticmethod(parse_expression_mock),
     )
     monkeypatch.setattr(
-        Query, "bind_expression", staticmethod(bind_expression_mock),
+        Query,
+        "bind_expression",
+        staticmethod(bind_expression_mock),
     )
 
     query = Query.parse("name==demo", options=options)
@@ -39,7 +43,8 @@ def test_query_parse_builds_query_object_from_parser_and_binder(
     assert query.bound_expression is sentinel.BOUND_EXPRESSION
     parse_expression_mock.assert_called_once_with("name==demo", options=options)
     bind_expression_mock.assert_called_once_with(
-        sentinel.EXPRESSION, options=options,
+        sentinel.EXPRESSION,
+        options=options,
     )
 
 
@@ -51,20 +56,26 @@ def test_query_parse_resolves_shared_default_options(
     bind_expression_mock = Mock(return_value=sentinel.BOUND_EXPRESSION)
 
     monkeypatch.setattr(
-        Query, "parse_expression", staticmethod(parse_expression_mock),
+        Query,
+        "parse_expression",
+        staticmethod(parse_expression_mock),
     )
     monkeypatch.setattr(
-        Query, "bind_expression", staticmethod(bind_expression_mock),
+        Query,
+        "bind_expression",
+        staticmethod(bind_expression_mock),
     )
 
     query = Query.parse("name==demo")
 
     assert query.options is not None
     parse_expression_mock.assert_called_once_with(
-        "name==demo", options=query.options,
+        "name==demo",
+        options=query.options,
     )
     bind_expression_mock.assert_called_once_with(
-        sentinel.EXPRESSION, options=query.options,
+        sentinel.EXPRESSION,
+        options=query.options,
     )
 
 

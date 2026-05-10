@@ -124,7 +124,9 @@ def test_request_criteria_applies_query_sort_and_page_in_order(
     fake_query.assert_called_once_with([], object, orm=orm)
     fake_sort.assert_called_once_with(["query"], object, orm=orm)
     fake_page.assert_called_once_with(
-        ["query", "sort"], object, orm=orm,
+        ["query", "sort"],
+        object,
+        orm=orm,
     )
 
 

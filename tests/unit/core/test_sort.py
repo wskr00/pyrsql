@@ -35,7 +35,8 @@ def test_sort_parse_builds_sort_object_from_parser_and_binder(
     assert sort.bound_sort is sentinel.BOUND_SORT
     parse_fields_mock.assert_called_once_with("name,desc", options=options)
     bind_fields_mock.assert_called_once_with(
-        sentinel.FIELDS, options=options,
+        sentinel.FIELDS,
+        options=options,
     )
 
 
@@ -55,10 +56,12 @@ def test_sort_parse_keeps_empty_bound_sort_when_no_fields_are_present(
     assert sort.bound_sort is None
     assert sort.options is not None
     parse_fields_mock.assert_called_once_with(
-        None, options=sort.options,
+        None,
+        options=sort.options,
     )
     bind_fields_mock.assert_called_once_with(
-        (), options=sort.options,
+        (),
+        options=sort.options,
     )
 
 

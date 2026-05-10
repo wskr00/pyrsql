@@ -7,29 +7,17 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy import Column, Integer, String, select
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import select
 
 from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+from .conftest import User
 
 pytestmark = [
     pytest.mark.functional,
     pytest.mark.fastapi,
     pytest.mark.sqlalchemy,
 ]
-
-
-class Base(DeclarativeBase):
-    """Base model for functional integration tests."""
-
-
-class User(Base):
-    """Mapped test model."""
-
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
 
 
 def test_select_dependency_returns_a_filtered_statement() -> None:
