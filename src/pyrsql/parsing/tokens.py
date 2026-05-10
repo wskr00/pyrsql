@@ -1,9 +1,14 @@
 """Token models for the lexer."""
 
-from dataclasses import dataclass
-from enum import Enum, auto
+from __future__ import annotations
 
-from pyrsql.parsing.source import SourceSpan
+from enum import Enum, auto
+from typing import TYPE_CHECKING
+
+import msgspec
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 class TokenKind(Enum):
@@ -21,8 +26,7 @@ class TokenKind(Enum):
     QUOTED_TEXT = auto()
 
 
-@dataclass(frozen=True, slots=True)
-class Token:
+class Token(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a lexical token."""
 
     kind: TokenKind

@@ -1,23 +1,21 @@
-"""ORM-neutral semantic analysis primitives."""
+"""ORM-neutral semantic binding primitives."""
 
-from pyrsql.semantic.analyzer import SemanticAnalyzer
-from pyrsql.semantic.ast import (
-    SemanticComparison,
-    SemanticExpression,
-    SemanticLogical,
-)
+from pyrsql.semantic.binder import SemanticBinder
+from pyrsql.semantic.diagnostics import SemanticDiagnostic
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
     FieldNotWhitelistedError,
+    FunctionBlacklistedError,
+    FunctionNotWhitelistedError,
     SemanticError,
 )
 
 __all__ = [
     "FieldBlacklistedError",
     "FieldNotWhitelistedError",
-    "SemanticAnalyzer",
-    "SemanticComparison",
+    "FunctionBlacklistedError",
+    "FunctionNotWhitelistedError",
+    "SemanticBinder",
+    "SemanticDiagnostic",
     "SemanticError",
-    "SemanticExpression",
-    "SemanticLogical",
 ]

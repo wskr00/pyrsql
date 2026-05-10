@@ -1,28 +1,38 @@
 """Compiled sort support for SQLAlchemy."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-from pyrsql.core.options import SortOptions
-from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
+from typing import TYPE_CHECKING
+
+import msgspec
+
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,
     require_sqlalchemy_select,
 )
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
-from pyrsql.sorting.semantic import SemanticSortField
+
+if TYPE_CHECKING:
+    from pyrsql.core.options import SortOptions
+    from pyrsql.ir.sort import BoundSort
+    from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyCompiledSort:
+class SQLAlchemyCompiledSort(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Compiled SQLAlchemy sort plan.
 
     Attributes:
-        fields: Semantic sort fields to translate into order clauses.
+        sort_plan: Bound sort IR to lower into order clauses.
         options: Sort configuration used during translation.
         translator: Translator responsible for producing SQLAlchemy objects.
     """
 
-    fields: tuple[SemanticSortField, ...]
+    sort_plan: BoundSort | None
     options: SortOptions
     translator: SQLAlchemySortTranslator
 
@@ -41,9 +51,11 @@ class SQLAlchemyCompiledSort:
             A SQLAlchemy select with joins and ordering applied.
         """
         statement = require_sqlalchemy_select(target)
+        if self.sort_plan is None:
+            return statement
         joins, order_clauses = self.translator.translate(
             model,
-            self.fields,
+            self.sort_plan,
             options=self.options,
         )
         statement = apply_relationship_joins(

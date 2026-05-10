@@ -2,7 +2,12 @@
 
 from pyrsql.integrations.fastapi import (
     FastAPISQLAlchemyIntegration,
+    FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
 
-__all__ = ["FastAPISQLAlchemyIntegration", "SQLAlchemyPaginatedSelect"]
+__all__ = (
+    "FastAPISQLAlchemyIntegration",
+    "FastAPISQLAlchemyResource",
+    "SQLAlchemyPaginatedSelect",
+)

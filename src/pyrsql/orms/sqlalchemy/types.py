@@ -1,16 +1,20 @@
 """Shared SQLAlchemy ORM value objects and type aliases."""
 
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Any, TypeAlias
+from __future__ import annotations
 
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Any, TypeAlias
+
+import msgspec
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
+
+if TYPE_CHECKING:
+    from pyrsql.core.joins import JoinHint
 
 SQLAlchemyModel: TypeAlias = type[Any]
 SQLAlchemySelect: TypeAlias = Select[Any]
@@ -26,8 +30,12 @@ class SQLAlchemyAttributeKind(Enum):
     RELATIONSHIP = auto()
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyJoinPlan:
+class SQLAlchemyJoinPlan(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents one relationship join to be applied to a statement."""
 
     key: str
@@ -36,8 +44,12 @@ class SQLAlchemyJoinPlan:
     is_collection: bool
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyResolvedPath:
+class SQLAlchemyResolvedPath(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents a resolved ORM path."""
 
     root_model: SQLAlchemyModel
@@ -46,12 +58,16 @@ class SQLAlchemyResolvedPath:
     joins: tuple[SQLAlchemyJoinPlan, ...]
     leaf_attribute: SQLAlchemyExpression
     python_type: type[Any] | None
-    json_path: JSONPath = JSONPath()
+    json_path: JSONPath = msgspec.field(default_factory=JSONPath)
     is_json: bool = False
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyMappedAttribute:
+class SQLAlchemyMappedAttribute(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents a single mapped attribute discovered by introspection."""
 
     name: str

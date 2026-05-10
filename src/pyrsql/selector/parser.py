@@ -1,8 +1,21 @@
 """Shared recursive parser for pyrsql selectors."""
 
-import re
+from __future__ import annotations
 
-from pyrsql.selector import ast
+import re
+from typing import TYPE_CHECKING
+
+from pyrsql.selector.ast import (
+    FieldSelector,
+    FunctionSelector,
+    LiteralSelector,
+)
+
+if TYPE_CHECKING:
+    from pyrsql.selector.ast import (
+        SelectorLiteral,
+        SelectorNode,
+    )
 
 
 class SelectorParseError(ValueError):
@@ -21,27 +34,51 @@ class SelectorParser:
         *,
         max_length: int,
         context: str,
-    ) -> ast.Selector:
-        """Parses a selector recursively."""
-        if len(raw_selector) > max_length:
+    ) -> SelectorNode:
+        """Parses a selector recursively.
+
+        Returns:
+            The parsed selector node.
+
+        Raises:
+            TypeError: If the selector text is not a string.
+            SelectorParseError: If the selector text is invalid.
+        """
+        if not isinstance(raw_selector, str):
+            raise TypeError("Selector text must be a string.")
+        normalized_selector = raw_selector.strip()
+        if not normalized_selector:
+            raise SelectorParseError(f"{context} cannot be empty.")
+        if len(normalized_selector) > max_length:
             raise SelectorParseError(
                 f"{context} exceeds the maximum supported length of "
-                f"{max_length}."
+                f"{max_length}.",
             )
-        if raw_selector.startswith("@"):
+        if normalized_selector.startswith("@"):
             return self._parse_function_selector(
-                raw_selector,
+                normalized_selector,
                 max_length=max_length,
                 context=context,
             )
-        if raw_selector.startswith("#"):
-            return ast.LiteralSelector(
-                value=self._parse_literal_value(raw_selector[1:])
+        if normalized_selector.startswith("#"):
+            return LiteralSelector(
+                value=self._parse_literal_value(normalized_selector[1:]),
             )
-        return ast.ColumnSelector(selector=raw_selector)
+        return FieldSelector(
+            raw_path=normalized_selector,
+            segments=tuple(normalized_selector.split(".")),
+        )
 
-    def split_top_level(self, text: str, *, delimiter: str) -> tuple[str, ...]:
-        """Splits text on a delimiter while respecting nested brackets."""
+    @staticmethod
+    def split_top_level(text: str, *, delimiter: str) -> tuple[str, ...]:
+        """Splits text on a delimiter while respecting nested brackets.
+
+        Returns:
+            The top-level split fragments.
+
+        Raises:
+            SelectorParseError: If the brackets are unbalanced.
+        """
         parts: list[str] = []
         start_index = 0
         depth = 0
@@ -52,7 +89,7 @@ class SelectorParser:
                 depth -= 1
                 if depth < 0:
                     raise SelectorParseError(
-                        f"Selector fragment {text!r} has unbalanced brackets."
+                        f"Selector fragment {text!r} has unbalanced brackets.",
                     )
             elif character == delimiter and depth == 0:
                 part = text[start_index:index].strip()
@@ -61,7 +98,7 @@ class SelectorParser:
                 start_index = index + 1
         if depth != 0:
             raise SelectorParseError(
-                f"Selector fragment {text!r} has unbalanced brackets."
+                f"Selector fragment {text!r} has unbalanced brackets.",
             )
         final_part = text[start_index:].strip()
         if final_part:
@@ -74,8 +111,15 @@ class SelectorParser:
         *,
         max_length: int,
         context: str,
-    ) -> ast.FunctionSelector:
-        """Parses a function selector recursively."""
+    ) -> FunctionSelector:
+        """Parses a function selector recursively.
+
+        Returns:
+            The parsed function selector.
+
+        Raises:
+            SelectorParseError: If the selector syntax is invalid.
+        """
         argument_start = raw_selector.find("[")
         argument_end = raw_selector.rfind("]")
         if (
@@ -84,7 +128,7 @@ class SelectorParser:
             or argument_end != len(raw_selector) - 1
         ):
             raise SelectorParseError(
-                f"{context} has invalid function selector {raw_selector!r}."
+                f"{context} has invalid function selector {raw_selector!r}.",
             )
         function_name = raw_selector[1:argument_start].strip()
         if not function_name:
@@ -94,9 +138,9 @@ class SelectorParser:
         if not argument_fragments:
             raise SelectorParseError(
                 f"{context} function {function_name!r} must have at least one "
-                "argument."
+                "argument.",
             )
-        return ast.FunctionSelector(
+        return FunctionSelector(
             function_name=function_name,
             arguments=tuple(
                 self.parse(
@@ -108,8 +152,12 @@ class SelectorParser:
             ),
         )
 
-    def _parse_literal_value(self, raw_literal: str) -> ast.SelectorLiteral:
-        """Parses a static literal selector value."""
+    def _parse_literal_value(self, raw_literal: str) -> SelectorLiteral:
+        """Parses a static literal selector value.
+
+        Returns:
+            The parsed literal value.
+        """
         normalized_literal = raw_literal.replace("\t", " ")
         match normalized_literal.lower():
             case "null":

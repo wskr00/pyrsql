@@ -1,13 +1,21 @@
 """ORM-neutral custom predicate definitions."""
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
-from pyrsql.parsing.operators import ComparisonOperator
+from typing import TYPE_CHECKING, Any
+
+import msgspec
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.operators import ComparisonOperator
 
 
-@dataclass(frozen=True, slots=True)
-class CustomPredicateDefinition:
+class CustomPredicateDefinition(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Defines a custom predicate independently of any orm."""
 
     operator: ComparisonOperator

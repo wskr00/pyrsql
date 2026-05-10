@@ -2,135 +2,480 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, cast
+from unittest.mock import Mock, sentinel
+
 import pytest
-from sqlalchemy import Column, Integer, String, select
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import select
 
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig, RequestCriteria
-from pyrsql.core.page import PageRequest
-from pyrsql.core.query import Query
-from pyrsql.core.sort import Sort
 from pyrsql.integrations.fastapi import (
     FastAPISQLAlchemyIntegration,
+    FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
+
+from .conftest import OtherModel, User
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.sql import Select
+
+    from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 
 pytest.importorskip("fastapi")
 
-pytestmark = [pytest.mark.unit, pytest.mark.fastapi, pytest.mark.sqlalchemy]
+pytestmark = [pytest.mark.fastapi, pytest.mark.sqlalchemy]
 
 
-class Base(DeclarativeBase):
-    """Base model for integration helper unit tests."""
-
-
-class User(Base):
-    """Mapped test model."""
-
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-
-
-def test_integration_exposes_configured_criteria_dependency() -> None:
+def test_integration_exposes_configured_criteria_dependency(
+    fastapi_criteria_config: FastAPICriteriaConfig,
+    sqlalchemy_orm: SQLAlchemyORM,
+) -> None:
     """Returns a FastAPI criteria dependency using the stored config."""
     integration = FastAPISQLAlchemyIntegration(
-        criteria_config=FastAPICriteriaConfig(default_page_size=20)
+        orm=sqlalchemy_orm,
+        criteria_config=fastapi_criteria_config,
     )
 
     dependency = integration.criteria_dependency()
 
-    assert dependency.config.default_page_size == 20
+    assert dependency.config is fastapi_criteria_config
 
 
-def test_integration_reuses_cached_dependencies() -> None:
+@pytest.mark.parametrize(
+    ("kwargs", "pattern"),
+    [
+        pytest.param(
+            {"orm": "invalid"},
+            "orm must be a SQLAlchemyORM",
+            id="invalid-orm",
+        ),
+        pytest.param(
+            {"criteria_config": "invalid"},
+            "criteria_config must be a FastAPICriteriaConfig",
+            id="invalid-criteria-config",
+        ),
+    ],
+)
+def test_integration_rejects_invalid_public_configuration(
+    kwargs: dict[str, object],
+    pattern: str,
+) -> None:
+    """Rejects invalid ORM and criteria config objects."""
+    with pytest.raises(TypeError, match=pattern):
+        FastAPISQLAlchemyIntegration(**cast("Any", kwargs))
+
+
+def test_resource_rejects_invalid_integration_type() -> None:
+    """Rejects invalid integration objects for declarative resources."""
+    with pytest.raises(TypeError, match="integration must be"):
+        FastAPISQLAlchemyResource(
+            integration=cast("Any", object()),
+            model=User,
+            criteria_config=FastAPICriteriaConfig(),
+        )
+
+
+def test_integration_reuses_cached_dependencies(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
     """Reuses dependency objects for the same model and integration."""
-    integration = FastAPISQLAlchemyIntegration()
-
     assert (
         integration.criteria_dependency() is integration.criteria_dependency()
     )
     assert integration.select_dependency(User) is integration.select_dependency(
-        User
+        User,
     )
     assert integration.count_select_dependency(
-        User
+        User,
     ) is integration.count_select_dependency(User)
     assert integration.paginated_select_dependency(
-        User
+        User,
     ) is integration.paginated_select_dependency(User)
 
 
-def test_integration_applies_request_criteria_to_existing_select() -> None:
-    """Applies query, sort, and page criteria through SQLAlchemyORM."""
-    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
-    criteria = RequestCriteria(
-        query=Query.parse("name==demo"),
-        sort=Sort.parse("name,desc"),
-        page_request=PageRequest.of(1, 10),
+def test_integration_apply_delegates_to_request_criteria(
+    integration: FastAPISQLAlchemyIntegration,
+    base_statement: Select[Any],
+    query_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delegates apply() to RequestCriteria.apply with the configured ORM."""
+    apply_mock = Mock(return_value=sentinel.EXPECTED)
+
+    monkeypatch.setattr(RequestCriteria, "apply", staticmethod(apply_mock))
+
+    applied = integration.apply(base_statement, User, query_criteria)
+
+    assert applied is sentinel.EXPECTED
+    apply_mock.assert_called_once_with(
+        base_statement,
+        User,
+        orm=integration.orm,
     )
 
-    statement = integration.apply(select(User), User, criteria)
-    compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
 
-    assert "WHERE users.name = 'demo'" in compiled
-    assert "ORDER BY users.name DESC" in compiled
-    assert " LIMIT 10" in compiled
-    assert " OFFSET 10" in compiled
+def test_integration_select_builds_sorted_and_paged_select(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds a select through filtered and sort/page stages."""
+    filtered_statement = select(User).where(User.id > 10)
+    final_statement = select(User).order_by(User.name.desc())
 
-
-def test_integration_builds_select_from_model() -> None:
-    """Builds a select(model) and applies request criteria."""
-    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
-    criteria = RequestCriteria(query=Query.parse("name==demo"))
-
-    statement = integration.select(User, criteria)
-    compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
-
-    assert "FROM users" in compiled
-    assert "WHERE users.name = 'demo'" in compiled
-
-
-def test_integration_builds_count_select_ignoring_sort_and_page() -> None:
-    """Builds a count statement from filtering semantics only."""
-    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
-    criteria = RequestCriteria(
-        query=Query.parse("name==demo"),
-        sort=Sort.parse("name,desc"),
-        page_request=PageRequest.of(1, 10),
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_filtered_select",
+        Mock(return_value=filtered_statement),
+    )
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_apply_sort_and_page",
+        Mock(return_value=final_statement),
     )
 
-    statement = integration.count_select(User, criteria)
-    compiled = str(statement.compile(compile_kwargs={"literal_binds": True}))
+    statement = integration.select(User, full_criteria)
 
-    assert "count(" in compiled.lower()
-    assert "WHERE users.name = 'demo'" in compiled
-    assert "ORDER BY" not in compiled
-    assert " LIMIT " not in compiled
-    assert " OFFSET " not in compiled
+    assert statement is final_statement
 
 
-def test_integration_builds_paginated_select_bundle() -> None:
-    """Builds both list and count statements for pagination workflows."""
-    integration = FastAPISQLAlchemyIntegration(orm=SQLAlchemyORM())
-    criteria = RequestCriteria(
-        query=Query.parse("name==demo"),
-        sort=Sort.parse("name,desc"),
-        page_request=PageRequest.of(1, 10),
+def test_integration_count_select_uses_filtered_select_only(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds a count statement from the filtered statement only."""
+    filtered_statement = select(User).where(User.id > 10)
+    count_statement = select(User.id)
+
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_filtered_select",
+        Mock(return_value=filtered_statement),
+    )
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_count_from_filtered_select",
+        Mock(return_value=count_statement),
     )
 
-    bundle = integration.paginated_select(User, criteria)
+    statement = integration.count_select(User, full_criteria)
+
+    assert statement is count_statement
+
+
+def test_integration_paginated_select_builds_bundle_from_shared_filtered_select(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds list and count statements from one filtered select."""
+    filtered_statement = select(User).where(User.id > 10)
+    list_statement = select(User).order_by(User.name.desc())
+    count_statement = select(User.id)
+
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_filtered_select",
+        Mock(return_value=filtered_statement),
+    )
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_apply_sort_and_page",
+        Mock(return_value=list_statement),
+    )
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "_count_from_filtered_select",
+        Mock(return_value=count_statement),
+    )
+
+    bundle = integration.paginated_select(User, full_criteria)
 
     assert isinstance(bundle, SQLAlchemyPaginatedSelect)
-    statement_sql = str(
-        bundle.statement.compile(compile_kwargs={"literal_binds": True})
+    assert bundle.statement is list_statement
+    assert bundle.count_statement is count_statement
+
+
+def test_integration_builds_declarative_resource(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Builds a route-ready declarative resource object."""
+    resource = integration.resource(
+        User,
+        filterable_fields={"name"},
+        sortable_fields={"name"},
+        default_sort="name,desc",
+        max_page_size=50,
+        filter_examples={
+            "by_name": {"summary": "By name", "value": "name==demo"},
+        },
     )
-    count_sql = str(
-        bundle.count_statement.compile(compile_kwargs={"literal_binds": True})
+
+    assert isinstance(resource, FastAPISQLAlchemyResource)
+    assert resource.criteria_config.query_options.field_whitelist == {"name"}
+    assert resource.criteria_config.sort_options.field_whitelist == {"name"}
+    assert resource.criteria_config.max_page_size == 50
+    assert (
+        resource.criteria_config.filter_openapi_examples["by_name"]["value"]
+        == "name==demo"
     )
-    assert "ORDER BY users.name DESC" in statement_sql
-    assert " LIMIT 10" in statement_sql
-    assert "count(" in count_sql.lower()
-    assert "ORDER BY" not in count_sql
+    assert (
+        resource.criteria_config.sort_openapi_examples["default_sort"]["value"]
+        == "name,desc"
+    )
+
+
+def test_resource_generates_automatic_examples(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Generates filter and sort examples from declarative config."""
+    resource = integration.resource(
+        User,
+        filterable_fields={"id", "name"},
+        sortable_fields={"name"},
+        default_sort="-name",
+    )
+
+    assert (
+        resource.criteria_config.filter_openapi_examples["filter_by_id"][
+            "value"
+        ]
+        == "id==1"
+    )
+    assert (
+        resource.criteria_config.filter_openapi_examples["filter_by_name"][
+            "value"
+        ]
+        == "name==demo"
+    )
+    assert (
+        resource.criteria_config.sort_openapi_examples["sort_by_name_asc"][
+            "value"
+        ]
+        == "name,asc"
+    )
+    assert (
+        resource.criteria_config.sort_openapi_examples["default_sort"]["value"]
+        == "name,desc"
+    )
+
+
+def test_resource_applies_default_sort_when_request_sort_is_absent(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Injects the declarative default sort into request criteria."""
+    resource = integration.resource(User, default_sort="-name")
+
+    criteria = resource.criteria_dependency()(RequestCriteria())
+
+    assert criteria.sort is not None
+    assert criteria.sort.text == "name,desc"
+
+
+def test_resource_applier_wraps_integration_apply(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds a callable that delegates to integration.apply()."""
+    resource = integration.resource(User)
+    base_statement = select(User)
+    expected_statement = select(User).where(User.id > 10)
+
+    apply_mock = Mock(return_value=expected_statement)
+
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "apply",
+        apply_mock,
+    )
+
+    applied = resource.applier(full_criteria)(base_statement)
+
+    assert applied is expected_statement
+    apply_mock.assert_called_once_with(base_statement, User, full_criteria)
+
+
+def test_resource_count_select_uses_query_only_stage(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds counts from the query stage without sort/page lowering."""
+    resource = integration.resource(User)
+    filtered_statement = select(User).where(User.id > 10)
+    count_statement = select(User.id)
+
+    apply_query_mock = Mock(return_value=filtered_statement)
+
+    monkeypatch.setattr(
+        resource_module,
+        "apply_query_with_orm",
+        apply_query_mock,
+    )
+    monkeypatch.setattr(
+        resource_module,
+        "count_from_filtered_select",
+        Mock(return_value=count_statement),
+    )
+
+    statement = resource.count_select(full_criteria)
+
+    assert statement is count_statement
+    apply_query_mock.assert_called_once()
+    _, model, criteria, orm = apply_query_mock.call_args.args
+    assert model is User
+    assert criteria is full_criteria
+    assert orm is integration.orm
+
+
+def test_resource_paginated_select_uses_shared_filtered_select(
+    integration: FastAPISQLAlchemyIntegration,
+    full_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds list and count statements from one filtered base statement."""
+    resource = integration.resource(User)
+    filtered_statement = select(User).where(User.id > 10)
+    list_statement = select(User).order_by(User.name.desc())
+    count_statement = select(User.id)
+
+    monkeypatch.setattr(
+        resource_module,
+        "apply_query_with_orm",
+        Mock(return_value=filtered_statement),
+    )
+    monkeypatch.setattr(
+        resource_module,
+        "apply_sort_and_page_with_orm",
+        Mock(return_value=list_statement),
+    )
+    monkeypatch.setattr(
+        resource_module,
+        "count_from_filtered_select",
+        Mock(return_value=count_statement),
+    )
+
+    bundle = resource.paginated_select(full_criteria)
+
+    assert bundle.statement is list_statement
+    assert bundle.count_statement is count_statement
+
+
+def test_resource_select_uses_statement_factory_for_base_statement(
+    integration: FastAPISQLAlchemyIntegration,
+    query_criteria: RequestCriteria,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Uses a custom base statement when configured."""
+    statement = select(User).where(User.id > 10)
+    expected_statement = select(User).where(User.name == "demo")
+    resource = integration.resource(
+        User,
+        statement_factory=lambda: statement,
+    )
+
+    apply_mock = Mock(return_value=expected_statement)
+
+    monkeypatch.setattr(
+        FastAPISQLAlchemyIntegration,
+        "apply",
+        apply_mock,
+    )
+
+    assert resource.select(query_criteria) is expected_statement
+    apply_mock.assert_called_once_with(statement, User, query_criteria)
+
+
+@pytest.mark.parametrize(
+    ("statement_factory", "pattern"),
+    [
+        pytest.param(
+            lambda: cast("Any", "invalid"),
+            r"sqlalchemy\.sql\.Select",
+            id="non-select-result",
+        ),
+        pytest.param(
+            lambda: select(OtherModel),
+            "statement_factory must return a Select compatible",
+            id="wrong-model",
+        ),
+    ],
+)
+def test_resource_rejects_invalid_statement_factory_results(
+    integration: FastAPISQLAlchemyIntegration,
+    statement_factory: Callable[[], object],
+    pattern: str,
+) -> None:
+    """Rejects invalid base statement factories for declarative resources."""
+    resource = integration.resource(
+        User,
+        statement_factory=cast("Callable[[], Select[Any]]", statement_factory),
+    )
+
+    with pytest.raises(TypeError, match=pattern):
+        resource.select(RequestCriteria())
+
+
+def test_resource_reuses_integration_cached_base_select(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Reuses the integration cached base select on the common path."""
+    resource = integration.resource(User)
+
+    assert resource.select(RequestCriteria()) is integration.base_select(User)
+
+
+def test_resource_reuses_cached_dependencies(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Reuses dependency objects created by a declarative resource."""
+    resource = integration.resource(User, default_sort="-name")
+
+    assert resource.applier_dependency() is resource.applier_dependency()
+    assert resource.select_dependency() is resource.select_dependency()
+    assert (
+        resource.count_select_dependency() is resource.count_select_dependency()
+    )
+    assert (
+        resource.paginated_select_dependency()
+        is resource.paginated_select_dependency()
+    )
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    ["select", "count_select", "paginated_select"],
+)
+def test_integration_rejects_invalid_request_criteria(
+    integration: FastAPISQLAlchemyIntegration,
+    method_name: str,
+) -> None:
+    """Rejects non-RequestCriteria values at public entrypoints."""
+    method = getattr(integration, method_name)
+
+    with pytest.raises(TypeError, match="criteria must be a RequestCriteria"):
+        method(User, cast("Any", "invalid"))
+
+
+def test_paginated_select_rejects_invalid_statements() -> None:
+    """Rejects non-select statement payloads in the paginated bundle."""
+    with pytest.raises(TypeError):
+        SQLAlchemyPaginatedSelect(
+            statement=cast("Any", "invalid"),
+            count_statement=select(User),
+        )
+
+
+def test_resource_dependency_respects_explicit_max_page_size(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Uses the resource-specific max page size when explicitly provided."""
+    resource = integration.resource(User, max_page_size=50)
+
+    assert resource.criteria_config.max_page_size == 50

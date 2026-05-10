@@ -1,6 +1,10 @@
 """ORM-neutral JSON query primitives."""
 
-from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.options import (
+    DEFAULT_JSON_OPTIONS,
+    JSONOptions,
+    JSONSortScalarType,
+)
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import (
@@ -10,10 +14,12 @@ from pyrsql.core.json.values import (
 )
 
 __all__ = [
+    "DEFAULT_JSON_OPTIONS",
     "DEFAULT_JSON_SCALAR_NORMALIZER",
     "JSONOptions",
     "JSONPath",
     "JSONPathComparison",
     "JSONScalarNormalizer",
     "JSONScalarValue",
+    "JSONSortScalarType",
 ]

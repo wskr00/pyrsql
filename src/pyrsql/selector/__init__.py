@@ -1,30 +1,25 @@
 """Shared selector primitives for pyrsql."""
 
 from pyrsql.selector.ast import (
-    ColumnSelector,
+    FieldSelector,
     FunctionSelector,
     LiteralSelector,
-    Selector,
     SelectorLiteral,
+    SelectorNode,
 )
-from pyrsql.selector.parser import SelectorParseError, SelectorParser
-from pyrsql.selector.semantic import (
-    SemanticColumnSelector,
-    SemanticFunctionSelector,
-    SemanticLiteralSelector,
-    SemanticSelector,
+from pyrsql.selector.parser import (
+    DEFAULT_SELECTOR_PARSER,
+    SelectorParseError,
+    SelectorParser,
 )
 
 __all__ = [
-    "ColumnSelector",
+    "DEFAULT_SELECTOR_PARSER",
+    "FieldSelector",
     "FunctionSelector",
     "LiteralSelector",
-    "Selector",
     "SelectorLiteral",
+    "SelectorNode",
     "SelectorParseError",
     "SelectorParser",
-    "SemanticColumnSelector",
-    "SemanticFunctionSelector",
-    "SemanticLiteralSelector",
-    "SemanticSelector",
 ]

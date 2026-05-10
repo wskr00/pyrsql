@@ -1,21 +1,21 @@
 """Dependency factories for FastAPI request integration."""
 
-from collections.abc import Callable
-from inspect import Signature, signature
-from typing import Annotated, Any
+from inspect import signature
+from typing import TYPE_CHECKING, Annotated
+
+import msgspec
 
 try:
     from fastapi import HTTPException, Query
 except ImportError as error:  # pragma: no cover - import guard
     raise ImportError(
         "FastAPI support requires installing the 'fastapi' extra: "
-        "pip install pyrsql[fastapi]"
+        "pip install pyrsql[fastapi]",
     ) from error
 
 from pyrsql.adapters.fastapi.config import FastAPICriteriaConfig
 from pyrsql.adapters.fastapi.criteria import RequestCriteria
 from pyrsql.adapters.fastapi.errors import (
-    FastAPIAdapterErrorPayload,
     build_page_error_payload,
     build_query_error_payload,
     build_sort_error_payload,
@@ -33,6 +33,14 @@ from pyrsql.sorting.errors import (
     SortParseError,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from inspect import Signature
+
+    from pyrsql.adapters.fastapi.errors import (
+        FastAPIAdapterErrorPayload,
+    )
+
 _QUERY_ERROR_TYPES = (ParseError, SemanticError)
 _SORT_ERROR_TYPES = (
     SortParseError,
@@ -44,14 +52,20 @@ _SORT_ERROR_TYPES = (
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 
-def _raise_http_error(payload: FastAPIAdapterErrorPayload) -> None:
-    """Raises a standardized FastAPI HTTP exception for adapter failures."""
+def _raise_http_error(
+    payload: "FastAPIAdapterErrorPayload",  # noqa: UP037
+) -> None:
+    """Raises a standardized FastAPI HTTP exception for adapter failures.
+
+    Raises:
+        HTTPException: Always raised with a normalized adapter payload.
+    """
     raise HTTPException(
         status_code=422,
         detail={
             "parameter": payload.parameter,
             "type": payload.error_type,
-            "message": payload.message,
+            "errors": [msgspec.to_builtins(item) for item in payload.details],
         },
     )
 
@@ -62,7 +76,14 @@ def _build_page_request(
     page_value: int | None,
     size_value: int | None,
 ) -> PageRequest | None:
-    """Builds a page request from validated FastAPI query params."""
+    """Builds a page request from validated FastAPI query params.
+
+    Returns:
+        A normalized page request, or ``None`` when pagination is absent.
+
+    Raises:
+        ValueError: If internal validation leaves the resolved page size unset.
+    """
     resolved_page_size = size_value or config.default_page_size
 
     if page_value is None:
@@ -81,11 +102,8 @@ def _build_page_request(
                     f"'{config.size_parameter}' is required when "
                     f"'{config.page_parameter}' is provided."
                 ),
-            )
+            ),
         )
-
-    if resolved_page_size is None:
-        raise ValueError("resolved_page_size cannot be None")
 
     if config.one_based_paging:
         if resolved_page_number <= 0:
@@ -97,32 +115,46 @@ def _build_page_request(
                         f"'{config.page_parameter}' must be greater than 0 "
                         "when one_based_paging is enabled."
                     ),
-                )
+                ),
             )
         resolved_page_number -= 1
 
-    return PageRequest.of(resolved_page_number, resolved_page_size)
+    page_size = resolved_page_size
+    if page_size is None:
+        raise ValueError("page_size cannot be None after page validation.")
+    return PageRequest.of(resolved_page_number, page_size)
 
 
 def _build_criteria_callable(
     config: FastAPICriteriaConfig,
-) -> Callable[..., RequestCriteria]:
-    """Builds the concrete dependency callable for a fixed configuration."""
+) -> "Callable[..., RequestCriteria]":  # noqa: UP037
+    """Builds the concrete dependency callable for a fixed configuration.
+
+    Returns:
+        A FastAPI-compatible callable that parses request criteria.
+    """
 
     def dependency(
         filter_value: Annotated[
             str | None,
-            Query(alias=config.filter_parameter),
+            Query(
+                alias=config.filter_parameter,
+                openapi_examples=config.filter_openapi_examples or None,
+            ),
         ] = None,
         sort_value: Annotated[
             str | None,
-            Query(alias=config.sort_parameter),
+            Query(
+                alias=config.sort_parameter,
+                openapi_examples=config.sort_openapi_examples or None,
+            ),
         ] = None,
         page_value: Annotated[
             int | None,
             Query(
                 alias=config.page_parameter,
                 ge=config.minimum_page_number,
+                openapi_examples=config.page_openapi_examples or None,
             ),
         ] = None,
         size_value: Annotated[
@@ -131,6 +163,7 @@ def _build_criteria_callable(
                 alias=config.size_parameter,
                 gt=0,
                 le=config.max_page_size,
+                openapi_examples=config.size_openapi_examples or None,
             ),
         ] = None,
     ) -> RequestCriteria:
@@ -145,7 +178,7 @@ def _build_criteria_callable(
                 )
             except _QUERY_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_query_error_payload(config.filter_parameter, error)
+                    build_query_error_payload(config.filter_parameter, error),
                 )
 
         if sort_value:
@@ -156,7 +189,7 @@ def _build_criteria_callable(
                 )
             except _SORT_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_sort_error_payload(config.sort_parameter, error)
+                    build_sort_error_payload(config.sort_parameter, error),
                 )
 
         page_request = _build_page_request(
@@ -181,6 +214,8 @@ class CriteriaDependency:
     parsed RequestCriteria object.
     """
 
+    __slots__ = ("__signature__", "_dependency", "config")
+
     def __init__(
         self,
         config: FastAPICriteriaConfig | None = None,
@@ -194,7 +229,7 @@ class CriteriaDependency:
         self._dependency = _build_criteria_callable(self.config)
         self.__signature__: Signature = signature(self._dependency)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> RequestCriteria:
+    def __call__(self, *args: object, **kwargs: object) -> RequestCriteria:
         """Delegates FastAPI dependency resolution to the generated callable.
 
         Returns:
@@ -214,4 +249,11 @@ def criteria_dependency(
     Returns:
         A callable FastAPI dependency object.
     """
+    if config is None:
+        return _DEFAULT_CRITERIA_DEPENDENCY
     return CriteriaDependency(config)
+
+
+_DEFAULT_CRITERIA_DEPENDENCY = CriteriaDependency(
+    _DEFAULT_FASTAPI_CRITERIA_CONFIG,
+)

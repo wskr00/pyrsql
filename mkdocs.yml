@@ -1,0 +1,78 @@
+site_name: pyrsql
+site_description: A compiler-oriented RSQL query engine for Python APIs
+site_url: https://wskr00.github.io/pyrsql/
+repo_url: https://github.com/wskr00/pyrsql
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            heading_level: 2
+            show_root_heading: true
+            docstring_style: google
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Usage:
+      - Filter Queries: usage/query.md
+      - Sort: usage/sort.md
+      - Pagination: usage/page.md
+      - JSON / JSONB: usage/json.md
+      - Field Policies: usage/field-policies.md
+      - Custom Predicates: usage/custom-predicates.md
+      - Value Conversion: usage/value-conversion.md
+      - Join Hints: usage/join-hints.md
+      - FastAPI Adapter: usage/fastapi.md
+      - FastAPI + SQLAlchemy: usage/fastapi-sqlalchemy.md
+  - Reference:
+      - API: reference/api.md
+      - Operators: reference/operators.md
+      - Options: reference/options.md
+  - Explanation:
+      - Architecture: explanation/architecture.md
+      - Extensibility: explanation/extensibility.md
+  - Contributing: contributing.md

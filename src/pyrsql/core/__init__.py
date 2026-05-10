@@ -12,7 +12,11 @@ from pyrsql.core.conversion import (
 )
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.field_policy import FieldPolicySet
-from pyrsql.core.json.options import JSONOptions
+from pyrsql.core.json.options import (
+    DEFAULT_JSON_OPTIONS,
+    JSONOptions,
+    JSONSortScalarType,
+)
 from pyrsql.core.json.path import JSONPath
 from pyrsql.core.json.query import JSONPathComparison
 from pyrsql.core.json.values import JSONScalarNormalizer, JSONScalarValue
@@ -23,6 +27,7 @@ from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
 
 __all__ = [
+    "DEFAULT_JSON_OPTIONS",
     "CompilationResult",
     "CustomPredicateDefinition",
     "FieldPolicySet",
@@ -32,6 +37,7 @@ __all__ = [
     "JSONPathComparison",
     "JSONScalarNormalizer",
     "JSONScalarValue",
+    "JSONSortScalarType",
     "PageCompilationResult",
     "PageRequest",
     "ProcedureAccessPolicy",

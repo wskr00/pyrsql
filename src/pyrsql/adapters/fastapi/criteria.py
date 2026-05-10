@@ -1,25 +1,59 @@
 """FastAPI request criteria objects."""
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypeVar
+
+import msgspec
 
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query
 from pyrsql.core.sort import Sort
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from pyrsql.orms.base import ORM
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
-@dataclass(frozen=True, slots=True)
-class RequestCriteria:
+class RequestCriteria(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Represents request-derived pyrsql criteria for a FastAPI endpoint."""
 
     query: Query | None = None
     sort: Sort | None = None
     page_request: PageRequest | None = None
 
+    def __post_init__(self) -> None:
+        """Validates criteria payload types.
+
+        Raises:
+            TypeError: If any provided criterion has the wrong runtime type.
+        """
+        if self.query is not None and not isinstance(self.query, Query):
+            raise TypeError("query must be a Query instance or None.")
+        if self.sort is not None and not isinstance(self.sort, Sort):
+            raise TypeError("sort must be a Sort instance or None.")
+        if self.page_request is not None and not isinstance(
+            self.page_request,
+            PageRequest,
+        ):
+            raise TypeError(
+                "page_request must be a PageRequest instance or None.",
+            )
+
     @property
     def is_empty(self) -> bool:
-        """Indicates whether no query components are present."""
+        """Indicates whether no query components are present.
+
+        Returns:
+            ``True`` when query, sort, and page criteria are all absent.
+        """
         return (
             self.query is None
             and self.sort is None
@@ -28,12 +62,16 @@ class RequestCriteria:
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
-        """Applies the criteria to an ORM-specific target."""
+    ) -> _TargetT:
+        """Applies the criteria to an ORM-specific target.
+
+        Returns:
+            The transformed ORM-specific target after applying all criteria.
+        """
         current_target = target
         if self.query is not None:
             current_target = self.query.apply(

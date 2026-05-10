@@ -1,51 +1,44 @@
 """Public package interface for pyrsql."""
 
-# pylint: disable=redefined-builtin
-
-import pyrsql.api as api
-from pyrsql.core.compiler import (
+from pyrsql.api import apply, compile, parse  # noqa: A004
+from pyrsql.core import (
+    DEFAULT_JSON_OPTIONS,
     CompilationResult,
-    PageCompilationResult,
-    SortCompilationResult,
-)
-from pyrsql.core.conversion import (
+    CustomPredicateDefinition,
+    FieldPolicySet,
     FieldValueConverterSet,
+    JSONOptions,
+    JSONPath,
+    JSONPathComparison,
+    JSONScalarNormalizer,
+    JSONScalarValue,
+    JSONSortScalarType,
+    PageCompilationResult,
+    PageRequest,
+    ProcedureAccessPolicy,
+    Query,
+    QueryOptions,
+    Sort,
+    SortCompilationResult,
+    SortOptions,
     ValueConverter,
     ValueConverterRegistry,
 )
-from pyrsql.core.custom import CustomPredicateDefinition
-from pyrsql.core.field_policy import FieldPolicySet
-from pyrsql.core.json.options import JSONOptions
-from pyrsql.core.json.path import JSONPath
-from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.core.json.values import JSONScalarNormalizer, JSONScalarValue
-from pyrsql.core.options import QueryOptions, SortOptions
-from pyrsql.core.page import PageRequest
-from pyrsql.core.procedure_policy import ProcedureAccessPolicy
-from pyrsql.core.query import Query
-from pyrsql.core.sort import Sort
-from pyrsql.integrations import (
-    FastAPISQLAlchemyIntegration,
-    SQLAlchemyPaginatedSelect,
-)
 from pyrsql.orms.base import ORM
 
-parse = api.parse
-compile = api.compile
-apply = api.apply
-
-__all__ = [
+__all__ = (
+    "DEFAULT_JSON_OPTIONS",
     "ORM",
     "CompilationResult",
     "CustomPredicateDefinition",
     "FieldPolicySet",
     "FieldValueConverterSet",
-    "FastAPISQLAlchemyIntegration",
     "JSONOptions",
     "JSONPath",
     "JSONPathComparison",
     "JSONScalarNormalizer",
     "JSONScalarValue",
+    "JSONSortScalarType",
     "PageCompilationResult",
     "PageRequest",
     "ProcedureAccessPolicy",
@@ -54,10 +47,9 @@ __all__ = [
     "Sort",
     "SortCompilationResult",
     "SortOptions",
-    "SQLAlchemyPaginatedSelect",
     "ValueConverter",
     "ValueConverterRegistry",
     "apply",
     "compile",
     "parse",
-]
+)

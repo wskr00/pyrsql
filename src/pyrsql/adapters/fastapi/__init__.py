@@ -7,9 +7,9 @@ from pyrsql.adapters.fastapi.dependency import (
     criteria_dependency,
 )
 
-__all__ = [
+__all__ = (
     "CriteriaDependency",
     "FastAPICriteriaConfig",
     "RequestCriteria",
     "criteria_dependency",
-]
+)

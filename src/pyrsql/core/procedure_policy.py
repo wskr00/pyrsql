@@ -1,12 +1,22 @@
 """Shared procedure access-policy helpers."""
 
+from __future__ import annotations
+
 import re
-from dataclasses import dataclass
-from re import Pattern
+from typing import TYPE_CHECKING
+
+import msgspec
+
+if TYPE_CHECKING:
+    from re import Pattern
 
 
-@dataclass(frozen=True, slots=True)
-class ProcedureAccessPolicy:
+class ProcedureAccessPolicy(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Regex-based access policy for selector procedures.
 
     The policy stores compiled whitelist and blacklist patterns used to check
@@ -25,7 +35,7 @@ class ProcedureAccessPolicy:
         cls,
         whitelist: tuple[str, ...],
         blacklist: tuple[str, ...],
-    ) -> "ProcedureAccessPolicy":
+    ) -> ProcedureAccessPolicy:
         """Builds a policy from raw regex pattern strings.
 
         Args:
@@ -45,17 +55,35 @@ class ProcedureAccessPolicy:
         )
 
     def is_whitelisted(self, procedure_name: str) -> bool:
-        """Whether the procedure matches the whitelist."""
+        """Whether the procedure matches the whitelist.
+
+        Returns:
+            ``True`` when the procedure matches at least one whitelist pattern.
+        """
         return self._matches_any(procedure_name, self.whitelist_patterns)
 
     def is_blacklisted(self, procedure_name: str) -> bool:
-        """Whether the procedure matches the blacklist."""
+        """Whether the procedure matches the blacklist.
+
+        Returns:
+            ``True`` when the procedure matches at least one blacklist pattern.
+        """
         return self._matches_any(procedure_name, self.blacklist_patterns)
 
+    @staticmethod
     def _matches_any(
-        self,
         procedure_name: str,
         patterns: tuple[Pattern[str], ...],
     ) -> bool:
-        """Whether a value fully matches at least one pattern."""
+        """Whether a value fully matches at least one pattern.
+
+        Returns:
+            ``True`` when the value fully matches at least one pattern.
+        """
         return any(pattern.fullmatch(procedure_name) for pattern in patterns)
+
+
+DEFAULT_PROCEDURE_ACCESS_POLICY = ProcedureAccessPolicy(
+    whitelist_patterns=(),
+    blacklist_patterns=(),
+)

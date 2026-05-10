@@ -1,8 +1,14 @@
 """Parsing error types."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-from pyrsql.parsing.source import SourceSpan
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar
+
+from pyrsql.parsing.diagnostics import ParseDiagnostic
+
+if TYPE_CHECKING:
+    from pyrsql.parsing.source import SourceSpan
 
 
 @dataclass(frozen=True, slots=True)
@@ -11,15 +17,31 @@ class ParseError(ValueError):
 
     message: str
     span: SourceSpan
+    code: ClassVar[str] = "parse_error"
 
-    def __str__(self) -> str:
-        """Formats the parse error with source location data."""
-        return (
-            f"{self.message} at index {self.span.start.index} "
-            f"(line {self.span.start.line}, column {self.span.start.column})"
+    @property
+    def diagnostic(self) -> ParseDiagnostic:
+        """Returns the structured diagnostic for this error.
+
+        Returns:
+            The structured parse diagnostic.
+        """
+        return ParseDiagnostic(
+            code=self.code,
+            message=self.message,
+            span=self.span,
         )
 
+    def __str__(self) -> str:
+        """Formats the parse error with source location data.
 
-@dataclass(frozen=True, slots=True)
+        Returns:
+            The formatted parse error string.
+        """
+        return str(self.diagnostic)
+
+
 class LexError(ParseError):
     """Raised when lexing fails."""
+
+    code: ClassVar[str] = "lex_error"

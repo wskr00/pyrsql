@@ -10,7 +10,7 @@ class SQLAlchemyModelInspectionError(SQLAlchemyORMError):
 
 
 class SQLAlchemyPathResolutionError(SQLAlchemyORMError):
-    """Raised when a semantic field path cannot be resolved."""
+    """Raised when a bound field path cannot be resolved."""
 
 
 class SQLAlchemyJSONSupportError(SQLAlchemyORMError):

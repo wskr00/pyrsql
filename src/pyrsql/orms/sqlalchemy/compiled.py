@@ -1,28 +1,38 @@
 """Compiled query support for SQLAlchemy."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-from pyrsql.core.options import QueryOptions
+from typing import TYPE_CHECKING
+
+import msgspec
+
 from pyrsql.orms.sqlalchemy.statement import (
     apply_relationship_joins,
     require_sqlalchemy_select,
 )
-from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
-from pyrsql.semantic.ast import SemanticExpression
+
+if TYPE_CHECKING:
+    from pyrsql.core.options import QueryOptions
+    from pyrsql.ir.query import BoundComparison, BoundLogical
+    from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyCompiledQuery:
+class SQLAlchemyCompiledQuery(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Compiled SQLAlchemy query plan.
 
     Attributes:
-        expression: Semantic expression to translate into SQLAlchemy clauses.
+        expression: Bound query IR to lower into SQLAlchemy clauses.
         options: Query configuration used during translation.
         translator: Translator responsible for producing SQLAlchemy objects.
     """
 
-    expression: SemanticExpression
+    expression: BoundComparison | BoundLogical
     options: QueryOptions
     translator: SQLAlchemyExpressionTranslator
 

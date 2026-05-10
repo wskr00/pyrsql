@@ -1,13 +1,18 @@
 """ORM-neutral high-level API for pyrsql."""
 
-# pylint: disable=redefined-builtin
+from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, TypeVar
 
-from pyrsql.core.compiler import CompilationResult
-from pyrsql.core.options import QueryOptions
 from pyrsql.core.query import Query
-from pyrsql.orms.base import ORM
+
+if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompilationResult
+    from pyrsql.core.options import QueryOptions
+    from pyrsql.orms.base import ORM
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
 def parse(query_text: str, *, options: QueryOptions | None = None) -> Query:
@@ -23,7 +28,7 @@ def parse(query_text: str, *, options: QueryOptions | None = None) -> Query:
     return Query.parse(query_text, options=options)
 
 
-def compile(
+def compile(  # noqa: A001
     query_text: str,
     *,
     orm: ORM,
@@ -43,13 +48,13 @@ def compile(
 
 
 def apply(
-    target: Any,
-    model: type[Any],
+    target: _TargetT,
+    model: type[_ModelT],
     query_text: str,
     *,
     orm: ORM,
     options: QueryOptions | None = None,
-) -> Any:
+) -> _TargetT:
     """Applies raw RSQL text to an ORM-specific target.
 
     Args:
@@ -69,8 +74,4 @@ def apply(
     ).apply(target=target, model=model)
 
 
-__all__ = [
-    "apply",
-    "compile",
-    "parse",
-]
+__all__ = ("apply", "compile", "parse")

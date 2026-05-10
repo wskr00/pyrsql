@@ -1,14 +1,21 @@
 """Parser for pyrsql sort expressions."""
 
-from typing import Final
+from __future__ import annotations
 
-from pyrsql.selector.ast import Selector
+from typing import TYPE_CHECKING, Final
+
 from pyrsql.selector.parser import DEFAULT_SELECTOR_PARSER, SelectorParseError
 from pyrsql.sorting.ast import SortDirection, SortField
 from pyrsql.sorting.errors import SortParseError
-from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
+from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS
+
+if TYPE_CHECKING:
+    from pyrsql.selector.ast import SelectorNode
+    from pyrsql.sorting.limits import SortLimits
 
 _EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
+_MAX_SORT_PARTS: Final = 3
+_MIN_SORT_PARTS_FOR_IGNORE_CASE: Final = 2
 
 
 class SortParser:
@@ -20,12 +27,20 @@ class SortParser:
         *,
         limits: SortLimits | None = None,
     ) -> None:
+        """Initializes the parser with raw sort text and limits."""
         self._source = (source or "").strip()
         self._limits = limits or DEFAULT_SORT_LIMITS
         self._selector_parser = DEFAULT_SELECTOR_PARSER
 
     def parse(self) -> tuple[SortField, ...]:
-        """Parses the configured sort expression."""
+        """Parses the configured sort expression.
+
+        Returns:
+            The parsed sort fields.
+
+        Raises:
+            SortParseError: If the expression is invalid.
+        """
         if not self._source:
             return _EMPTY_FIELDS
 
@@ -34,7 +49,7 @@ class SortParser:
         if len(self._source) > max_sort_length:
             raise SortParseError(
                 "Sort expression exceeds the maximum supported length of "
-                f"{max_sort_length}."
+                f"{max_sort_length}.",
             )
 
         fields: list[SortField] = []
@@ -46,7 +61,7 @@ class SortParser:
             if len(fields) > max_fields:
                 raise SortParseError(
                     "Sort expression exceeds the maximum supported field "
-                    f"count of {max_fields}."
+                    f"count of {max_fields}.",
                 )
         return tuple(fields)
 
@@ -56,23 +71,34 @@ class SortParser:
         *,
         clause_index: int,
     ) -> SortField | None:
-        """Parses a single semicolon-delimited sort clause."""
+        """Parses a single semicolon-delimited sort clause.
+
+        Returns:
+            The parsed sort field, or ``None`` for blank clauses.
+
+        Raises:
+            SortParseError: If the clause syntax is invalid.
+        """
+        clause = clause.strip()
+        if not clause:
+            return None
         try:
             parts = list(
                 self._selector_parser.split_top_level(
                     clause,
                     delimiter=",",
-                )
+                ),
             )
         except SelectorParseError as error:
             raise SortParseError(str(error)) from error
         if not parts:
             return None
-        if len(parts) > 3:
+        parts = [part.strip() for part in parts]
+        if len(parts) > _MAX_SORT_PARTS:
             raise SortParseError(
                 "Sort clause "
                 f"#{clause_index} {clause!r} has too many comma-separated "
-                "parts."
+                "parts.",
             )
 
         selector = self._parse_selector(parts[0], clause_index=clause_index)
@@ -86,7 +112,7 @@ class SortParser:
             )
 
         ignore_case = False
-        if len(parts) > 2:
+        if len(parts) > _MIN_SORT_PARTS_FOR_IGNORE_CASE:
             ignore_case = self._parse_ignore_case(
                 parts[2],
                 clause,
@@ -99,38 +125,52 @@ class SortParser:
             ignore_case=ignore_case,
         )
 
+    @staticmethod
     def _parse_direction(
-        self,
         raw_direction: str,
         clause: str,
         *,
         clause_index: int,
     ) -> SortDirection:
-        """Parses the direction token for a sort clause."""
-        direction = SortDirection.from_raw(raw_direction)
+        """Parses the direction token for a sort clause.
+
+        Returns:
+            The parsed sort direction.
+
+        Raises:
+            SortParseError: If the direction is unsupported.
+        """
+        direction = SortDirection.from_raw(raw_direction.strip())
         if direction is not None:
             return direction
         raise SortParseError(
             f"Sort clause #{clause_index} {clause!r} has unsupported direction "
-            f"{raw_direction!r}."
+            f"{raw_direction!r}.",
         )
 
+    @staticmethod
     def _parse_ignore_case(
-        self,
         raw_flag: str,
         clause: str,
         *,
         clause_index: int,
     ) -> bool:
-        """Parses the ignore-case modifier for a sort clause."""
-        match raw_flag.lower():
+        """Parses the ignore-case modifier for a sort clause.
+
+        Returns:
+            ``True`` when the modifier enables case-insensitive sort.
+
+        Raises:
+            SortParseError: If the modifier is unsupported.
+        """
+        match raw_flag.strip().lower():
             case "ic":
                 return True
             case _:
                 raise SortParseError(
                     f"Sort clause #{clause_index} {clause!r} has unsupported "
                     "modifier "
-                    f"{raw_flag!r}."
+                    f"{raw_flag!r}.",
                 )
 
     def _parse_selector(
@@ -138,8 +178,15 @@ class SortParser:
         raw_selector: str,
         *,
         clause_index: int,
-    ) -> Selector:
-        """Parses a sort selector recursively."""
+    ) -> SelectorNode:
+        """Parses a sort selector recursively.
+
+        Returns:
+            The parsed selector node.
+
+        Raises:
+            SortParseError: If the selector syntax is invalid.
+        """
         try:
             return self._selector_parser.parse(
                 raw_selector,

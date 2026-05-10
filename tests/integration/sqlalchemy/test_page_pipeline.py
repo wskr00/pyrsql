@@ -1,65 +1,37 @@
 """Integration tests for the SQLAlchemy page pipeline."""
 
-# pylint: disable=wrong-import-position,unsubscriptable-object
-
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]
 
-sqlalchemy = pytest.importorskip("sqlalchemy")
+pytest.importorskip("sqlalchemy")
 
-from sqlalchemy import ForeignKey, String, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy import select
 
 from pyrsql.core.page import PageRequest
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+
+from .conftest import User, render_sql
 
 
-class Base(DeclarativeBase):
-    """Base declarative class for page tests."""
-
-
-class Company(Base):
-    """Test company model."""
-
-    __tablename__ = "company"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-
-
-class User(Base):
-    """Test user model."""
-
-    __tablename__ = "user_account"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
-    company_id: Mapped[int] = mapped_column(ForeignKey("company.id"))
-    company: Mapped[Company] = relationship()
-
-
-def test_orm_applies_limit_and_offset() -> None:
+def test_orm_applies_limit_and_offset(orm) -> None:
     """Applies LIMIT/OFFSET for a page request."""
-    orm = SQLAlchemyORM()
     statement = PageRequest.of(2, 25).apply(
         select(User),
         User,
         orm=orm,
     )
-    sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
+    sql = render_sql(statement, literal_binds=True)
     assert "LIMIT 25" in sql
     assert "OFFSET 50" in sql
 
 
-def test_orm_applies_zero_offset_for_first_page() -> None:
+def test_orm_applies_zero_offset_for_first_page(orm) -> None:
     """Applies zero offset for the first page."""
-    orm = SQLAlchemyORM()
     statement = PageRequest.of(0, 10).apply(
         select(User),
         User,
         orm=orm,
     )
-    sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
+    sql = render_sql(statement, literal_binds=True)
     assert "LIMIT 10" in sql
     assert "OFFSET 0" in sql

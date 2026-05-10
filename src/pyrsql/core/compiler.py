@@ -1,13 +1,33 @@
 """ORM-neutral compilation result objects."""
 
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
-from pyrsql.orms.base import CompiledPageRequest, CompiledQuery, CompiledSort
+from typing import TYPE_CHECKING, TypeVar
+
+import msgspec
+
+if TYPE_CHECKING:
+    from pyrsql.orms.base import (
+        CompiledPageRequest,
+        CompiledQuery,
+        CompiledSort,
+    )
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 
-@dataclass(frozen=True, slots=True)
-class CompilationResult:
+def _validate_orm_name(orm_name: str, *, context: str) -> None:
+    """Validates one compilation result ORM name.
+
+    Raises:
+        ValueError: If the ORM name is empty.
+    """
+    if not orm_name:
+        raise ValueError(f"{context} orm_name cannot be empty.")
+
+
+class CompilationResult(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Wraps an ORM-specific compiled query object.
 
     Attributes:
@@ -18,7 +38,11 @@ class CompilationResult:
     orm_name: str
     compiled_query: CompiledQuery
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def __post_init__(self) -> None:
+        """Validates compilation result invariants."""
+        _validate_orm_name(self.orm_name, context="Compilation result")
+
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled query to an ORM-specific target.
 
         Args:
@@ -31,8 +55,12 @@ class CompilationResult:
         return self.compiled_query.apply(target=target, model=model)
 
 
-@dataclass(frozen=True, slots=True)
-class SortCompilationResult:
+class SortCompilationResult(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Wraps an ORM-specific compiled sort object.
 
     Attributes:
@@ -43,7 +71,14 @@ class SortCompilationResult:
     orm_name: str
     compiled_sort: CompiledSort
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def __post_init__(self) -> None:
+        """Validates sort compilation result invariants."""
+        _validate_orm_name(
+            self.orm_name,
+            context="Sort compilation result",
+        )
+
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled sort to an ORM-specific target.
 
         Args:
@@ -56,8 +91,12 @@ class SortCompilationResult:
         return self.compiled_sort.apply(target=target, model=model)
 
 
-@dataclass(frozen=True, slots=True)
-class PageCompilationResult:
+class PageCompilationResult(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Wraps an ORM-specific compiled page request object.
 
     Attributes:
@@ -68,7 +107,14 @@ class PageCompilationResult:
     orm_name: str
     compiled_page: CompiledPageRequest
 
-    def apply(self, target: Any, model: type[Any]) -> Any:
+    def __post_init__(self) -> None:
+        """Validates page compilation result invariants."""
+        _validate_orm_name(
+            self.orm_name,
+            context="Page compilation result",
+        )
+
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
         """Applies the compiled page request to an ORM-specific target.
 
         Args:

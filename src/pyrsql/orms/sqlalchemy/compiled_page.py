@@ -1,21 +1,31 @@
 """Compiled pagination support for SQLAlchemy."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-from pyrsql.core.page import PageRequest
+from typing import TYPE_CHECKING
+
+import msgspec
+
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+
+if TYPE_CHECKING:
+    from pyrsql.ir.page import BoundPage
+    from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyCompiledPageRequest:
+class SQLAlchemyCompiledPageRequest(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Compiled SQLAlchemy pagination plan.
 
     Attributes:
-        page_request: Pagination request to apply to a select statement.
+        page: Bound pagination request to apply to a select statement.
     """
 
-    page_request: PageRequest
+    page: BoundPage
 
     def apply(
         self,
@@ -35,6 +45,4 @@ class SQLAlchemyCompiledPageRequest:
         """
         del model
         statement = require_sqlalchemy_select(target)
-        return statement.limit(self.page_request.limit).offset(
-            self.page_request.offset
-        )
+        return statement.limit(self.page.limit).offset(self.page.offset)

@@ -1,15 +1,22 @@
 """High-level sort object."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, TypeVar
 
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
-from pyrsql.orms.base import ORM
-from pyrsql.sorting.analyzer import SortAnalyzer
-from pyrsql.sorting.ast import SortField
+from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.parser import SortParser
-from pyrsql.sorting.semantic import SemanticSortField
+
+if TYPE_CHECKING:
+    from pyrsql.ir.sort import BoundSort
+    from pyrsql.orms.base import ORM
+    from pyrsql.sorting.ast import SortField
+
+_TargetT = TypeVar("_TargetT")
+_ModelT = TypeVar("_ModelT")
 
 _DEFAULT_SORT_OPTIONS = SortOptions()
 
@@ -17,7 +24,11 @@ _DEFAULT_SORT_OPTIONS = SortOptions()
 def _resolve_sort_options(
     options: SortOptions | None,
 ) -> SortOptions:
-    """Returns the provided options or the shared immutable default."""
+    """Returns the provided options or the shared immutable default.
+
+    Returns:
+        The provided options, or the shared default when omitted.
+    """
     return options or _DEFAULT_SORT_OPTIONS
 
 
@@ -26,20 +37,30 @@ def _parse_sort_fields(
     *,
     options: SortOptions,
 ) -> tuple[SortField, ...]:
-    """Parses raw sort text into sort fields."""
+    """Parses raw sort text into sort fields.
+
+    Returns:
+        The parsed sort fields.
+    """
     return SortParser(
         sort_text,
         limits=options.sort_limits,
     ).parse()
 
 
-def _analyze_sort_fields(
+def _bind_sort_fields(
     fields: tuple[SortField, ...],
     *,
     options: SortOptions,
-) -> tuple[SemanticSortField, ...]:
-    """Analyzes sort fields into semantic sort fields."""
-    return SortAnalyzer(options).analyze(fields)
+) -> BoundSort | None:
+    """Binds parsed sort fields into logical sort IR.
+
+    Returns:
+        The bound logical sort IR, or ``None`` when no fields were parsed.
+    """
+    if not fields:
+        return None
+    return SortBinder(options).bind(fields)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,13 +71,13 @@ class Sort:
         text: Raw sort text used to build the request.
         options: Normalized sort configuration used during parsing.
         fields: Parsed sort fields, if parsing succeeded.
-        semantic_fields: Semantic sort fields, if analysis succeeded.
+        bound_sort: Bound logical sort IR when fields are present.
     """
 
     text: str | None
     options: SortOptions
     fields: tuple[SortField, ...] = ()
-    semantic_fields: tuple[SemanticSortField, ...] = ()
+    bound_sort: BoundSort | None = None
 
     @classmethod
     def parse(
@@ -64,7 +85,7 @@ class Sort:
         sort_text: str | None,
         *,
         options: SortOptions | None = None,
-    ) -> "Sort":
+    ) -> Sort:
         """Parses raw sort text into a sort object.
 
         Args:
@@ -76,12 +97,12 @@ class Sort:
         """
         resolved_options = _resolve_sort_options(options)
         fields = cls.parse_fields(sort_text, options=resolved_options)
-        semantic_fields = cls.analyze_fields(fields, options=resolved_options)
+        bound_sort = cls.bind_fields(fields, options=resolved_options)
         return cls(
             text=sort_text,
             options=resolved_options,
             fields=fields,
-            semantic_fields=semantic_fields,
+            bound_sort=bound_sort,
         )
 
     @staticmethod
@@ -102,21 +123,21 @@ class Sort:
         return _parse_sort_fields(sort_text, options=options)
 
     @staticmethod
-    def analyze_fields(
+    def bind_fields(
         fields: tuple[SortField, ...],
         *,
         options: SortOptions,
-    ) -> tuple[SemanticSortField, ...]:
-        """Analyzes sort fields into semantic sort fields.
+    ) -> BoundSort | None:
+        """Binds parsed sort fields into logical sort IR.
 
         Args:
-            fields: Parsed sort fields to analyze.
-            options: Sort configuration used by semantic analysis.
+            fields: Parsed sort fields to bind.
+            options: Sort configuration used by semantic binding.
 
         Returns:
-            The semantic sort fields.
+            The bound logical sort IR, or None when no fields were parsed.
         """
-        return _analyze_sort_fields(fields, options=options)
+        return _bind_sort_fields(fields, options=options)
 
     def compile(self, *, orm: ORM) -> SortCompilationResult:
         """Compiles the sort using the provided ORM.
@@ -135,11 +156,11 @@ class Sort:
 
     def apply(
         self,
-        target: Any,
-        model: type[Any],
+        target: _TargetT,
+        model: type[_ModelT],
         *,
         orm: ORM,
-    ) -> Any:
+    ) -> _TargetT:
         """Compiles and applies the sort using the provided ORM.
 
         Args:

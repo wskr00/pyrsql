@@ -1,8 +1,12 @@
 """Shared field mapping and access-policy helpers."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +33,7 @@ class FieldPolicySet:
                 self.model_field_mapping,
                 self.model_field_whitelist,
                 self.model_field_blacklist,
-            )
+            ),
         )
 
     field_mapping: Mapping[str, str]
@@ -90,8 +94,18 @@ class FieldPolicySet:
         whitelist = self.model_field_whitelist.get(model)
         if whitelist is not None and field_name not in whitelist:
             raise ValueError(
-                f"Field {model.__name__}.{field_name} is not allowed."
+                f"Field {model.__name__}.{field_name} is not allowed.",
             )
         blacklist = self.model_field_blacklist.get(model)
         if blacklist is not None and field_name in blacklist:
             raise ValueError(f"Field {model.__name__}.{field_name} is blocked.")
+
+
+DEFAULT_FIELD_POLICY_SET = FieldPolicySet(
+    field_mapping={},
+    field_whitelist=frozenset(),
+    field_blacklist=frozenset(),
+    model_field_mapping={},
+    model_field_whitelist={},
+    model_field_blacklist={},
+)

@@ -1,16 +1,23 @@
 """Custom predicate extension points for the SQLAlchemy orm."""
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+from __future__ import annotations
 
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+import msgspec
 from sqlalchemy.sql.elements import ColumnElement
 
-from pyrsql.core.options import QueryOptions
+if TYPE_CHECKING:
+    from pyrsql.core.options import QueryOptions
 
 
-@dataclass(frozen=True, slots=True)
-class SQLAlchemyCustomPredicateInput:
+class SQLAlchemyCustomPredicateInput(
+    msgspec.Struct,
+    frozen=True,
+    gc=False,
+    kw_only=True,
+):
     """Structured input for ORM-specific custom predicate builders."""
 
     expression: ColumnElement[Any]

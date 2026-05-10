@@ -1,11 +1,12 @@
 """SQLAlchemy ORM inspection helpers."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import inspect
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.orm import Mapper
-from sqlalchemy.orm.properties import ColumnProperty
 from sqlalchemy.sql.sqltypes import JSON
 
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyModelInspectionError
@@ -14,18 +15,32 @@ from pyrsql.orms.sqlalchemy.types import (
     SQLAlchemyMappedAttribute,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm.properties import ColumnProperty
+
 
 class SQLAlchemyModelInspector:
     """Provides stable access to public SQLAlchemy ORM inspection APIs."""
 
+    __slots__ = ("_attribute_cache", "_mapper_cache")
+
     def __init__(self) -> None:
+        """Initializes empty caches for mapped models and attributes."""
         self._mapper_cache: dict[type[Any], Mapper[Any]] = {}
         self._attribute_cache: dict[
-            tuple[type[Any], str], SQLAlchemyMappedAttribute
+            tuple[type[Any], str],
+            SQLAlchemyMappedAttribute,
         ] = {}
 
     def inspect_model(self, model: type[Any]) -> Mapper[Any]:
-        """Returns the ORM mapper for a mapped class."""
+        """Returns the ORM mapper for a mapped class.
+
+        Returns:
+            The SQLAlchemy mapper for the model.
+
+        Raises:
+            SQLAlchemyModelInspectionError: If the model is not mapped.
+        """
         cached_mapper = self._mapper_cache.get(model)
         if cached_mapper is not None:
             return cached_mapper
@@ -33,11 +48,11 @@ class SQLAlchemyModelInspector:
             mapper = inspect(model)
         except NoInspectionAvailable as error:
             raise SQLAlchemyModelInspectionError(
-                f"Type {model!r} is not a SQLAlchemy mapped class."
+                f"Type {model!r} is not a SQLAlchemy mapped class.",
             ) from error
         if not isinstance(mapper, Mapper):
             raise SQLAlchemyModelInspectionError(
-                f"Type {model!r} did not resolve to a SQLAlchemy ORM mapper."
+                f"Type {model!r} did not resolve to a SQLAlchemy ORM mapper.",
             )
         self._mapper_cache[model] = mapper
         return mapper
@@ -47,7 +62,14 @@ class SQLAlchemyModelInspector:
         model: type[Any],
         attribute_name: str,
     ) -> SQLAlchemyMappedAttribute:
-        """Returns metadata for a mapped attribute by name."""
+        """Returns metadata for a mapped attribute by name.
+
+        Returns:
+            Metadata for the mapped attribute.
+
+        Raises:
+            SQLAlchemyModelInspectionError: If the attribute is not mapped.
+        """
         cache_key = (model, attribute_name)
         cached_attribute = self._attribute_cache.get(cache_key)
         if cached_attribute is not None:
@@ -56,40 +78,61 @@ class SQLAlchemyModelInspector:
         mapper = self.inspect_model(model)
         if attribute_name in mapper.relationships:
             relationship = mapper.relationships[attribute_name]
-            mapped_attribute = SQLAlchemyMappedAttribute(
-                name=attribute_name,
-                kind=SQLAlchemyAttributeKind.RELATIONSHIP,
-                owner_model=model,
-                attribute=getattr(model, attribute_name),
-                mapper=relationship.mapper,
-                python_type=relationship.mapper.class_,
-                is_collection=bool(relationship.uselist),
+            return self._cache_mapped_attribute(
+                cache_key,
+                SQLAlchemyMappedAttribute(
+                    name=attribute_name,
+                    kind=SQLAlchemyAttributeKind.RELATIONSHIP,
+                    owner_model=model,
+                    attribute=getattr(model, attribute_name),
+                    mapper=relationship.mapper,
+                    python_type=relationship.mapper.class_,
+                    is_collection=bool(relationship.uselist),
+                ),
             )
-            self._attribute_cache[cache_key] = mapped_attribute
-            return mapped_attribute
         if attribute_name in mapper.column_attrs:
             column_property = mapper.column_attrs[attribute_name]
-            mapped_attribute = SQLAlchemyMappedAttribute(
-                name=attribute_name,
-                kind=SQLAlchemyAttributeKind.COLUMN,
-                owner_model=model,
-                attribute=getattr(model, attribute_name),
-                mapper=None,
-                python_type=self._resolve_column_python_type(column_property),
-                is_json=self._is_json_column(column_property),
+            return self._cache_mapped_attribute(
+                cache_key,
+                SQLAlchemyMappedAttribute(
+                    name=attribute_name,
+                    kind=SQLAlchemyAttributeKind.COLUMN,
+                    owner_model=model,
+                    attribute=getattr(model, attribute_name),
+                    mapper=None,
+                    python_type=self._resolve_column_python_type(
+                        column_property,
+                    ),
+                    is_json=self._is_json_column(column_property),
+                ),
             )
-            self._attribute_cache[cache_key] = mapped_attribute
-            return mapped_attribute
         raise SQLAlchemyModelInspectionError(
             f"Attribute {attribute_name!r} is not mapped on model "
-            f"{model.__name__!r}."
+            f"{model.__name__!r}.",
         )
+
+    def _cache_mapped_attribute(
+        self,
+        cache_key: tuple[type[Any], str],
+        mapped_attribute: SQLAlchemyMappedAttribute,
+    ) -> SQLAlchemyMappedAttribute:
+        """Stores one resolved attribute in the local cache.
+
+        Returns:
+            The cached mapped attribute.
+        """
+        self._attribute_cache[cache_key] = mapped_attribute
+        return mapped_attribute
 
     @staticmethod
     def _resolve_column_python_type(
         column_property: ColumnProperty[Any],
     ) -> type[Any] | None:
-        """Returns the Python type for a column property when available."""
+        """Returns the Python type for a column property when available.
+
+        Returns:
+            The column Python type, or ``None`` when unavailable.
+        """
         if not column_property.columns:
             return None
         try:
@@ -101,7 +144,11 @@ class SQLAlchemyModelInspector:
     def _is_json_column(
         column_property: ColumnProperty[Any],
     ) -> bool:
-        """Returns whether the column property stores JSON-like data."""
+        """Returns whether the column property stores JSON-like data.
+
+        Returns:
+            ``True`` when the column property stores JSON-like data.
+        """
         if not column_property.columns:
             return False
         return isinstance(column_property.columns[0].type, JSON)
