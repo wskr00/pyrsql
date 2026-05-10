@@ -640,7 +640,6 @@ class SQLAlchemyJSONPathExpressionBuilder:
 
 class _JSONPathFilterCall(
     msgspec.Struct,
-    frozen=True,
     gc=False,
     kw_only=True,
 ):
@@ -653,8 +652,4 @@ class _JSONPathFilterCall(
 
     def __post_init__(self) -> None:
         """Normalizes vars payload into an immutable mapping."""
-        object.__setattr__(
-            self,
-            "vars_payload",
-            MappingProxyType(dict(self.vars_payload)),
-        )
+        self.vars_payload = MappingProxyType(dict(self.vars_payload))
