@@ -62,6 +62,12 @@ class CustomIdentifier:
             dt.datetime(2026, 5, 2, 10, 15, 30),  # noqa: DTZ001
             id="datetime",
         ),
+        pytest.param(
+            "2026-05-02T10:15:30Z",
+            dt.datetime,
+            dt.datetime(2026, 5, 2, 10, 15, 30, tzinfo=dt.timezone.utc),
+            id="datetime-utc",
+        ),
     ],
 )
 def test_default_registry_converts_registered_scalar_types(
@@ -147,6 +153,9 @@ def test_default_registry_converts_json_container_types(
         pytest.param('["a","b"]', dict, id="list-to-dict"),
         pytest.param('{"a":1}', list, id="dict-to-list"),
         pytest.param("invalid", bool, id="invalid-bool"),
+        pytest.param("2026-13-02", dt.date, id="invalid-date"),
+        pytest.param("25:15:30", dt.time, id="invalid-time"),
+        pytest.param("2026-99-02T10:15:30", dt.datetime, id="invalid-datetime"),
     ],
 )
 def test_default_registry_raises_typed_errors_for_invalid_conversion(

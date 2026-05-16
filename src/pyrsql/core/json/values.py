@@ -15,6 +15,8 @@ _FLOAT_PATTERN = re.compile(
 JSONValue: TypeAlias = (
     bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"] | None
 )
+_JSON_ENCODER = msgspec.json.Encoder()
+_JSON_DECODER = msgspec.json.Decoder()
 
 
 class JSONScalarValue(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -69,7 +71,7 @@ class JSONScalarNormalizer:
         """
         return JSONScalarValue(
             value=value,
-            json_literal=msgspec.json.encode(value).decode("utf-8"),
+            json_literal=_JSON_ENCODER.encode(value).decode("utf-8"),
             python_type=type(value) if value is not None else None,
         )
 
@@ -82,7 +84,7 @@ class JSONScalarNormalizer:
             a plain string.
         """
         try:
-            parsed = cast("JSONValue", msgspec.json.decode(raw_value))
+            parsed = cast("JSONValue", _JSON_DECODER.decode(raw_value))
         except msgspec.DecodeError:
             return None
         if isinstance(parsed, str):

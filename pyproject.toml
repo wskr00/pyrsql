@@ -24,7 +24,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "ciso8601>=2.3,<3.0",
     "msgspec>=0.18,<1.0",
     "typing-extensions>=4.10.0; python_version < '3.11'",
 ]

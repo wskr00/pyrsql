@@ -11,13 +11,13 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-import ciso8601
 import msgspec
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 ValueConverter = Callable[[str], object]
+_JSON_DECODER = msgspec.json.Decoder()
 
 
 class ValueConversionError(ValueError):
@@ -55,11 +55,13 @@ def _convert_datetime(raw_value: str) -> dt.datetime:
             ISO date.
     """
     try:
-        parsed_datetime = ciso8601.parse_datetime(raw_value)
-    except ValueError:
-        parsed_datetime = None
-    if parsed_datetime is not None:
-        return parsed_datetime
+        return msgspec.convert(
+            raw_value,
+            type=dt.datetime,
+            strict=False,
+        )
+    except msgspec.ValidationError:
+        pass
     try:
         parsed_date = dt.date.fromisoformat(raw_value)
     except ValueError as date_error:
@@ -215,7 +217,7 @@ class ValueConverterRegistry:
                 container shape, or cannot be rewrapped into the target type.
         """
         try:
-            decoded = msgspec.json.decode(raw_value)
+            decoded = _JSON_DECODER.decode(raw_value)
         except msgspec.DecodeError as error:
             raise ValueConversionError(
                 f"Failed to convert {raw_value!r} to {target_type.__name__}.",

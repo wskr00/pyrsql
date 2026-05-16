@@ -65,7 +65,7 @@ def _raise_http_error(
         detail={
             "parameter": payload.parameter,
             "type": payload.error_type,
-            "errors": [msgspec.to_builtins(item) for item in payload.details],
+            "errors": msgspec.to_builtins(payload.details),
         },
     )
 
