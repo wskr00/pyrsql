@@ -29,6 +29,10 @@ one interface (`ORM`), not rewriting the parser or query language.
 - **Custom operators** - define your own RSQL operators with per-ORM lowering
 - **Field policies** - whitelist, blacklist, aliases at global and per-model level
 - **Type-safe** - strict mypy, Google-style docstrings, immutable value objects
+- **Performance-oriented internals** - immutable `msgspec` models across the
+  core pipeline and configuration objects
+- **Security-oriented request handling** - parser/sort limits, structural
+  allowlists/blocklists, sanitized FastAPI error payloads
 
 ## Quickstart
 
@@ -161,6 +165,13 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 - `select_dependency`, `count_select_dependency`, `paginated_select_dependency`
 - Declarative `resource()` with auto-generated OpenAPI examples
 - `applier_dependency` for custom base statements
+- Compatible with both sync `Session` and async `AsyncSession` execution
+- Backend integration errors are translated into structured `HTTP 422` payloads
+
+### Concurrency and Validation
+
+- Shared integration and ORM metadata caches are protected for free-threaded execution
+- Dedicated async, free-threaded, and security test suites validate these flows
 
 ## Documentation
 
@@ -169,12 +180,13 @@ Full documentation at **[wskr00.github.io/pyrsql](https://wskr00.github.io/pyrsq
 | Section | Description |
 |---------|-------------|
 | [Quickstart](https://wskr00.github.io/pyrsql/quickstart/) | One-minute primer |
-| [Usage](https://wskr00.github.io/pyrsql/usage/query/) | Filter, sort, page, JSON, FastAPI, custom predicates |
+| [Usage](https://wskr00.github.io/pyrsql/usage/query/) | Filter, sort, page, JSON, FastAPI, async flows, custom predicates |
 | [API Reference](https://wskr00.github.io/pyrsql/reference/api/) | Auto-generated from docstrings |
 | [Operators](https://wskr00.github.io/pyrsql/reference/operators/) | Complete operator table |
 | [Options](https://wskr00.github.io/pyrsql/reference/options/) | QueryOptions, SortOptions, JSONOptions |
 | [Architecture](https://wskr00.github.io/pyrsql/explanation/architecture/) | Pipeline, modules, design |
 | [Extensibility](https://wskr00.github.io/pyrsql/explanation/extensibility/) | Adding backends and adapters |
+| [Testing](https://wskr00.github.io/pyrsql/testing/) | Test layers, async, security, free-threaded validation |
 | [Contributing](https://wskr00.github.io/pyrsql/contributing/) | Setup, workflow, standards |
 
 ## Development Principles

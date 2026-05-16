@@ -230,6 +230,7 @@ The project follows:
 - explicit invariants
 - backend-independent core semantics
 - performance-oriented data modeling
+- explicit concurrency boundaries
 
 ### Practical interpretation
 
@@ -247,6 +248,11 @@ The project uses `msgspec` aggressively where it helps:
 - IR nodes
 - parser/source structures
 - adapter and integration payloads
+- core query/sort/options/value-policy models
+
+The current direction is to prefer immutable `msgspec.Struct` models for
+hot-path internal data wherever that improves compactness, validation, and
+normalization consistency.
 
 Other performance principles:
 
@@ -254,6 +260,39 @@ Other performance principles:
 - avoid repeating semantic work in the ORM backend
 - keep hot-path allocations small
 - prefer explicit invariants over defensive branching spread everywhere
+
+## Concurrency and runtime model
+
+`pyrsql` is intentionally mostly pure compilation logic:
+
+- parse input
+- bind semantics
+- lower to ORM statements
+
+It does not own database sessions or perform network/database I/O itself.
+
+That has two consequences:
+
+- async compatibility is achieved by executing the generated statements with
+  `AsyncSession`, not by duplicating the whole core as “async code”
+- free-threaded support depends mainly on protecting shared caches and keeping
+  configuration/value models immutable
+
+Shared caches in FastAPI integrations and SQLAlchemy metadata helpers are
+guarded explicitly for free-threaded execution.
+
+## Security boundary
+
+`pyrsql` can provide:
+
+- structural validation of selectors and functions
+- parser/sort complexity limits
+- safe value binding through backend lowering
+- sanitized FastAPI error payloads
+
+It does not replace application-level authorization. Exposing a field safely at
+the SQL layer is not the same thing as authorizing clients to filter or sort by
+that field. That policy remains with the application.
 
 For JSON specifically:
 

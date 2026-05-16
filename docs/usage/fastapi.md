@@ -18,6 +18,10 @@ def list_items(criteria: Annotated[RequestCriteria, Depends(dependency)]):
 The adapter extracts `filter`, `sort`, `page`, and `size` from query
 parameters and builds a `RequestCriteria`.
 
+The dependency itself does not need to be `async`. It is compatible with both
+sync and async FastAPI routes because it only parses request data and builds
+criteria objects.
+
 ## Configuration
 
 ```python
@@ -84,3 +88,7 @@ with a structured payload:
 
 Error types: `query_parse_error`, `query_semantic_error`, `sort_parse_error`,
 `sort_semantic_error`, page validation errors.
+
+When used together with the SQLAlchemy integration layer, backend ORM failures
+such as unmapped fields are also translated into structured `HTTP 422`
+responses instead of bubbling up as raw `500` errors.
