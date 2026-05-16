@@ -19,7 +19,9 @@ from .helpers import (
     apply_query_with_orm,
     apply_sort_and_page_with_orm,
     count_from_filtered_select,
+    query_backend_http_errors,
     require_request_criteria,
+    sort_backend_http_errors,
 )
 from .payloads import SQLAlchemyPaginatedSelect
 
@@ -266,7 +268,21 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                return self.select(criteria)
+                validated_criteria = require_request_criteria(criteria)
+                with query_backend_http_errors(self.criteria_config):
+                    filtered_statement = apply_query_with_orm(
+                        self._base_statement(),
+                        self.model,
+                        validated_criteria,
+                        self.integration.orm,
+                    )
+                with sort_backend_http_errors(self.criteria_config):
+                    return apply_sort_and_page_with_orm(
+                        filtered_statement,
+                        self.model,
+                        validated_criteria,
+                        self.integration.orm,
+                    )
 
             self._select_dependency = dependency
             return dependency
@@ -306,7 +322,15 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                return self.count_select(criteria)
+                validated_criteria = require_request_criteria(criteria)
+                with query_backend_http_errors(self.criteria_config):
+                    filtered_statement = apply_query_with_orm(
+                        self._base_statement(),
+                        self.model,
+                        validated_criteria,
+                        self.integration.orm,
+                    )
+                return count_from_filtered_select(filtered_statement)
 
             self._count_select_dependency = dependency
             return dependency
@@ -327,7 +351,26 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemyPaginatedSelect:
-                return self.paginated_select(criteria)
+                validated_criteria = require_request_criteria(criteria)
+                with query_backend_http_errors(self.criteria_config):
+                    filtered_statement = apply_query_with_orm(
+                        self._base_statement(),
+                        self.model,
+                        validated_criteria,
+                        self.integration.orm,
+                    )
+                with sort_backend_http_errors(self.criteria_config):
+                    return SQLAlchemyPaginatedSelect(
+                        statement=apply_sort_and_page_with_orm(
+                            filtered_statement,
+                            self.model,
+                            validated_criteria,
+                            self.integration.orm,
+                        ),
+                        count_statement=count_from_filtered_select(
+                            filtered_statement,
+                        ),
+                    )
 
             self._paginated_select_dependency = dependency
             return dependency

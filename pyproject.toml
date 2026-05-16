@@ -183,6 +183,7 @@ markers = [
     "unit: isolated tests",
     "integration: interaction between components",
     "functional: user-visible behavior",
+    "security: adversarial safety and injection-resistance tests",
     "performance: benchmark tests",
     "sqlalchemy: SQLAlchemy tests",
     "fastapi: FastAPI tests",
