@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -45,15 +44,16 @@ class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             )
 
 
-@dataclass(frozen=True, slots=True)
-class OperatorRegistry:
+class OperatorRegistry(msgspec.Struct, frozen=True, gc=False):
     """Immutable registry of supported comparison operators."""
 
-    operators: tuple[ComparisonOperator, ...] = field(default_factory=tuple)
-    operators_by_spelling: Mapping[str, ComparisonOperator] = field(init=False)
-    operator_spellings: tuple[str, ...] = field(init=False)
-    operator_spellings_by_prefix: Mapping[str, tuple[str, ...]] = field(
-        init=False,
+    operators: tuple[ComparisonOperator, ...] = ()
+    operators_by_spelling: Mapping[str, ComparisonOperator] = MappingProxyType(
+        {}
+    )
+    operator_spellings: tuple[str, ...] = ()
+    operator_spellings_by_prefix: Mapping[str, tuple[str, ...]] = (
+        MappingProxyType({})
     )
 
     def __post_init__(self) -> None:
@@ -75,12 +75,12 @@ class OperatorRegistry:
         spellings_by_prefix: dict[str, list[str]] = {}
         for spelling in operators_by_spelling:
             spellings_by_prefix.setdefault(spelling[0], []).append(spelling)
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "operators_by_spelling",
             MappingProxyType(operators_by_spelling),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "operator_spellings",
             tuple(
@@ -91,7 +91,7 @@ class OperatorRegistry:
                 ),
             ),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "operator_spellings_by_prefix",
             MappingProxyType(

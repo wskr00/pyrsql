@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
+
+import msgspec
 
 from pyrsql.core.conversion import (
     DEFAULT_FIELD_VALUE_CONVERTER_SET,
@@ -108,47 +109,47 @@ def _normalize_shared_policy_options(
     options: _SharedPolicyOptionsProtocol,
 ) -> None:
     """Normalizes option fields shared by query and sort configuration."""
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "field_mapping",
         _normalize_mapping(options.field_mapping),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "model_field_mapping",
         _normalize_nested_mapping(options.model_field_mapping),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "join_hints",
         _normalize_mapping(options.join_hints),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "field_whitelist",
         _normalize_frozenset(options.field_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "field_blacklist",
         _normalize_frozenset(options.field_blacklist),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "model_field_whitelist",
         _normalize_nested_sets(options.model_field_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "model_field_blacklist",
         _normalize_nested_sets(options.model_field_blacklist),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "procedure_whitelist",
         _normalize_tuple(options.procedure_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
+    msgspec.structs.force_setattr(
         options,
         "procedure_blacklist",
         _normalize_tuple(options.procedure_blacklist),
@@ -206,8 +207,7 @@ def _build_procedure_policy(
     return ProcedureAccessPolicy.from_patterns(whitelist, blacklist)
 
 
-@dataclass(frozen=True, slots=True)
-class QueryOptions:
+class QueryOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral configuration for parsing and compiling queries.
 
     The options bundle parser limits, operator registries, field policies,
@@ -218,84 +218,70 @@ class QueryOptions:
     strict_equality: bool = False
     distinct: bool = False
     like_escape_character: str | None = None
-    field_mapping: Mapping[str, str] = field(default_factory=dict)
-    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
-        default_factory=dict,
-    )
-    join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
-    field_whitelist: frozenset[str] = field(default_factory=frozenset)
-    field_blacklist: frozenset[str] = field(default_factory=frozenset)
-    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
-    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
+    field_mapping: Mapping[str, str] = {}
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = {}
+    join_hints: Mapping[str, JoinHint] = {}
+    field_whitelist: frozenset[str] = frozenset()
+    field_blacklist: frozenset[str] = frozenset()
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = {}
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = {}
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     parse_limits: ParseLimits = DEFAULT_PARSE_LIMITS
     operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY
-    custom_predicates: Mapping[str, CustomPredicateDefinition] = field(
-        default_factory=dict,
-    )
+    custom_predicates: Mapping[str, CustomPredicateDefinition] = {}
     value_converter_registry: ValueConverterRegistry = (
         DEFAULT_VALUE_CONVERTER_REGISTRY
     )
-    field_value_converters: Mapping[str, ValueConverter] = field(
-        default_factory=dict,
-    )
+    field_value_converters: Mapping[str, ValueConverter] = {}
     model_field_value_converters: Mapping[
         type[Any],
         Mapping[str, ValueConverter],
-    ] = field(default_factory=dict)
-    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
-    _field_policy: FieldPolicySet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    ] = {}
+    json_options: JSONOptions = msgspec.field(
+        default_factory=lambda: DEFAULT_JSON_OPTIONS,
     )
-    _field_converter_set: FieldValueConverterSet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    _field_policy: FieldPolicySet = DEFAULT_FIELD_POLICY_SET
+    _field_converter_set: FieldValueConverterSet = (
+        DEFAULT_FIELD_VALUE_CONVERTER_SET
     )
-    _procedure_policy: ProcedureAccessPolicy = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
+    _procedure_policy: ProcedureAccessPolicy = DEFAULT_PROCEDURE_ACCESS_POLICY
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         _normalize_shared_policy_options(self)
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "field_value_converters",
             _normalize_mapping(self.field_value_converters),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "model_field_value_converters",
             _normalize_nested_mapping(self.model_field_value_converters),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "custom_predicates",
             _normalize_mapping(self.custom_predicates),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "operator_registry",
             self._build_operator_registry(),
         )
         _validate_like_escape_character(self.like_escape_character)
-        object.__setattr__(self, "_field_policy", self._build_field_policy())
-        object.__setattr__(
+        msgspec.structs.force_setattr(
+            self,
+            "_field_policy",
+            self._build_field_policy(),
+        )
+        msgspec.structs.force_setattr(
             self,
             "_field_converter_set",
             self._build_field_converter_set(),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "_procedure_policy",
             self._build_procedure_policy(),
@@ -419,43 +405,34 @@ class QueryOptions:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class SortOptions:
+class SortOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral sort options."""
 
-    field_mapping: Mapping[str, str] = field(default_factory=dict)
-    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
-        default_factory=dict,
-    )
-    join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
-    field_whitelist: frozenset[str] = field(default_factory=frozenset)
-    field_blacklist: frozenset[str] = field(default_factory=frozenset)
-    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
-    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
+    field_mapping: Mapping[str, str] = {}
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = {}
+    join_hints: Mapping[str, JoinHint] = {}
+    field_whitelist: frozenset[str] = frozenset()
+    field_blacklist: frozenset[str] = frozenset()
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = {}
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = {}
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = DEFAULT_SORT_LIMITS
-    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
-    _field_policy: FieldPolicySet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    json_options: JSONOptions = msgspec.field(
+        default_factory=lambda: DEFAULT_JSON_OPTIONS,
     )
-    _procedure_policy: ProcedureAccessPolicy = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
+    _field_policy: FieldPolicySet = DEFAULT_FIELD_POLICY_SET
+    _procedure_policy: ProcedureAccessPolicy = DEFAULT_PROCEDURE_ACCESS_POLICY
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         _normalize_shared_policy_options(self)
-        object.__setattr__(self, "_field_policy", self._build_field_policy())
-        object.__setattr__(
+        msgspec.structs.force_setattr(
+            self,
+            "_field_policy",
+            self._build_field_policy(),
+        )
+        msgspec.structs.force_setattr(
             self,
             "_procedure_policy",
             self._build_procedure_policy(),

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
+
+import msgspec
 
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
@@ -63,8 +64,7 @@ def _bind_sort_fields(
     return SortBinder(options).bind(fields)
 
 
-@dataclass(frozen=True, slots=True)
-class Sort:
+class Sort(msgspec.Struct, frozen=True, gc=False):
     """Represents an ORM-neutral parsed sort request.
 
     Attributes:

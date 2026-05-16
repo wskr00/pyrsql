@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 import datetime as dt
 from decimal import Decimal
 from enum import Enum
@@ -17,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 ValueConverter = Callable[[str], object]
-_JSON_DECODER = msgspec.json.Decoder()
 
 
 class ValueConversionError(ValueError):
@@ -71,15 +69,38 @@ def _convert_datetime(raw_value: str) -> dt.datetime:
     return dt.datetime.combine(parsed_date, dt.time.min)
 
 
-@dataclass(frozen=True, slots=True)
-class ValueConverterRegistry:
+def _build_msgspec_converter(
+    target_type: type[Any],
+) -> ValueConverter:
+    """Builds one msgspec-backed scalar converter.
+
+    Returns:
+        A converter that validates and coerces a string via ``msgspec``.
+    """
+
+    def converter(raw_value: str) -> object:
+        try:
+            return msgspec.convert(
+                raw_value,
+                type=target_type,
+                strict=False,
+            )
+        except msgspec.ValidationError as error:
+            raise ValueConversionError(
+                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            ) from error
+
+    return converter
+
+
+class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
     """Immutable registry of orm-neutral string-to-type converters."""
 
     converters: Mapping[type[Any], ValueConverter]
 
     def __post_init__(self) -> None:
         """Normalizes the converter mapping into an immutable view."""
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "converters",
             MappingProxyType(dict(self.converters)),
@@ -216,13 +237,6 @@ class ValueConverterRegistry:
             ValueConversionError: If the JSON payload is invalid, has the wrong
                 container shape, or cannot be rewrapped into the target type.
         """
-        try:
-            decoded = _JSON_DECODER.decode(raw_value)
-        except msgspec.DecodeError as error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
-            ) from error
-
         expected_type: type[Any]
         if issubclass(target_type, dict):
             expected_type = dict
@@ -233,10 +247,13 @@ class ValueConverterRegistry:
                 f"Unsupported target type {target_type!r}.",
             )
 
-        if not isinstance(decoded, expected_type):
+        try:
+            decoded = msgspec.json.decode(raw_value, type=expected_type)
+        except msgspec.ValidationError as error:
             raise ValueConversionError(
                 f"Failed to convert {raw_value!r} to {target_type.__name__}.",
-            )
+            ) from error
+
         if target_type is expected_type:
             return decoded
         try:
@@ -247,8 +264,7 @@ class ValueConverterRegistry:
             ) from error
 
 
-@dataclass(frozen=True, slots=True)
-class FieldValueConverterSet:
+class FieldValueConverterSet(msgspec.Struct, frozen=True, gc=False):
     """Immutable field-scoped value converter configuration."""
 
     field_converters: Mapping[str, ValueConverter]
@@ -256,12 +272,12 @@ class FieldValueConverterSet:
 
     def __post_init__(self) -> None:
         """Normalizes nested converter mappings into immutable views."""
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "field_converters",
             MappingProxyType(dict(self.field_converters)),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "model_field_converters",
             MappingProxyType(
@@ -298,12 +314,12 @@ class FieldValueConverterSet:
 DEFAULT_VALUE_CONVERTER_REGISTRY = ValueConverterRegistry(
     {
         bool: _convert_bool,
-        int: int,
-        float: float,
-        Decimal: Decimal,
-        UUID: UUID,
-        dt.date: dt.date.fromisoformat,
-        dt.time: dt.time.fromisoformat,
+        int: _build_msgspec_converter(int),
+        float: _build_msgspec_converter(float),
+        Decimal: _build_msgspec_converter(Decimal),
+        UUID: _build_msgspec_converter(UUID),
+        dt.date: _build_msgspec_converter(dt.date),
+        dt.time: _build_msgspec_converter(dt.time),
         dt.datetime: _convert_datetime,
     },
 )

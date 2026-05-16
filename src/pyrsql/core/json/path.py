@@ -1,6 +1,5 @@
 """Immutable JSON path primitives."""
 
-import json
 import re
 
 import msgspec
@@ -8,7 +7,7 @@ import msgspec
 _SIMPLE_JSONPATH_SEGMENT_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-class JSONPath(msgspec.Struct, gc=False, kw_only=True):
+class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents an ORM-neutral JSON path.
 
     Attributes:
@@ -32,8 +31,16 @@ class JSONPath(msgspec.Struct, gc=False, kw_only=True):
                 raise ValueError(
                     "JSON path segments must not contain outer whitespace.",
                 )
-        self._dot_path = ".".join(self.segments)
-        self._postgresql_jsonpath = self._build_postgresql_jsonpath()
+        msgspec.structs.force_setattr(
+            self,
+            "_dot_path",
+            ".".join(self.segments),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "_postgresql_jsonpath",
+            self._build_postgresql_jsonpath(),
+        )
 
     @property
     def is_root(self) -> bool:
@@ -82,4 +89,4 @@ class JSONPath(msgspec.Struct, gc=False, kw_only=True):
         """
         if _SIMPLE_JSONPATH_SEGMENT_PATTERN.fullmatch(segment) is not None:
             return f".{segment}"
-        return "." + json.dumps(segment)
+        return "." + msgspec.json.encode(segment).decode()

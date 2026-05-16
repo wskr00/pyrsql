@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from threading import RLock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -14,6 +13,7 @@ from pyrsql.adapters.fastapi import (
     CriteriaDependency,
     FastAPICriteriaConfig,
 )
+from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.sort import Sort as PyrsqlSort
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
@@ -107,6 +107,54 @@ class FastAPISQLAlchemyIntegration:
             A configured FastAPI criteria dependency.
         """
         return self._criteria_dependency
+
+    @staticmethod
+    def _with_query_field_whitelist(
+        options: QueryOptions,
+        field_whitelist: frozenset[str],
+    ) -> QueryOptions:
+        """Returns query options overriding only the field whitelist."""
+        return QueryOptions(
+            strict_equality=options.strict_equality,
+            distinct=options.distinct,
+            like_escape_character=options.like_escape_character,
+            field_mapping=options.field_mapping,
+            model_field_mapping=options.model_field_mapping,
+            join_hints=options.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=options.field_blacklist,
+            model_field_whitelist=options.model_field_whitelist,
+            model_field_blacklist=options.model_field_blacklist,
+            procedure_whitelist=options.procedure_whitelist,
+            procedure_blacklist=options.procedure_blacklist,
+            parse_limits=options.parse_limits,
+            operator_registry=options.operator_registry,
+            custom_predicates=options.custom_predicates,
+            value_converter_registry=options.value_converter_registry,
+            field_value_converters=options.field_value_converters,
+            model_field_value_converters=(options.model_field_value_converters),
+            json_options=options.json_options,
+        )
+
+    @staticmethod
+    def _with_sort_field_whitelist(
+        options: SortOptions,
+        field_whitelist: frozenset[str],
+    ) -> SortOptions:
+        """Returns sort options overriding only the field whitelist."""
+        return SortOptions(
+            field_mapping=options.field_mapping,
+            model_field_mapping=options.model_field_mapping,
+            join_hints=options.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=options.field_blacklist,
+            model_field_whitelist=options.model_field_whitelist,
+            model_field_blacklist=options.model_field_blacklist,
+            procedure_whitelist=options.procedure_whitelist,
+            procedure_blacklist=options.procedure_blacklist,
+            sort_limits=options.sort_limits,
+            json_options=options.json_options,
+        )
 
     def _apply_query(
         self,
@@ -353,14 +401,14 @@ class FastAPISQLAlchemyIntegration:
         query_options = self.criteria_config.query_options
         sort_options = self.criteria_config.sort_options
         if filterable_fields is not None:
-            query_options = replace(
+            query_options = self._with_query_field_whitelist(
                 query_options,
-                field_whitelist=frozenset(filterable_fields),
+                frozenset(filterable_fields),
             )
         if sortable_fields is not None:
-            sort_options = replace(
+            sort_options = self._with_sort_field_whitelist(
                 sort_options,
-                field_whitelist=frozenset(sortable_fields),
+                frozenset(sortable_fields),
             )
 
         filter_openapi_examples = merge_openapi_examples(

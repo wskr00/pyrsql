@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
+
+import msgspec
 
 from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
@@ -62,8 +63,7 @@ def _bind_query_expression(
     return SemanticBinder(options).bind(expression)
 
 
-@dataclass(frozen=True, slots=True)
-class Query:
+class Query(msgspec.Struct, frozen=True, gc=False):
     """Represents a parsed ORM-neutral query request.
 
     The query preserves the raw text, the parsed expression tree, and the

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+
+import msgspec
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-@dataclass(frozen=True, slots=True)
-class FieldPolicySet:
+class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
     """ORM-neutral field mapping and access-policy configuration.
 
     Attributes:
@@ -21,6 +21,13 @@ class FieldPolicySet:
         model_field_whitelist: Model-specific allowed field names.
         model_field_blacklist: Model-specific blocked field names.
     """
+
+    field_mapping: Mapping[str, str]
+    field_whitelist: frozenset[str]
+    field_blacklist: frozenset[str]
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]]
+    model_field_whitelist: Mapping[type[Any], frozenset[str]]
+    model_field_blacklist: Mapping[type[Any], frozenset[str]]
 
     @property
     def is_empty(self) -> bool:
@@ -35,13 +42,6 @@ class FieldPolicySet:
                 self.model_field_blacklist,
             ),
         )
-
-    field_mapping: Mapping[str, str]
-    field_whitelist: frozenset[str]
-    field_blacklist: frozenset[str]
-    model_field_mapping: Mapping[type[Any], Mapping[str, str]]
-    model_field_whitelist: Mapping[type[Any], frozenset[str]]
-    model_field_blacklist: Mapping[type[Any], frozenset[str]]
 
     def map_model_field(
         self,

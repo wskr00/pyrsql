@@ -31,6 +31,14 @@ class CustomIdentifier:
     value: str
 
 
+class StringList(list[str]):  # noqa: FURB189
+    """List subclass used to verify container rewrapping."""
+
+
+class StringMap(dict[str, str]):  # noqa: FURB189
+    """Dict subclass used to verify container rewrapping."""
+
+
 @pytest.mark.parametrize(
     ("raw_value", "target_type", "expected"),
     [
@@ -145,6 +153,34 @@ def test_default_registry_converts_json_container_types(
         DEFAULT_VALUE_CONVERTER_REGISTRY.convert(raw_value, target_type)
         == expected
     )
+
+
+@pytest.mark.parametrize(
+    ("raw_value", "target_type", "expected_type"),
+    [
+        pytest.param(
+            '["a","b","c"]',
+            StringList,
+            StringList,
+            id="list-subclass",
+        ),
+        pytest.param(
+            '{"kind":"demo","count":"2"}',
+            StringMap,
+            StringMap,
+            id="dict-subclass",
+        ),
+    ],
+)
+def test_default_registry_rewraps_json_container_subclasses(
+    raw_value: str,
+    target_type: type[object],
+    expected_type: type[object],
+) -> None:
+    """Rewraps decoded builtin JSON containers into requested subclasses."""
+    converted = DEFAULT_VALUE_CONVERTER_REGISTRY.convert(raw_value, target_type)
+
+    assert isinstance(converted, expected_type)
 
 
 @pytest.mark.parametrize(

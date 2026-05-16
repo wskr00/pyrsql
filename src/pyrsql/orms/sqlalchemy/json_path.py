@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
@@ -555,7 +554,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         if "*" not in normalized:
             normalized = f"*{normalized}*"
         pattern = re.escape(normalized).replace(r"\*", ".*")
-        literal = json.dumps(pattern)
+        literal = msgspec.json.encode(pattern).decode()
         if ignore_case:
             return f'(@ like_regex {literal} flag "i")'
         return f"(@ like_regex {literal})"
@@ -640,6 +639,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
 
 class _JSONPathFilterCall(
     msgspec.Struct,
+    frozen=True,
     gc=False,
     kw_only=True,
 ):
@@ -652,4 +652,8 @@ class _JSONPathFilterCall(
 
     def __post_init__(self) -> None:
         """Normalizes vars payload into an immutable mapping."""
-        self.vars_payload = MappingProxyType(dict(self.vars_payload))
+        msgspec.structs.force_setattr(
+            self,
+            "vars_payload",
+            MappingProxyType(dict(self.vars_payload)),
+        )

@@ -19,6 +19,7 @@ _EMPTY_OPENAPI_EXAMPLES: Mapping[str, Any] = MappingProxyType({})
 
 class FastAPICriteriaConfig(
     msgspec.Struct,
+    frozen=True,
     gc=False,
     kw_only=True,
 ):
@@ -98,17 +99,25 @@ class FastAPICriteriaConfig(
             raise TypeError("page_openapi_examples must be a mapping instance.")
         if not isinstance(self.size_openapi_examples, Mapping):
             raise TypeError("size_openapi_examples must be a mapping instance.")
-        self.filter_openapi_examples = MappingProxyType(
-            dict(self.filter_openapi_examples),
+        msgspec.structs.force_setattr(
+            self,
+            "filter_openapi_examples",
+            MappingProxyType(dict(self.filter_openapi_examples)),
         )
-        self.sort_openapi_examples = MappingProxyType(
-            dict(self.sort_openapi_examples),
+        msgspec.structs.force_setattr(
+            self,
+            "sort_openapi_examples",
+            MappingProxyType(dict(self.sort_openapi_examples)),
         )
-        self.page_openapi_examples = MappingProxyType(
-            dict(self.page_openapi_examples),
+        msgspec.structs.force_setattr(
+            self,
+            "page_openapi_examples",
+            MappingProxyType(dict(self.page_openapi_examples)),
         )
-        self.size_openapi_examples = MappingProxyType(
-            dict(self.size_openapi_examples),
+        msgspec.structs.force_setattr(
+            self,
+            "size_openapi_examples",
+            MappingProxyType(dict(self.size_openapi_examples)),
         )
 
     @property
