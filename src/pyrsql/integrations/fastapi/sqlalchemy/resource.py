@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from threading import RLock
 from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from fastapi import Depends
@@ -67,6 +68,7 @@ class FastAPISQLAlchemyResource:
 
     __slots__ = (
         "_applier_dependency",
+        "_cache_lock",
         "_count_select_dependency",
         "_criteria_dependency",
         "_default_sort",
@@ -115,6 +117,7 @@ class FastAPISQLAlchemyResource:
         self.criteria_config = criteria_config
         self._default_sort = default_sort
         self._statement_factory = statement_factory
+        self._cache_lock = RLock()
         self._applier_dependency: (
             Callable[..., Callable[[SQLAlchemySelect], SQLAlchemySelect]] | None
         ) = None
@@ -255,17 +258,18 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a filtered select statement.
         """
-        if self._select_dependency is not None:
-            return self._select_dependency
-        criteria_dependency = self.criteria_dependency()
+        with self._cache_lock:
+            if self._select_dependency is not None:
+                return self._select_dependency
+            criteria_dependency = self.criteria_dependency()
 
-        def dependency(
-            criteria: RequestCriteria = Depends(criteria_dependency),
-        ) -> SQLAlchemySelect:
-            return self.select(criteria)
+            def dependency(
+                criteria: RequestCriteria = Depends(criteria_dependency),
+            ) -> SQLAlchemySelect:
+                return self.select(criteria)
 
-        self._select_dependency = dependency
-        return dependency
+            self._select_dependency = dependency
+            return dependency
 
     def applier_dependency(
         self,
@@ -275,17 +279,18 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a select applier callable.
         """
-        if self._applier_dependency is not None:
-            return self._applier_dependency
-        criteria_dependency = self.criteria_dependency()
+        with self._cache_lock:
+            if self._applier_dependency is not None:
+                return self._applier_dependency
+            criteria_dependency = self.criteria_dependency()
 
-        def dependency(
-            criteria: RequestCriteria = Depends(criteria_dependency),
-        ) -> Callable[[SQLAlchemySelect], SQLAlchemySelect]:
-            return self.applier(criteria)
+            def dependency(
+                criteria: RequestCriteria = Depends(criteria_dependency),
+            ) -> Callable[[SQLAlchemySelect], SQLAlchemySelect]:
+                return self.applier(criteria)
 
-        self._applier_dependency = dependency
-        return dependency
+            self._applier_dependency = dependency
+            return dependency
 
     def count_select_dependency(self) -> Callable[..., SQLAlchemySelect]:
         """Returns a FastAPI dependency yielding a count select.
@@ -293,17 +298,18 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a count select statement.
         """
-        if self._count_select_dependency is not None:
-            return self._count_select_dependency
-        criteria_dependency = self.criteria_dependency()
+        with self._cache_lock:
+            if self._count_select_dependency is not None:
+                return self._count_select_dependency
+            criteria_dependency = self.criteria_dependency()
 
-        def dependency(
-            criteria: RequestCriteria = Depends(criteria_dependency),
-        ) -> SQLAlchemySelect:
-            return self.count_select(criteria)
+            def dependency(
+                criteria: RequestCriteria = Depends(criteria_dependency),
+            ) -> SQLAlchemySelect:
+                return self.count_select(criteria)
 
-        self._count_select_dependency = dependency
-        return dependency
+            self._count_select_dependency = dependency
+            return dependency
 
     def paginated_select_dependency(
         self,
@@ -313,14 +319,15 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields paginated SQLAlchemy statements.
         """
-        if self._paginated_select_dependency is not None:
-            return self._paginated_select_dependency
-        criteria_dependency = self.criteria_dependency()
+        with self._cache_lock:
+            if self._paginated_select_dependency is not None:
+                return self._paginated_select_dependency
+            criteria_dependency = self.criteria_dependency()
 
-        def dependency(
-            criteria: RequestCriteria = Depends(criteria_dependency),
-        ) -> SQLAlchemyPaginatedSelect:
-            return self.paginated_select(criteria)
+            def dependency(
+                criteria: RequestCriteria = Depends(criteria_dependency),
+            ) -> SQLAlchemyPaginatedSelect:
+                return self.paginated_select(criteria)
 
-        self._paginated_select_dependency = dependency
-        return dependency
+            self._paginated_select_dependency = dependency
+            return dependency

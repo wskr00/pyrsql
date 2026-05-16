@@ -150,3 +150,23 @@ Registered markers (in `pyproject.toml`):
 - `performance` - hotspot benchmarks
 - `sqlalchemy` - SQLAlchemy-dependent tests
 - `fastapi` - FastAPI-dependent tests
+
+## Free-Threaded Validation
+
+For free-threaded Python support, correctness depends primarily on avoiding
+unsynchronized access to shared mutable state. In `pyrsql`, this means:
+
+- immutable configuration/value objects should remain shareable across threads
+- caches shared by integrations and ORM helpers should use explicit locking
+- tests should exercise concurrent access to those caches directly
+
+Recommended validation flow:
+
+```bash
+uv run pytest tests/unit/integrations/fastapi_sqlalchemy/test_integration.py \
+  tests/unit/orms/sqlalchemy/test_resolver.py
+```
+
+When a free-threaded CPython build is available locally, run the same tests
+with the GIL disabled as part of regression checks, for example with
+`PYTHON_GIL=0` or `-X gil=0` depending on how Python was installed.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+import time
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock, sentinel
 
@@ -14,6 +16,7 @@ from pyrsql.integrations.fastapi import (
     FastAPISQLAlchemyResource,
     SQLAlchemyPaginatedSelect,
 )
+import pyrsql.integrations.fastapi.sqlalchemy.integration as integration_module
 import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
 
 from .conftest import OtherModel, User
@@ -28,6 +31,16 @@ if TYPE_CHECKING:
 pytest.importorskip("fastapi")
 
 pytestmark = [pytest.mark.fastapi, pytest.mark.sqlalchemy]
+
+
+def _collect_concurrent_results(
+    factory: Callable[[], object],
+    *,
+    workers: int = 8,
+) -> list[object]:
+    """Runs one factory concurrently and collects all returned values."""
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        return list(executor.map(lambda _: factory(), range(workers)))
 
 
 def test_integration_exposes_configured_criteria_dependency(
@@ -95,6 +108,56 @@ def test_integration_reuses_cached_dependencies(
     assert integration.paginated_select_dependency(
         User,
     ) is integration.paginated_select_dependency(User)
+
+
+def test_default_integrations_do_not_share_the_same_orm_instance() -> None:
+    """Allocates a distinct ORM instance per default integration."""
+    left = FastAPISQLAlchemyIntegration()
+    right = FastAPISQLAlchemyIntegration()
+
+    assert left.orm is not right.orm
+
+
+def test_integration_base_select_cache_is_safe_under_concurrency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Builds one cached base select per model under concurrent access."""
+    integration = FastAPISQLAlchemyIntegration()
+    original_select = integration_module.select
+    call_count = 0
+
+    def slow_select(*args: object, **kwargs: object) -> Select[Any]:
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.02)
+        return cast("Select[Any]", original_select(*args, **kwargs))
+
+    monkeypatch.setattr(
+        "pyrsql.integrations.fastapi.sqlalchemy.integration.select",
+        slow_select,
+    )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        statements = list(
+            executor.map(
+                lambda _: integration.base_select(User),
+                range(8),
+            )
+        )
+
+    assert call_count == 1
+    assert all(statement is statements[0] for statement in statements)
+
+
+def test_integration_dependency_cache_is_safe_under_concurrency() -> None:
+    """Builds one dependency callable per model under concurrent access."""
+    integration = FastAPISQLAlchemyIntegration()
+
+    dependencies = _collect_concurrent_results(
+        lambda: integration.select_dependency(User),
+    )
+
+    assert all(dependency is dependencies[0] for dependency in dependencies)
 
 
 def test_integration_apply_delegates_to_request_criteria(
@@ -446,6 +509,50 @@ def test_resource_reuses_cached_dependencies(
         resource.paginated_select_dependency()
         is resource.paginated_select_dependency()
     )
+
+
+def test_resource_select_dependency_cache_is_safe_under_concurrency(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Builds one select dependency callable under concurrent access."""
+    resource = integration.resource(User, default_sort="-name")
+    dependencies = _collect_concurrent_results(resource.select_dependency)
+
+    assert all(dependency is dependencies[0] for dependency in dependencies)
+
+
+def test_resource_applier_dependency_cache_is_safe_under_concurrency(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Builds one applier dependency callable under concurrent access."""
+    resource = integration.resource(User, default_sort="-name")
+    dependencies = _collect_concurrent_results(resource.applier_dependency)
+
+    assert all(dependency is dependencies[0] for dependency in dependencies)
+
+
+def test_resource_count_dependency_cache_is_safe_under_concurrency(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Builds one count dependency callable under concurrent access."""
+    resource = integration.resource(User, default_sort="-name")
+    dependencies = _collect_concurrent_results(
+        resource.count_select_dependency,
+    )
+
+    assert all(dependency is dependencies[0] for dependency in dependencies)
+
+
+def test_resource_paginated_dependency_cache_is_safe_under_concurrency(
+    integration: FastAPISQLAlchemyIntegration,
+) -> None:
+    """Builds one paginated dependency callable under concurrent access."""
+    resource = integration.resource(User, default_sort="-name")
+    dependencies = _collect_concurrent_results(
+        resource.paginated_select_dependency,
+    )
+
+    assert all(dependency is dependencies[0] for dependency in dependencies)
 
 
 @pytest.mark.parametrize(

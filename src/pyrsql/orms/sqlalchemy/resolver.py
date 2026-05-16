@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from threading import RLock
 from typing import TYPE_CHECKING, Any, Final, cast
 
 from pyrsql.core.joins import JoinHint
@@ -31,7 +32,7 @@ _MAX_FIELD_MAPPING_EXPANSIONS: Final = 32
 class SQLAlchemyPathResolver:
     """Resolves bound field paths into ORM joins and leaf attributes."""
 
-    __slots__ = ("_default_resolution_cache", "_inspector")
+    __slots__ = ("_cache_lock", "_default_resolution_cache", "_inspector")
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class SQLAlchemyPathResolver:
         inspector: SQLAlchemyModelInspector | None = None,
     ) -> None:
         """Initializes the resolver with an optional shared inspector."""
+        self._cache_lock = RLock()
         self._inspector = inspector or SQLAlchemyModelInspector()
         self._default_resolution_cache: dict[
             tuple[type[Any], str],
@@ -58,17 +60,18 @@ class SQLAlchemyPathResolver:
             The resolved SQLAlchemy path.
         """
         if field_policy is None or field_policy.is_empty:
-            cache_key = (model, field_path)
-            cached_path = self._default_resolution_cache.get(cache_key)
-            if cached_path is not None:
-                return cached_path
-            resolved_path = self._resolve_with_field_policy(
-                model,
-                field_path,
-                field_policy=None,
-            )
-            self._default_resolution_cache[cache_key] = resolved_path
-            return resolved_path
+            with self._cache_lock:
+                cache_key = (model, field_path)
+                cached_path = self._default_resolution_cache.get(cache_key)
+                if cached_path is not None:
+                    return cached_path
+                resolved_path = self._resolve_with_field_policy(
+                    model,
+                    field_path,
+                    field_policy=None,
+                )
+                self._default_resolution_cache[cache_key] = resolved_path
+                return resolved_path
         return self._resolve_with_field_policy(
             model,
             field_path,
