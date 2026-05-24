@@ -261,7 +261,6 @@ def test_path_resolver_applies_model_field_mapping(
         User,
         "company.companyName",
         field_policy=FieldPolicySet(
-            field_mapping={},
             field_whitelist=frozenset(),
             field_blacklist=frozenset(),
             model_field_mapping={Company: {"companyName": "name"}},
@@ -283,7 +282,6 @@ def test_path_resolver_enforces_model_field_whitelist(
             User,
             "company.name",
             field_policy=FieldPolicySet(
-                field_mapping={},
                 field_whitelist=frozenset(),
                 field_blacklist=frozenset(),
                 model_field_mapping={},

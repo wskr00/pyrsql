@@ -174,8 +174,8 @@ def test_query_options_cache_derived_policy_objects() -> None:
     [
         pytest.param(
             QueryOptions(field_mapping={"alias": "name"}),
-            False,
-            id="query-policy-not-empty",
+            True,
+            id="query-global-field-mapping-kept-out-of-policy",
         ),
         pytest.param(
             SortOptions(model_field_whitelist={str: frozenset({"name"})}),
@@ -190,6 +190,25 @@ def test_options_mark_field_policy_non_empty_when_restrictions_exist(
 ) -> None:
     """Marks derived field policy emptiness from configured restrictions."""
     assert options.field_policy.is_empty is expected_empty
+
+
+def test_query_options_keep_global_field_mapping_out_of_field_policy() -> None:
+    """Keeps global field aliases out of the runtime field policy."""
+    options = QueryOptions(field_mapping={"alias": "name"})
+
+    assert options.field_mapping["alias"] == "name"
+    assert options.field_policy is DEFAULT_FIELD_POLICY_SET
+
+
+def test_field_policy_prefers_blacklist_over_whitelist() -> None:
+    """Blocked fields stay blocked even when also whitelisted."""
+    options = QueryOptions(
+        field_whitelist=frozenset({"name"}),
+        field_blacklist=frozenset({"name"}),
+    )
+
+    with pytest.raises(ValueError, match=r"blocked"):
+        options.field_policy.validate_global_field_access("name")
 
 
 def test_sort_options_are_normalized() -> None:
@@ -226,6 +245,32 @@ def test_procedure_policy_compiles_regex_rules() -> None:
     assert policy.is_whitelisted("concat") is True
     assert policy.is_whitelisted("trim") is False
     assert policy.is_blacklisted("lower") is True
+
+
+def test_procedure_policy_empty_lists_short_circuit() -> None:
+    """Empty whitelist/blacklist patterns short-circuit to False."""
+    policy = ProcedureAccessPolicy.from_patterns(whitelist=(), blacklist=())
+
+    assert policy.is_whitelisted("upper") is False
+    assert policy.is_blacklisted("upper") is False
+
+
+def test_procedure_policy_rejects_invalid_regex_pattern() -> None:
+    """Raises a contextual error for invalid regex configuration."""
+    with pytest.raises(ValueError, match=r"(?i)whitelist.*regex"):
+        ProcedureAccessPolicy.from_patterns(
+            whitelist=("[",),
+            blacklist=(),
+        )
+
+
+def test_procedure_policy_rejects_uncompiled_pattern_payload() -> None:
+    """Rejects direct construction with non-compiled regex payloads."""
+    with pytest.raises(TypeError, match=r"whitelist_patterns"):
+        ProcedureAccessPolicy(
+            whitelist_patterns=("upper",),  # type: ignore[arg-type]
+            blacklist_patterns=(),
+        )
 
 
 def test_query_options_extend_operator_registry_with_custom_operator() -> None:

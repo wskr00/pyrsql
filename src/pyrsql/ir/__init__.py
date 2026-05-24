@@ -8,8 +8,6 @@ from pyrsql.ir.query import (
     BoundFunction,
     BoundLiteral,
     BoundLogical,
-    BoundNode,
-    BoundSelectorNode,
 )
 from pyrsql.ir.sort import BoundSort, BoundSortField
 
@@ -20,9 +18,7 @@ __all__ = [
     "BoundFunction",
     "BoundLiteral",
     "BoundLogical",
-    "BoundNode",
     "BoundPage",
-    "BoundSelectorNode",
     "BoundSort",
     "BoundSortField",
 ]

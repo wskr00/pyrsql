@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING, Final
 
 import msgspec
 
-from pyrsql.parsing.source import SourceSpan
-
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from pyrsql.parsing.ast import LogicalOperator
     from pyrsql.parsing.operators import ComparisonOperator
+    from pyrsql.parsing.source import SourceSpan
     from pyrsql.selector.ast import SelectorLiteral
 
 _MIN_LOGICAL_CHILDREN: Final = 2
@@ -22,15 +21,6 @@ class BoundNode(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Base class for bound logical nodes."""
 
     span: SourceSpan
-
-    def __post_init__(self) -> None:
-        """Validates bound node invariants.
-
-        Raises:
-            TypeError: If the span is not a SourceSpan.
-        """
-        if not isinstance(self.span, SourceSpan):
-            raise TypeError("Bound node span must be a SourceSpan.")
 
     def walk(self) -> Iterator[BoundNode]:
         """Yields this node and all nested bound nodes depth-first."""
@@ -52,23 +42,6 @@ class BoundField(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
     field_path: str
     segments: tuple[str, ...]
 
-    def __post_init__(self) -> None:
-        """Validates bound field invariants.
-
-        Raises:
-            ValueError: If the raw path, field path, or segments are invalid.
-        """
-        if not self.raw_path:
-            raise ValueError("Bound field raw_path cannot be empty.")
-        if not self.field_path:
-            raise ValueError("Bound field field_path cannot be empty.")
-        if not self.segments:
-            raise ValueError("Bound field must contain at least one segment.")
-        if tuple(self.field_path.split(".")) != self.segments:
-            raise ValueError(
-                "Bound field segments must match the resolved field_path.",
-            )
-
 
 class BoundLiteral(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
     """A bound literal selector."""
@@ -81,19 +54,6 @@ class BoundFunction(BoundSelectorNode, frozen=True, gc=False, kw_only=True):
 
     function_name: str
     arguments: tuple[BoundSelectorNode, ...]
-
-    def __post_init__(self) -> None:
-        """Validates bound function invariants.
-
-        Raises:
-            ValueError: If the function name or arguments are invalid.
-        """
-        if not self.function_name:
-            raise ValueError("Bound function name cannot be empty.")
-        if not self.arguments:
-            raise ValueError(
-                "Bound function must contain at least one argument.",
-            )
 
     def walk_selectors(self) -> Iterator[BoundSelectorNode]:
         """Yields this selector and all nested selector nodes."""
@@ -113,17 +73,6 @@ class BoundArgument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     quoted: bool
     span: SourceSpan
 
-    def __post_init__(self) -> None:
-        """Validates bound argument invariants.
-
-        Raises:
-            TypeError: If the argument text or span has the wrong type.
-        """
-        if not isinstance(self.text, str):
-            raise TypeError("Bound argument text must be a string.")
-        if not isinstance(self.span, SourceSpan):
-            raise TypeError("Bound argument span must be a SourceSpan.")
-
 
 class BoundComparison(BoundNode, frozen=True, gc=False, kw_only=True):
     """A bound comparison node."""
@@ -138,7 +87,6 @@ class BoundComparison(BoundNode, frozen=True, gc=False, kw_only=True):
         Raises:
             ValueError: If the arguments do not satisfy operator arity.
         """
-        super().__post_init__()
         if len(self.arguments) < self.operator.minimum_arguments:
             raise ValueError(
                 "Bound comparison is missing required operator arguments.",
@@ -168,7 +116,6 @@ class BoundLogical(BoundNode, frozen=True, gc=False, kw_only=True):
         Raises:
             ValueError: If the logical node has fewer than two children.
         """
-        super().__post_init__()
         if len(self.children) < _MIN_LOGICAL_CHILDREN:
             raise ValueError(
                 "Bound logical nodes must contain at least two children.",

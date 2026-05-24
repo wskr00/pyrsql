@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from threading import RLock
+from threading import Lock
 from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from fastapi import Depends
@@ -119,7 +119,7 @@ class FastAPISQLAlchemyResource:
         self.criteria_config = criteria_config
         self._default_sort = default_sort
         self._statement_factory = statement_factory
-        self._cache_lock = RLock()
+        self._cache_lock = Lock()
         self._applier_dependency: (
             Callable[..., Callable[[SQLAlchemySelect], SQLAlchemySelect]] | None
         ) = None
@@ -260,6 +260,8 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a filtered select statement.
         """
+        if self._select_dependency is not None:
+            return self._select_dependency
         with self._cache_lock:
             if self._select_dependency is not None:
                 return self._select_dependency
@@ -295,6 +297,8 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a select applier callable.
         """
+        if self._applier_dependency is not None:
+            return self._applier_dependency
         with self._cache_lock:
             if self._applier_dependency is not None:
                 return self._applier_dependency
@@ -314,6 +318,8 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields a count select statement.
         """
+        if self._count_select_dependency is not None:
+            return self._count_select_dependency
         with self._cache_lock:
             if self._count_select_dependency is not None:
                 return self._count_select_dependency
@@ -343,6 +349,8 @@ class FastAPISQLAlchemyResource:
         Returns:
             A FastAPI dependency that yields paginated SQLAlchemy statements.
         """
+        if self._paginated_select_dependency is not None:
+            return self._paginated_select_dependency
         with self._cache_lock:
             if self._paginated_select_dependency is not None:
                 return self._paginated_select_dependency

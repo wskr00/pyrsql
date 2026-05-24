@@ -1,127 +1,45 @@
-"""ORM-neutral compilation result objects."""
+"""ORM-neutral compilation result wrapper."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import Protocol, TypeAlias, TypeVar
 
 import msgspec
-
-if TYPE_CHECKING:
-    from pyrsql.orms.base import (
-        CompiledPageRequest,
-        CompiledQuery,
-        CompiledSort,
-    )
 
 _TargetT = TypeVar("_TargetT")
 _ModelT = TypeVar("_ModelT")
 
 
-def _validate_orm_name(orm_name: str, *, context: str) -> None:
-    """Validates one compilation result ORM name.
+class CompiledArtifact(Protocol):
+    """Structural contract for compiled ORM artifacts."""
 
-    Raises:
-        ValueError: If the ORM name is empty.
-    """
-    if not orm_name:
-        raise ValueError(f"{context} orm_name cannot be empty.")
+    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
+        """Applies a compiled artifact to an ORM-specific target."""
 
 
 class CompilationResult(msgspec.Struct, frozen=True, gc=False, kw_only=True):
-    """Wraps an ORM-specific compiled query object.
+    """Wraps one ORM-specific compiled artifact.
 
     Attributes:
         orm_name: Name of the ORM used to produce the compilation.
-        compiled_query: ORM-specific compiled query payload.
+        compiled: ORM-specific compiled payload implementing ``apply``.
     """
 
     orm_name: str
-    compiled_query: CompiledQuery
-
-    def __post_init__(self) -> None:
-        """Validates compilation result invariants."""
-        _validate_orm_name(self.orm_name, context="Compilation result")
+    compiled: CompiledArtifact
 
     def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies the compiled query to an ORM-specific target.
+        """Applies the compiled artifact to an ORM-specific target.
 
         Args:
             target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the query.
+            model: ORM model class used to resolve the compilation.
 
         Returns:
-            The value returned by the compiled query application.
+            The value returned by the compiled artifact application.
         """
-        return self.compiled_query.apply(target=target, model=model)
+        return self.compiled.apply(target=target, model=model)
 
 
-class SortCompilationResult(
-    msgspec.Struct,
-    frozen=True,
-    gc=False,
-    kw_only=True,
-):
-    """Wraps an ORM-specific compiled sort object.
-
-    Attributes:
-        orm_name: Name of the ORM used to produce the compilation.
-        compiled_sort: ORM-specific compiled sort payload.
-    """
-
-    orm_name: str
-    compiled_sort: CompiledSort
-
-    def __post_init__(self) -> None:
-        """Validates sort compilation result invariants."""
-        _validate_orm_name(
-            self.orm_name,
-            context="Sort compilation result",
-        )
-
-    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies the compiled sort to an ORM-specific target.
-
-        Args:
-            target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the sort.
-
-        Returns:
-            The value returned by the compiled sort application.
-        """
-        return self.compiled_sort.apply(target=target, model=model)
-
-
-class PageCompilationResult(
-    msgspec.Struct,
-    frozen=True,
-    gc=False,
-    kw_only=True,
-):
-    """Wraps an ORM-specific compiled page request object.
-
-    Attributes:
-        orm_name: Name of the ORM used to produce the compilation.
-        compiled_page: ORM-specific compiled page payload.
-    """
-
-    orm_name: str
-    compiled_page: CompiledPageRequest
-
-    def __post_init__(self) -> None:
-        """Validates page compilation result invariants."""
-        _validate_orm_name(
-            self.orm_name,
-            context="Page compilation result",
-        )
-
-    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies the compiled page request to an ORM-specific target.
-
-        Args:
-            target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the page request.
-
-        Returns:
-            The value returned by the compiled page application.
-        """
-        return self.compiled_page.apply(target=target, model=model)
+SortCompilationResult: TypeAlias = CompilationResult
+PageCompilationResult: TypeAlias = CompilationResult

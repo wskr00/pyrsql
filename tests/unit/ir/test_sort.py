@@ -52,21 +52,12 @@ def test_bound_sort_supports_function_selectors() -> None:
             r"at least one bound sort field",
             id="empty-sort",
         ),
-        pytest.param(
-            lambda: BoundSortField(
-                selector=_bound_field("companyName", "company.name"),
-                direction=SortDirection.ASCENDING,
-                ignore_case="invalid",  # type: ignore[arg-type]
-            ),
-            r"ignore_case must be a bool",
-            id="invalid-ignore-case",
-        ),
     ],
 )
 def test_bound_sort_nodes_reject_invalid_construction(
     factory: object,
     pattern: str,
 ) -> None:
-    """Rejects invalid bound sort invariants."""
-    with pytest.raises((TypeError, ValueError), match=pattern):
+    """Rejects invalid structural bound sort invariants."""
+    with pytest.raises(ValueError, match=pattern):
         factory()  # type: ignore[operator]

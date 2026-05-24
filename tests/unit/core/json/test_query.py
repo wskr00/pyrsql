@@ -58,25 +58,16 @@ def test_json_path_comparison_uses_shared_default_normalizer() -> None:
     assert comparison.values == (expected,)
 
 
-@pytest.mark.parametrize(
-    ("operator_name", "pattern"),
-    [
-        pytest.param("", r"cannot be empty", id="empty-operator-name"),
-        pytest.param(
-            " equal ",
-            r"outer whitespace",
-            id="whitespace-operator-name",
-        ),
-    ],
-)
-def test_json_path_comparison_rejects_invalid_operator_names(
-    operator_name: str,
-    pattern: str,
-) -> None:
-    """JSON comparisons reject invalid operator names."""
-    with pytest.raises(ValueError, match=pattern):
-        JSONPathComparison(
-            path=JSONPath(segments=("user", "id")),
-            operator_name=operator_name,
-            values=(),
-        )
+def test_json_path_comparison_retains_normalized_payload() -> None:
+    """JSON comparisons retain the normalized JSON comparison payload."""
+    path = JSONPath(segments=("user", "id"))
+    value = DEFAULT_JSON_SCALAR_NORMALIZER.normalize("1", quoted=False)
+    comparison = JSONPathComparison(
+        path=path,
+        operator_name="equal",
+        values=(value,),
+    )
+
+    assert comparison.path is path
+    assert comparison.operator_name == "equal"
+    assert comparison.values == (value,)

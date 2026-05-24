@@ -1,6 +1,10 @@
 """Security and complexity limits for sort parsing."""
 
+from __future__ import annotations
+
 import msgspec
+
+from pyrsql._validation import validate_positive_int
 
 
 class SortLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -11,17 +15,19 @@ class SortLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     max_field_path_length: int = 256
 
     def __post_init__(self) -> None:
-        """Validates sort parser limit invariants.
-
-        Raises:
-            ValueError: If any sort limit is non-positive.
-        """
-        if self.max_sort_length <= 0:
-            raise ValueError("max_sort_length must be greater than 0.")
-        if self.max_fields <= 0:
-            raise ValueError("max_fields must be greater than 0.")
-        if self.max_field_path_length <= 0:
-            raise ValueError("max_field_path_length must be greater than 0.")
+        """Validates sort parser limit invariants."""
+        validate_positive_int(
+            self.max_sort_length,
+            field_name="max_sort_length",
+        )
+        validate_positive_int(
+            self.max_fields,
+            field_name="max_fields",
+        )
+        validate_positive_int(
+            self.max_field_path_length,
+            field_name="max_field_path_length",
+        )
 
 
 DEFAULT_SORT_LIMITS = SortLimits()

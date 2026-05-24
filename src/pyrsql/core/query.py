@@ -22,47 +22,6 @@ _ModelT = TypeVar("_ModelT")
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 
 
-def _resolve_query_options(
-    options: QueryOptions | None,
-) -> QueryOptions:
-    """Returns the provided options or the shared immutable default.
-
-    Returns:
-        The provided options, or the shared default when omitted.
-    """
-    return options or _DEFAULT_QUERY_OPTIONS
-
-
-def _parse_query_expression(
-    query_text: str,
-    *,
-    options: QueryOptions,
-) -> Expression:
-    """Parses raw query text into a syntax tree.
-
-    Returns:
-        The parsed query expression tree.
-    """
-    return Parser(
-        query_text,
-        limits=options.parse_limits,
-        operator_registry=options.operator_registry,
-    ).parse()
-
-
-def _bind_query_expression(
-    expression: Expression,
-    *,
-    options: QueryOptions,
-) -> BoundComparison | BoundLogical:
-    """Binds a syntax tree into logical query IR.
-
-    Returns:
-        The bound logical query IR.
-    """
-    return SemanticBinder(options).bind(expression)
-
-
 class Query(msgspec.Struct, frozen=True, gc=False):
     """Represents a parsed ORM-neutral query request.
 
@@ -97,7 +56,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         Returns:
             A parsed query object.
         """
-        resolved_options = _resolve_query_options(options)
+        resolved_options = options or _DEFAULT_QUERY_OPTIONS
         expression = cls.parse_expression(query_text, options=resolved_options)
         bound_expression = cls.bind_expression(
             expression,
@@ -125,7 +84,11 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         Returns:
             The parsed syntax tree.
         """
-        return _parse_query_expression(query_text, options=options)
+        return Parser(
+            query_text,
+            limits=options.parse_limits,
+            operator_registry=options.operator_registry,
+        ).parse()
 
     @staticmethod
     def bind_expression(
@@ -142,7 +105,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         Returns:
             The bound logical query IR.
         """
-        return _bind_query_expression(expression, options=options)
+        return SemanticBinder(options).bind(expression)
 
     def compile(self, *, orm: ORM) -> CompilationResult:
         """Compiles the query using the provided ORM.
@@ -156,7 +119,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         compiled_query = orm.compile_query(self)
         return CompilationResult(
             orm_name=orm.name,
-            compiled_query=compiled_query,
+            compiled=compiled_query,
         )
 
     def apply(
@@ -176,4 +139,4 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         Returns:
             The value returned by the ORM-specific apply operation.
         """
-        return self.compile(orm=orm).apply(target=target, model=model)
+        return orm.compile_query(self).apply(target=target, model=model)

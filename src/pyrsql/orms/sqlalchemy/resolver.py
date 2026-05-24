@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from threading import RLock
+from threading import Lock
 from typing import TYPE_CHECKING, Any, Final, cast
 
 from pyrsql.core.joins import JoinHint
@@ -40,7 +40,7 @@ class SQLAlchemyPathResolver:
         inspector: SQLAlchemyModelInspector | None = None,
     ) -> None:
         """Initializes the resolver with an optional shared inspector."""
-        self._cache_lock = RLock()
+        self._cache_lock = Lock()
         self._inspector = inspector or SQLAlchemyModelInspector()
         self._default_resolution_cache: dict[
             tuple[type[Any], str],
@@ -60,8 +60,11 @@ class SQLAlchemyPathResolver:
             The resolved SQLAlchemy path.
         """
         if field_policy is None or field_policy.is_empty:
+            cache_key = (model, field_path)
+            cached_path = self._default_resolution_cache.get(cache_key)
+            if cached_path is not None:
+                return cached_path
             with self._cache_lock:
-                cache_key = (model, field_path)
                 cached_path = self._default_resolution_cache.get(cache_key)
                 if cached_path is not None:
                     return cached_path

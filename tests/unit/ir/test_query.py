@@ -91,20 +91,6 @@ def test_bound_logical_walks_descendants_depth_first() -> None:
     ("factory", "pattern"),
     [
         pytest.param(
-            lambda: BoundField(
-                raw_path="username",
-                field_path="user.name",
-                segments=("user",),
-            ),
-            r"segments must match",
-            id="field-segments-mismatch",
-        ),
-        pytest.param(
-            lambda: BoundFunction(function_name="upper", arguments=()),
-            r"at least one argument",
-            id="function-without-arguments",
-        ),
-        pytest.param(
             lambda: BoundLogical(
                 span=_span(),
                 operator=LogicalOperator.AND,
@@ -119,6 +105,6 @@ def test_bound_query_nodes_reject_invalid_construction(
     factory: object,
     pattern: str,
 ) -> None:
-    """Rejects invalid bound query node invariants."""
+    """Rejects invalid logical invariants in bound query nodes."""
     with pytest.raises(ValueError, match=pattern):
         factory()  # type: ignore[operator]

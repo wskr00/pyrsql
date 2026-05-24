@@ -12,6 +12,7 @@ import pytest
 
 from pyrsql.core.conversion import (
     DEFAULT_VALUE_CONVERTER_REGISTRY,
+    FieldValueConverterSet,
     ValueConversionError,
     ValueConverterRegistry,
 )
@@ -188,6 +189,7 @@ def test_default_registry_rewraps_json_container_subclasses(
     [
         pytest.param('["a","b"]', dict, id="list-to-dict"),
         pytest.param('{"a":1}', list, id="dict-to-list"),
+        pytest.param("{invalid", dict, id="invalid-json-dict"),
         pytest.param("invalid", bool, id="invalid-bool"),
         pytest.param("2026-13-02", dt.date, id="invalid-date"),
         pytest.param("25:15:30", dt.time, id="invalid-time"),
@@ -212,3 +214,38 @@ def test_registry_supports_custom_converter_registration() -> None:
     registry = ValueConverterRegistry({}).with_converter(str, _to_upper)
 
     assert registry.convert("demo", str) == "DEMO"
+
+
+def test_registry_wraps_non_domain_errors_from_custom_converters() -> None:
+    """Normalizes unexpected custom converter failures into domain errors."""
+
+    def _broken_converter(raw: str) -> str:
+        raise RuntimeError(raw)
+
+    registry = ValueConverterRegistry({str: _broken_converter})
+
+    with pytest.raises(ValueConversionError, match="Failed to convert 'demo'"):
+        registry.convert("demo", str)
+
+
+class ExampleModel:
+    """Simple model marker used for field-converter resolution tests."""
+
+
+def test_field_value_converter_set_prefers_model_specific_converter() -> None:
+    """Resolves model-scoped converters before global field-path converters."""
+    converters = FieldValueConverterSet(
+        field_converters={"payload.value": lambda raw: raw.upper()},
+        model_field_converters={
+            ExampleModel: {"value": lambda raw: raw.lower()},
+        },
+    )
+
+    resolved = converters.resolve(
+        model=ExampleModel,
+        field_name="value",
+        field_path="payload.value",
+    )
+
+    assert resolved is not None
+    assert resolved("MiXeD") == "mixed"

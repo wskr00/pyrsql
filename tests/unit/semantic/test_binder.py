@@ -181,6 +181,32 @@ def test_semantic_binder_enforces_function_policies(
         SemanticBinder(options).bind(expression)
 
 
+def test_semantic_binder_prefers_blacklist_over_whitelist_for_fields() -> None:
+    """Explicit field blacklist takes precedence over whitelist membership."""
+    expression = _parse("name==demo")
+    options = _SemanticOptions(
+        field_whitelist=frozenset({"name"}),
+        field_blacklist=frozenset({"name"}),
+    )
+
+    with pytest.raises(FieldBlacklistedError, match=r"blocked"):
+        SemanticBinder(options).bind(expression)
+
+
+def test_semantic_binder_prefers_blacklist_over_whitelist_for_functions() -> (
+    None
+):
+    """Explicit function blacklist takes precedence over whitelist matches."""
+    expression = _parse("@upper[name]==demo")
+    options = _SemanticOptions(
+        procedure_whitelist=("upper",),
+        procedure_blacklist=("upper",),
+    )
+
+    with pytest.raises(FunctionBlacklistedError, match=r"blacklisted"):
+        SemanticBinder(options).bind(expression)
+
+
 def test_semantic_errors_expose_structured_diagnostic() -> None:
     """Exposes structured diagnostics from semantic errors."""
     expression = _parse("@upper[name]==demo")

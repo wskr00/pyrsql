@@ -125,6 +125,12 @@ def test_parser_accepts_custom_operator_registry() -> None:
     ("source", "limits", "pattern"),
     [
         pytest.param(
+            "()",
+            None,
+            r"Grouped expression cannot be empty",
+            id="empty-group",
+        ),
+        pytest.param(
             "name==",
             None,
             r"expects at least",
@@ -154,6 +160,35 @@ def test_parse_limits_reject_invalid_values() -> None:
         ParseLimits(max_query_length=0)
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "pattern"),
+    [
+        pytest.param(
+            {"max_query_length": "10"},
+            r"max_query_length",
+            id="string-query-limit",
+        ),
+        pytest.param(
+            {"max_selector_length": 1.5},
+            r"max_selector_length",
+            id="float-selector-limit",
+        ),
+        pytest.param(
+            {"max_argument_length": True},
+            r"max_argument_length",
+            id="bool-argument-limit",
+        ),
+    ],
+)
+def test_parse_limits_reject_non_integer_values(
+    kwargs: dict[str, object],
+    pattern: str,
+) -> None:
+    """Rejects parser limits that are not strict integers."""
+    with pytest.raises(TypeError, match=pattern):
+        ParseLimits(**kwargs)
+
+
 def test_parser_uses_shared_default_limits_instance() -> None:
     """Reuses the shared default limits on the common parse path."""
     parser = Parser("name==demo")
@@ -161,14 +196,52 @@ def test_parser_uses_shared_default_limits_instance() -> None:
     assert parser.limits is DEFAULT_PARSE_LIMITS
 
 
-def test_logical_node_rejects_single_child() -> None:
-    """Prevents invalid logical AST nodes."""
-    comparison = Parser("name==demo").parse()
-    assert isinstance(comparison, ComparisonNode)
+def test_parser_counts_expression_depth_semantically() -> None:
+    """Applies depth limits to nesting, not parser helper call depth."""
+    assert (
+        Parser(
+            "name==demo",
+            limits=ParseLimits(max_expression_depth=1),
+        ).parse()
+        is not None
+    )
+    assert (
+        Parser(
+            "(name==demo)",
+            limits=ParseLimits(max_expression_depth=2),
+        ).parse()
+        is not None
+    )
 
-    with pytest.raises(ValueError, match="at least two child expressions"):
-        LogicalNode(
-            span=comparison.span,
-            operator=LogicalOperator.AND,
-            children=(comparison,),
-        )
+    with pytest.raises(ParseError, match="maximum supported expression depth"):
+        Parser(
+            "((name==demo))",
+            limits=ParseLimits(max_expression_depth=2),
+        ).parse()
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "pattern"),
+    [
+        pytest.param(
+            {"source": "name==demo", "limits": object()},
+            r"ParseLimits instance",
+            id="invalid-limits",
+        ),
+        pytest.param(
+            {
+                "source": "name==demo",
+                "operator_registry": object(),
+            },
+            r"OperatorRegistry instance",
+            id="invalid-operator-registry",
+        ),
+    ],
+)
+def test_parser_rejects_invalid_runtime_dependencies(
+    kwargs: dict[str, object],
+    pattern: str,
+) -> None:
+    """Parser validates public constructor dependencies eagerly."""
+    with pytest.raises(TypeError, match=pattern):
+        Parser(**kwargs)  # type: ignore[arg-type]

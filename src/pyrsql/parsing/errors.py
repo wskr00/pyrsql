@@ -38,7 +38,10 @@ class ParseError(ValueError):
         Returns:
             The formatted parse error string.
         """
-        return str(self.diagnostic)
+        return (
+            f"[{self.code}] {self.message} at index {self.span.start.index} "
+            f"(line {self.span.start.line}, column {self.span.start.column})"
+        )
 
 
 class LexError(ParseError):

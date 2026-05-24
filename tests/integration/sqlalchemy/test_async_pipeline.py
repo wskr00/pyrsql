@@ -6,11 +6,11 @@ pytest.importorskip("aiosqlite")
 pytest.importorskip("sqlalchemy")
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from tests.functional.fastapi_sqlalchemy.conftest import Base, User
 
 import pyrsql
 from pyrsql.core.page import PageRequest
 from pyrsql.core.sort import Sort
+from tests.functional.fastapi_sqlalchemy.conftest import Base, User
 
 pytestmark = [
     pytest.mark.integration,

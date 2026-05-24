@@ -38,7 +38,10 @@ class SemanticError(ValueError):
         Returns:
             The formatted semantic error string.
         """
-        return str(self.diagnostic)
+        return (
+            f"[{self.code}] {self.message} at index {self.span.start.index} "
+            f"(line {self.span.start.line}, column {self.span.start.column})"
+        )
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from threading import RLock
+from threading import Lock
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import inspect
@@ -23,11 +23,17 @@ if TYPE_CHECKING:
 class SQLAlchemyModelInspector:
     """Provides stable access to public SQLAlchemy ORM inspection APIs."""
 
-    __slots__ = ("_attribute_cache", "_cache_lock", "_mapper_cache")
+    __slots__ = (
+        "_attribute_cache",
+        "_attribute_cache_lock",
+        "_mapper_cache",
+        "_mapper_cache_lock",
+    )
 
     def __init__(self) -> None:
         """Initializes empty caches for mapped models and attributes."""
-        self._cache_lock = RLock()
+        self._mapper_cache_lock = Lock()
+        self._attribute_cache_lock = Lock()
         self._mapper_cache: dict[type[Any], Mapper[Any]] = {}
         self._attribute_cache: dict[
             tuple[type[Any], str],
@@ -39,27 +45,15 @@ class SQLAlchemyModelInspector:
 
         Returns:
             The SQLAlchemy mapper for the model.
-
-        Raises:
-            SQLAlchemyModelInspectionError: If the model is not mapped.
         """
-        with self._cache_lock:
+        cached_mapper = self._mapper_cache.get(model)
+        if cached_mapper is not None:
+            return cached_mapper
+        with self._mapper_cache_lock:
             cached_mapper = self._mapper_cache.get(model)
             if cached_mapper is not None:
                 return cached_mapper
-            try:
-                mapper = inspect(model)
-            except NoInspectionAvailable as error:
-                raise SQLAlchemyModelInspectionError(
-                    f"Type {model!r} is not a SQLAlchemy mapped class.",
-                ) from error
-            if not isinstance(mapper, Mapper):
-                raise SQLAlchemyModelInspectionError(
-                    f"Type {model!r} did not resolve to a SQLAlchemy ORM "
-                    "mapper.",
-                )
-            self._mapper_cache[model] = mapper
-            return mapper
+            return self._inspect_model_locked(model)
 
     def get_mapped_attribute(
         self,
@@ -74,8 +68,12 @@ class SQLAlchemyModelInspector:
         Raises:
             SQLAlchemyModelInspectionError: If the attribute is not mapped.
         """
-        with self._cache_lock:
-            cache_key = (model, attribute_name)
+        cache_key = (model, attribute_name)
+        cached_attribute = self._attribute_cache.get(cache_key)
+        if cached_attribute is not None:
+            return cached_attribute
+
+        with self._attribute_cache_lock:
             cached_attribute = self._attribute_cache.get(cache_key)
             if cached_attribute is not None:
                 return cached_attribute
@@ -115,6 +113,31 @@ class SQLAlchemyModelInspector:
                 f"Attribute {attribute_name!r} is not mapped on model "
                 f"{model.__name__!r}.",
             )
+
+    def _inspect_model_locked(self, model: type[Any]) -> Mapper[Any]:
+        """Resolves and caches one mapper while the cache lock is held.
+
+        Returns:
+            The SQLAlchemy mapper for the model.
+
+        Raises:
+            SQLAlchemyModelInspectionError: If the model is not mapped.
+        """
+        cached_mapper = self._mapper_cache.get(model)
+        if cached_mapper is not None:
+            return cached_mapper
+        try:
+            mapper = inspect(model)
+        except NoInspectionAvailable as error:
+            raise SQLAlchemyModelInspectionError(
+                f"Type {model!r} is not a SQLAlchemy mapped class.",
+            ) from error
+        if not isinstance(mapper, Mapper):
+            raise SQLAlchemyModelInspectionError(
+                f"Type {model!r} did not resolve to a SQLAlchemy ORM mapper.",
+            )
+        self._mapper_cache[model] = mapper
+        return mapper
 
     def _cache_mapped_attribute(
         self,

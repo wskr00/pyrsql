@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from tests.security.conftest import assert_response_hides_internal_error_details
 
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig
 from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.parsing.limits import ParseLimits
 from pyrsql.sorting.limits import SortLimits
+from tests.security.conftest import assert_response_hides_internal_error_details
 
 if TYPE_CHECKING:
     from collections.abc import Callable

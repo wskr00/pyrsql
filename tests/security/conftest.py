@@ -9,9 +9,9 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from tests.functional.fastapi_sqlalchemy.conftest import User
 
 from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+from tests.functional.fastapi_sqlalchemy.conftest import User
 
 if TYPE_CHECKING:
     from collections.abc import Callable

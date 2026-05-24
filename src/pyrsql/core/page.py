@@ -16,6 +16,26 @@ _TargetT = TypeVar("_TargetT")
 _ModelT = TypeVar("_ModelT")
 
 
+def _validate_page_number(page_number: int) -> None:
+    """Validates one zero-based page number.
+
+    Raises:
+        ValueError: If the page number is negative.
+    """
+    if page_number < 0:
+        raise ValueError("page_number must be greater than or equal to 0.")
+
+
+def _validate_page_size(page_size: int) -> None:
+    """Validates one page size value.
+
+    Raises:
+        ValueError: If the page size is not positive.
+    """
+    if page_size <= 0:
+        raise ValueError("page_size must be greater than 0.")
+
+
 class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents an ORM-neutral pagination request.
 
@@ -28,16 +48,9 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     page_size: int
 
     def __post_init__(self) -> None:
-        """Validates pagination invariants.
-
-        Raises:
-            ValueError: If the page number is negative or the page size is not
-                positive.
-        """
-        if self.page_number < 0:
-            raise ValueError("page_number must be greater than or equal to 0.")
-        if self.page_size <= 0:
-            raise ValueError("page_size must be greater than 0.")
+        """Validates pagination invariants."""
+        _validate_page_number(self.page_number)
+        _validate_page_size(self.page_size)
 
     @classmethod
     def of(
@@ -76,10 +89,8 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             ValueError: If the offset or limit is invalid, or if the offset
                 does not align with the limit.
         """
-        if offset < 0:
-            raise ValueError("offset must be greater than or equal to 0.")
-        if limit <= 0:
-            raise ValueError("limit must be greater than 0.")
+        _validate_page_number(offset)
+        _validate_page_size(limit)
         page_number, remainder = divmod(offset, limit)
         if remainder != 0:
             raise ValueError(
@@ -129,7 +140,7 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         compiled_page = orm.compile_page_request(self)
         return PageCompilationResult(
             orm_name=orm.name,
-            compiled_page=compiled_page,
+            compiled=compiled_page,
         )
 
     def apply(
@@ -149,4 +160,4 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         Returns:
             The value returned by the ORM-specific apply operation.
         """
-        return self.compile(orm=orm).apply(target=target, model=model)
+        return orm.compile_page_request(self).apply(target=target, model=model)

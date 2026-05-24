@@ -1,7 +1,8 @@
-"""Shared field mapping and access-policy helpers."""
+"""Shared runtime field access and model-mapping helpers."""
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import msgspec
@@ -11,10 +12,9 @@ if TYPE_CHECKING:
 
 
 class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
-    """ORM-neutral field mapping and access-policy configuration.
+    """ORM-neutral runtime field access and model-mapping configuration.
 
     Attributes:
-        field_mapping: Global selector-to-field mapping.
         field_whitelist: Globally allowed field paths.
         field_blacklist: Globally blocked field paths.
         model_field_mapping: Model-specific selector-to-field mappings.
@@ -22,19 +22,60 @@ class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
         model_field_blacklist: Model-specific blocked field names.
     """
 
-    field_mapping: Mapping[str, str]
     field_whitelist: frozenset[str]
     field_blacklist: frozenset[str]
     model_field_mapping: Mapping[type[Any], Mapping[str, str]]
     model_field_whitelist: Mapping[type[Any], frozenset[str]]
     model_field_blacklist: Mapping[type[Any], frozenset[str]]
 
+    def __post_init__(self) -> None:
+        """Normalizes policy containers into immutable views."""
+        msgspec.structs.force_setattr(
+            self,
+            "field_whitelist",
+            frozenset(self.field_whitelist),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "field_blacklist",
+            frozenset(self.field_blacklist),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "model_field_mapping",
+            MappingProxyType(
+                {
+                    model: MappingProxyType(dict(mapping))
+                    for model, mapping in self.model_field_mapping.items()
+                },
+            ),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "model_field_whitelist",
+            MappingProxyType(
+                {
+                    model: frozenset(fields)
+                    for model, fields in self.model_field_whitelist.items()
+                },
+            ),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "model_field_blacklist",
+            MappingProxyType(
+                {
+                    model: frozenset(fields)
+                    for model, fields in self.model_field_blacklist.items()
+                },
+            ),
+        )
+
     @property
     def is_empty(self) -> bool:
-        """Whether the policy carries no active restrictions."""
+        """Whether the policy carries no runtime mapping or access rules."""
         return not any(
             (
-                self.field_mapping,
                 self.field_whitelist,
                 self.field_blacklist,
                 self.model_field_mapping,
@@ -58,6 +99,8 @@ class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
             The mapped selector segment, or the original value when no mapping
             is configured.
         """
+        if not self.model_field_mapping:
+            return selector
         mapping = self.model_field_mapping.get(model)
         if mapping is None:
             return selector
@@ -72,10 +115,12 @@ class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
         Raises:
             ValueError: If the field path is not allowed or is blocked.
         """
-        if self.field_whitelist and field_path not in self.field_whitelist:
-            raise ValueError(f"Field {field_path!r} is not allowed.")
+        if not self.field_whitelist and not self.field_blacklist:
+            return
         if field_path in self.field_blacklist:
             raise ValueError(f"Field {field_path!r} is blocked.")
+        if self.field_whitelist and field_path not in self.field_whitelist:
+            raise ValueError(f"Field {field_path!r} is not allowed.")
 
     def validate_model_field_access(
         self,
@@ -91,18 +136,19 @@ class FieldPolicySet(msgspec.Struct, frozen=True, gc=False):
         Raises:
             ValueError: If the field name is not allowed or is blocked.
         """
+        if not self.model_field_whitelist and not self.model_field_blacklist:
+            return
+        blacklist = self.model_field_blacklist.get(model)
+        if blacklist is not None and field_name in blacklist:
+            raise ValueError(f"Field {model.__name__}.{field_name} is blocked.")
         whitelist = self.model_field_whitelist.get(model)
         if whitelist is not None and field_name not in whitelist:
             raise ValueError(
                 f"Field {model.__name__}.{field_name} is not allowed.",
             )
-        blacklist = self.model_field_blacklist.get(model)
-        if blacklist is not None and field_name in blacklist:
-            raise ValueError(f"Field {model.__name__}.{field_name} is blocked.")
 
 
 DEFAULT_FIELD_POLICY_SET = FieldPolicySet(
-    field_mapping={},
     field_whitelist=frozenset(),
     field_blacklist=frozenset(),
     model_field_mapping={},

@@ -155,3 +155,27 @@ def test_sort_binder_enforces_function_policies(
 
     with pytest.raises(expected_error):
         SortBinder(options).bind(fields)
+
+
+def test_sort_binder_prefers_blacklist_over_whitelist_for_fields() -> None:
+    """Explicit field blacklist takes precedence over whitelist membership."""
+    fields = SortParser("name").parse()
+    options = _SortOptions(
+        field_whitelist=frozenset({"name"}),
+        field_blacklist=frozenset({"name"}),
+    )
+
+    with pytest.raises(SortFieldBlacklistedError, match=r"blocked"):
+        SortBinder(options).bind(fields)
+
+
+def test_sort_binder_prefers_blacklist_over_whitelist_for_functions() -> None:
+    """Explicit function blacklist takes precedence over whitelist matches."""
+    fields = SortParser("@upper[name],asc").parse()
+    options = _SortOptions(
+        procedure_whitelist=("upper",),
+        procedure_blacklist=("upper",),
+    )
+
+    with pytest.raises(SortFunctionBlacklistedError, match=r"blacklisted"):
+        SortBinder(options).bind(fields)

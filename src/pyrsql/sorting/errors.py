@@ -1,5 +1,7 @@
 """Errors raised while parsing or binding sort expressions."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -28,7 +30,7 @@ class SortError(ValueError):
         Returns:
             The formatted sort error string.
         """
-        return str(self.diagnostic)
+        return f"[{self.code}] {self.message}"
 
 
 @dataclass(frozen=True, slots=True)

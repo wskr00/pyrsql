@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from threading import RLock
+from threading import Lock
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -87,7 +87,7 @@ class FastAPISQLAlchemyIntegration:
             criteria_config or _DEFAULT_FASTAPI_CRITERIA_CONFIG
         )
         self._criteria_dependency = CriteriaDependency(self.criteria_config)
-        self._cache_lock = RLock()
+        self._cache_lock = Lock()
         self._select_dependencies: dict[
             SQLAlchemyModel,
             Callable[..., SQLAlchemySelect],
@@ -212,6 +212,9 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A cached base ``select(model)`` statement.
         """
+        statement = self._base_selects.get(model)
+        if statement is not None:
+            return statement
         with self._cache_lock:
             statement = self._base_selects.get(model)
             if statement is not None:
@@ -319,6 +322,9 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields a filtered select statement.
         """
+        cached_dependency = self._select_dependencies.get(model)
+        if cached_dependency is not None:
+            return cached_dependency
         with self._cache_lock:
             cached_dependency = self._select_dependencies.get(model)
             if cached_dependency is not None:
@@ -353,6 +359,9 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields a count select statement.
         """
+        cached_dependency = self._count_select_dependencies.get(model)
+        if cached_dependency is not None:
+            return cached_dependency
         with self._cache_lock:
             cached_dependency = self._count_select_dependencies.get(model)
             if cached_dependency is not None:
@@ -382,6 +391,9 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields paired list and count statements.
         """
+        cached_dependency = self._paginated_select_dependencies.get(model)
+        if cached_dependency is not None:
+            return cached_dependency
         with self._cache_lock:
             cached_dependency = self._paginated_select_dependencies.get(model)
             if cached_dependency is not None:

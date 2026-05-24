@@ -57,9 +57,13 @@ class JSONScalarNormalizer:
             case _:
                 pass
         if _INTEGER_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(int(raw_value))
+            parsed_integer = self._try_parse_json_number(raw_value)
+            if parsed_integer is not None:
+                return self._from_python_value(parsed_integer)
         if _FLOAT_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(float(raw_value))
+            parsed_float = self._try_parse_json_number(raw_value)
+            if parsed_float is not None:
+                return self._from_python_value(parsed_float)
         return self._from_python_value(raw_value)
 
     @staticmethod
@@ -77,7 +81,7 @@ class JSONScalarNormalizer:
 
     @staticmethod
     def _try_parse_json(raw_value: str) -> JSONValue | None:
-        """Parses quoted JSON arguments when they contain JSON values.
+        """Parses quoted JSON arguments when they contain containers.
 
         Returns:
             The parsed JSON value, or ``None`` when the argument should remain
@@ -87,9 +91,24 @@ class JSONScalarNormalizer:
             parsed = cast("JSONValue", _JSON_DECODER.decode(raw_value))
         except msgspec.DecodeError:
             return None
-        if isinstance(parsed, str):
+        if not isinstance(parsed, dict | list):
             return None
         return parsed
+
+    @staticmethod
+    def _try_parse_json_number(raw_value: str) -> int | float | None:
+        """Parses one unquoted JSON number using JSON number semantics.
+
+        Returns:
+            The parsed numeric value, or ``None`` when the number is invalid.
+        """
+        try:
+            parsed = _JSON_DECODER.decode(raw_value)
+        except msgspec.DecodeError:
+            return None
+        if isinstance(parsed, bool) or not isinstance(parsed, int | float):
+            return None
+        return cast("int | float", parsed)
 
 
 DEFAULT_JSON_SCALAR_NORMALIZER = JSONScalarNormalizer()

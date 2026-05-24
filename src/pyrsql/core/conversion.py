@@ -7,7 +7,7 @@ import datetime as dt
 from decimal import Decimal
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 from uuid import UUID
 
 import msgspec
@@ -15,14 +15,39 @@ import msgspec
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-ValueConverter = Callable[[str], object]
+_JSON_DICT_DECODER = msgspec.json.Decoder(type=dict)
+_JSON_LIST_DECODER = msgspec.json.Decoder(type=list)
+
+RawValue: TypeAlias = str
+ConvertedValue: TypeAlias = Any
+TargetType: TypeAlias = type[Any]
+ValueConverter: TypeAlias = Callable[[RawValue], ConvertedValue]
 
 
 class ValueConversionError(ValueError):
     """Raised when a raw RSQL value cannot be converted."""
 
 
-def _convert_bool(raw_value: str) -> bool:
+def _build_conversion_error(
+    raw_value: RawValue,
+    target_type: TargetType,
+    *,
+    cause: Exception | None = None,
+) -> ValueConversionError:
+    """Builds one normalized conversion error instance.
+
+    Returns:
+        A normalized value conversion error.
+    """
+    error = ValueConversionError(
+        f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+    )
+    if cause is not None:
+        error.__cause__ = cause
+    return error
+
+
+def _convert_bool(raw_value: RawValue) -> bool:
     """Converts a string to bool using explicit accepted values.
 
     Returns:
@@ -42,14 +67,14 @@ def _convert_bool(raw_value: str) -> bool:
             )
 
 
-def _convert_datetime(raw_value: str) -> dt.datetime:
+def _convert_datetime(raw_value: RawValue) -> dt.datetime:
     """Converts a string into datetime with LocalDate-style fallback.
 
     Returns:
         The converted datetime value.
 
     Raises:
-        ValueConversionError: If the input cannot be parsed as datetime or
+        _build_conversion_error: If the input cannot be parsed as datetime or
             ISO date.
     """
     try:
@@ -63,14 +88,16 @@ def _convert_datetime(raw_value: str) -> dt.datetime:
     try:
         parsed_date = dt.date.fromisoformat(raw_value)
     except ValueError as date_error:
-        raise ValueConversionError(
-            f"Failed to convert {raw_value!r} to datetime.",
+        raise _build_conversion_error(
+            raw_value,
+            dt.datetime,
+            cause=date_error,
         ) from date_error
     return dt.datetime.combine(parsed_date, dt.time.min)
 
 
 def _build_msgspec_converter(
-    target_type: type[Any],
+    target_type: TargetType,
 ) -> ValueConverter:
     """Builds one msgspec-backed scalar converter.
 
@@ -78,7 +105,7 @@ def _build_msgspec_converter(
         A converter that validates and coerces a string via ``msgspec``.
     """
 
-    def converter(raw_value: str) -> object:
+    def converter(raw_value: RawValue) -> ConvertedValue:
         try:
             return msgspec.convert(
                 raw_value,
@@ -86,8 +113,10 @@ def _build_msgspec_converter(
                 strict=False,
             )
         except msgspec.ValidationError as error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            raise _build_conversion_error(
+                raw_value,
+                target_type,
+                cause=error,
             ) from error
 
     return converter
@@ -96,7 +125,7 @@ def _build_msgspec_converter(
 class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
     """Immutable registry of orm-neutral string-to-type converters."""
 
-    converters: Mapping[type[Any], ValueConverter]
+    converters: Mapping[TargetType, ValueConverter]
 
     def __post_init__(self) -> None:
         """Normalizes the converter mapping into an immutable view."""
@@ -108,7 +137,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
 
     def with_converter(
         self,
-        target_type: type[Any],
+        target_type: TargetType,
         converter: ValueConverter,
     ) -> ValueConverterRegistry:
         """Returns a new registry with one additional converter.
@@ -122,75 +151,115 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
 
     def convert(
         self,
-        raw_value: str,
-        target_type: type[Any] | None,
-    ) -> object:
+        raw_value: RawValue,
+        target_type: TargetType | None,
+    ) -> ConvertedValue:
         """Converts a raw string into the requested target type.
 
         Returns:
             The converted value, or the raw string when no target type is
             provided.
-
-        Raises:
-            ValueConversionError: If conversion fails or the target type is
-                unsupported.
         """
         if target_type is None:
             return raw_value
 
         converter = self._find_registered_converter(target_type)
         if converter is not None:
-            try:
-                return converter(raw_value)
-            except Exception as error:  # pragma: no cover - defensive wrap
-                raise ValueConversionError(
-                    f"Failed to convert {raw_value!r} to "
-                    f"{target_type.__name__}.",
-                ) from error
-
-        try:
-            if issubclass(target_type, Enum):
-                return self._convert_enum(raw_value, target_type)
-            if issubclass(target_type, str):
-                return raw_value
-            if issubclass(target_type, dict):
-                return self._convert_json_container(raw_value, target_type)
-            if issubclass(target_type, list):
-                return self._convert_json_container(raw_value, target_type)
-        except TypeError as error:  # pragma: no cover - invalid type object
-            raise ValueConversionError(
-                f"Unsupported target type {target_type!r}.",
-            ) from error
-
-        return self._construct_from_string(raw_value, target_type)
+            return self._convert_with_registered_converter(
+                raw_value,
+                target_type,
+                converter,
+            )
+        return self._convert_without_registered_converter(
+            raw_value,
+            target_type,
+        )
 
     def _find_registered_converter(
         self,
-        target_type: type[Any],
+        target_type: TargetType,
     ) -> ValueConverter | None:
         """Finds the most specific registered converter for a type.
 
         Returns:
             The most specific registered converter, or ``None``.
         """
+        direct_converter = self.converters.get(target_type)
+        if direct_converter is not None:
+            return direct_converter
         for candidate in target_type.__mro__:
+            if candidate is target_type:
+                continue
             converter = self.converters.get(candidate)
             if converter is not None:
                 return converter
         return None
 
     @staticmethod
+    def _convert_with_registered_converter(
+        raw_value: RawValue,
+        target_type: TargetType,
+        converter: ValueConverter,
+    ) -> ConvertedValue:
+        """Converts one value through a registered converter.
+
+        Returns:
+            The converted value from the registered converter.
+
+        Raises:
+            ValueConversionError: If the converter fails.
+            _build_conversion_error: If the converter raises an unexpected
+                exception.
+        """
+        try:
+            return converter(raw_value)
+        except ValueConversionError:
+            raise
+        except Exception as error:  # pragma: no cover - defensive wrap
+            raise _build_conversion_error(
+                raw_value,
+                target_type,
+                cause=error,
+            ) from error
+
+    def _convert_without_registered_converter(
+        self,
+        raw_value: RawValue,
+        target_type: TargetType,
+    ) -> ConvertedValue:
+        """Converts one value through built-in fallback strategies.
+
+        Returns:
+            The converted value from built-in fallback strategies.
+
+        Raises:
+            ValueConversionError: If conversion fails or the type is invalid.
+        """
+        try:
+            if issubclass(target_type, Enum):
+                return self._convert_enum(raw_value, target_type)
+            if issubclass(target_type, str):
+                return raw_value
+            if issubclass(target_type, dict) or issubclass(target_type, list):
+                return self._convert_json_container(raw_value, target_type)
+        except TypeError as error:  # pragma: no cover - invalid type object
+            raise ValueConversionError(
+                f"Unsupported target type {target_type!r}.",
+            ) from error
+        return self._construct_from_string(raw_value, target_type)
+
+    @staticmethod
     def _convert_enum(
-        raw_value: str,
-        target_type: type[Any],
-    ) -> object:
+        raw_value: RawValue,
+        target_type: TargetType,
+    ) -> ConvertedValue:
         """Converts a string into an enum member by name first.
 
         Returns:
             The resolved enum member.
 
         Raises:
-            ValueConversionError: If no enum member matches the raw value.
+            _build_conversion_error: If no enum member matches the raw value.
         """
         try:
             return target_type[raw_value]
@@ -198,60 +267,68 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             try:
                 return target_type(raw_value)
             except ValueError as error:
-                raise ValueConversionError(
-                    f"Failed to convert {raw_value!r} to "
-                    f"{target_type.__name__}.",
+                raise _build_conversion_error(
+                    raw_value,
+                    target_type,
+                    cause=error,
                 ) from error
 
     @staticmethod
     def _construct_from_string(
-        raw_value: str,
-        target_type: type[Any],
-    ) -> object:
+        raw_value: RawValue,
+        target_type: TargetType,
+    ) -> ConvertedValue:
         """Attempts a plain constructor-based conversion as a fallback.
 
         Returns:
             The converted value produced by the target type constructor.
 
         Raises:
-            ValueConversionError: If the target type constructor fails.
+            _build_conversion_error: If the target type constructor fails.
         """
         try:
             return target_type(raw_value)
         except Exception as error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            raise _build_conversion_error(
+                raw_value,
+                target_type,
+                cause=error,
             ) from error
 
     @staticmethod
     def _convert_json_container(
-        raw_value: str,
-        target_type: type[Any],
-    ) -> object:
+        raw_value: RawValue,
+        target_type: TargetType,
+    ) -> ConvertedValue:
         """Converts a JSON string into a mapping or sequence container.
 
         Returns:
             The converted mapping or sequence value.
 
         Raises:
-            ValueConversionError: If the JSON payload is invalid, has the wrong
-                container shape, or cannot be rewrapped into the target type.
+            ValueConversionError: If the target type is not a supported JSON
+                container type.
+            _build_conversion_error: If decoding or rewrapping fails.
         """
-        expected_type: type[Any]
+        expected_type: TargetType
         if issubclass(target_type, dict):
             expected_type = dict
+            decoder = _JSON_DICT_DECODER
         elif issubclass(target_type, list):
             expected_type = list
+            decoder = _JSON_LIST_DECODER
         else:  # pragma: no cover - guarded by convert()
             raise ValueConversionError(
                 f"Unsupported target type {target_type!r}.",
             )
 
         try:
-            decoded = msgspec.json.decode(raw_value, type=expected_type)
-        except msgspec.ValidationError as error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            decoded = decoder.decode(raw_value)
+        except (msgspec.DecodeError, msgspec.ValidationError) as error:
+            raise _build_conversion_error(
+                raw_value,
+                target_type,
+                cause=error,
             ) from error
 
         if target_type is expected_type:
@@ -259,8 +336,10 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
         try:
             return target_type(decoded)
         except Exception as error:
-            raise ValueConversionError(
-                f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            raise _build_conversion_error(
+                raw_value,
+                target_type,
+                cause=error,
             ) from error
 
 
@@ -299,6 +378,10 @@ class FieldValueConverterSet(msgspec.Struct, frozen=True, gc=False):
 
         Returns:
             The most specific configured converter, or ``None``.
+
+        Resolution precedence:
+            1. model-scoped converter by ``model`` + ``field_name``
+            2. global field-path converter by ``field_path``
         """
         if model is not None and field_name is not None:
             model_converters = self.model_field_converters.get(model)

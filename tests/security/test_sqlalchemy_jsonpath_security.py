@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
-from tests.integration.sqlalchemy.conftest import JsonEvent
 
 import pyrsql
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from tests.integration.sqlalchemy.conftest import JsonEvent
 
 pytestmark = [
     pytest.mark.security,
