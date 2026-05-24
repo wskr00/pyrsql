@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     )
 
 _MAX_FIELD_MAPPING_EXPANSIONS: Final = 32
+_ROOT_JSON_PATH: Final = JSONPath()
 
 
 class SQLAlchemyPathResolver:
@@ -106,39 +107,30 @@ class SQLAlchemyPathResolver:
             raise SQLAlchemyPathResolutionError(
                 f"Field path {field_path!r} is invalid.",
             )
-        segments = raw_segments
-
+        if field_policy is not None:
+            self._validate_global_field_policy(field_policy, field_path)
         current_model = model
         joins: list[SQLAlchemyJoinPlan] = []
         leaf_attribute: SQLAlchemyMappedAttribute | None = None
-        segments_to_resolve = list(segments)
+        segments_to_resolve = list(raw_segments)
         segment_index = 0
         expansion_count = 0
 
         while segment_index < len(segments_to_resolve):
             segment = segments_to_resolve[segment_index]
-            if field_policy is not None:
-                mapped_segment = field_policy.map_model_field(
-                    current_model,
-                    segment,
-                )
-                if mapped_segment != segment:
-                    mapped_segments = tuple(mapped_segment.split("."))
-                    if any(not part for part in mapped_segments):
-                        raise SQLAlchemyPathResolutionError(
-                            f"Mapped field {segment!r} on "
-                            f"{current_model.__name__!r} is invalid.",
-                        )
-                    segments_to_resolve[segment_index : segment_index + 1] = (
-                        mapped_segments
+            if field_policy is not None and self._expand_mapped_segments(
+                field_policy,
+                current_model,
+                segment,
+                segments_to_resolve,
+                segment_index,
+            ):
+                expansion_count += 1
+                if expansion_count > _MAX_FIELD_MAPPING_EXPANSIONS:
+                    raise SQLAlchemyPathResolutionError(
+                        "Field mapping expansion exceeded the supported limit.",
                     )
-                    expansion_count += 1
-                    if expansion_count > _MAX_FIELD_MAPPING_EXPANSIONS:
-                        raise SQLAlchemyPathResolutionError(
-                            "Field mapping expansion exceeded the supported "
-                            "limit.",
-                        )
-                    continue
+                continue
             mapped_attribute = self._inspector.get_mapped_attribute(
                 current_model,
                 segment,
@@ -170,15 +162,18 @@ class SQLAlchemyPathResolver:
                 case SQLAlchemyAttributeKind.COLUMN:
                     if not is_last_segment:
                         if mapped_attribute.is_json:
-                            return SQLAlchemyResolvedPath(
+                            if field_policy is not None:
+                                self._validate_model_field_policy(
+                                    field_policy,
+                                    current_model,
+                                    mapped_attribute.name,
+                                )
+                            return self._build_resolved_path(
                                 root_model=model,
                                 leaf_model=current_model,
-                                field_path=".".join(segments_to_resolve),
-                                joins=tuple(joins),
-                                leaf_attribute=cast(
-                                    "ColumnElement[Any]",
-                                    mapped_attribute.attribute,
-                                ),
+                                field_path=field_path,
+                                joins=joins,
+                                leaf_attribute=mapped_attribute,
                                 python_type=None,
                                 json_path=JSONPath(
                                     segments=tuple(
@@ -195,11 +190,10 @@ class SQLAlchemyPathResolver:
                         )
                     leaf_attribute = mapped_attribute
                     if field_policy is not None:
-                        self._validate_field_policy(
+                        self._validate_model_field_policy(
                             field_policy,
                             current_model,
                             leaf_attribute.name,
-                            ".".join(segments_to_resolve),
                         )
                     segment_index += 1
                 case _:
@@ -212,18 +206,72 @@ class SQLAlchemyPathResolver:
             raise SQLAlchemyORMError(
                 "Path resolution ended without a resolved leaf attribute.",
             )
-        return SQLAlchemyResolvedPath(
+        return self._build_resolved_path(
             root_model=model,
             leaf_model=current_model,
+            field_path=field_path,
+            joins=joins,
+            leaf_attribute=leaf_attribute,
+            python_type=leaf_attribute.python_type,
+            is_json=leaf_attribute.is_json,
+        )
+
+    @staticmethod
+    def _expand_mapped_segments(
+        field_policy: FieldPolicySet,
+        model: type[Any],
+        segment: str,
+        segments_to_resolve: list[str],
+        segment_index: int,
+    ) -> bool:
+        """Expands one model-scoped field mapping in place when configured.
+
+        Returns:
+            ``True`` when the current segment was replaced by mapped segments.
+
+        Raises:
+            SQLAlchemyPathResolutionError: If the mapped segments are invalid.
+        """
+        mapped_segment = field_policy.map_model_field(model, segment)
+        if mapped_segment == segment:
+            return False
+        mapped_segments = tuple(mapped_segment.split("."))
+        if any(not part for part in mapped_segments):
+            raise SQLAlchemyPathResolutionError(
+                f"Mapped field {segment!r} on {model.__name__!r} is invalid.",
+            )
+        segments_to_resolve[segment_index : segment_index + 1] = mapped_segments
+        return True
+
+    @staticmethod
+    def _build_resolved_path(
+        *,
+        root_model: type[Any],
+        leaf_model: type[Any],
+        field_path: str,
+        joins: list[SQLAlchemyJoinPlan],
+        leaf_attribute: SQLAlchemyMappedAttribute,
+        python_type: type[Any] | None,
+        json_path: JSONPath | None = None,
+        is_json: bool = False,
+    ) -> SQLAlchemyResolvedPath:
+        """Builds one immutable resolved path payload.
+
+        Returns:
+            The immutable resolved path payload.
+        """
+        return SQLAlchemyResolvedPath(
+            root_model=root_model,
+            leaf_model=leaf_model,
             field_path=field_path,
             joins=tuple(joins),
             leaf_attribute=cast(
                 "ColumnElement[Any]",
                 leaf_attribute.attribute,
             ),
-            python_type=leaf_attribute.python_type,
-            json_path=JSONPath(),
-            is_json=leaf_attribute.is_json,
+            python_type=python_type,
+            json_path=json_path if json_path is not None else _ROOT_JSON_PATH,
+            is_json=is_json,
         )
 
     @staticmethod
@@ -239,19 +287,34 @@ class SQLAlchemyPathResolver:
         return f"{model.__name__}.{segment}"
 
     @staticmethod
-    def _validate_field_policy(
+    def _validate_global_field_policy(
         field_policy: FieldPolicySet,
-        model: type[Any],
-        field_name: str,
         field_path: str,
     ) -> None:
-        """Validates field access using global and model-specific rules.
+        """Validates global field access rules for one requested path.
 
         Raises:
-            SQLAlchemyPathResolutionError: If the field access is invalid.
+            SQLAlchemyPathResolutionError: If the field path is globally
+                blocked or not allowed.
         """
         try:
             field_policy.validate_global_field_access(field_path)
+        except ValueError as error:
+            raise SQLAlchemyPathResolutionError(str(error)) from error
+
+    @staticmethod
+    def _validate_model_field_policy(
+        field_policy: FieldPolicySet,
+        model: type[Any],
+        field_name: str,
+    ) -> None:
+        """Validates model-specific field access rules for one leaf field.
+
+        Raises:
+            SQLAlchemyPathResolutionError: If the leaf field is blocked or not
+                allowed for the model.
+        """
+        try:
             field_policy.validate_model_field_access(model, field_name)
         except ValueError as error:
             raise SQLAlchemyPathResolutionError(str(error)) from error

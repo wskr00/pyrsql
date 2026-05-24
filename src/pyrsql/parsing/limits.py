@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import msgspec
 
-from pyrsql._validation import validate_positive_int
+from pyrsql.core.validation import validate_positive_int
 
 
 class ParseLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):

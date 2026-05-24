@@ -18,6 +18,7 @@ from pyrsql.orms.sqlalchemy.types import (
 
 if TYPE_CHECKING:
     from sqlalchemy.orm.properties import ColumnProperty
+    from sqlalchemy.sql.schema import Column
 
 
 class SQLAlchemyModelInspector:
@@ -153,7 +154,17 @@ class SQLAlchemyModelInspector:
         return mapped_attribute
 
     @staticmethod
+    def _first_column(
+        column_property: ColumnProperty[Any],
+    ) -> Column[Any] | None:
+        """Returns the first mapped column for a column property, if any."""
+        if not column_property.columns:
+            return None
+        return column_property.columns[0]
+
+    @classmethod
     def _resolve_column_python_type(
+        cls,
         column_property: ColumnProperty[Any],
     ) -> type[Any] | None:
         """Returns the Python type for a column property when available.
@@ -161,15 +172,17 @@ class SQLAlchemyModelInspector:
         Returns:
             The column Python type, or ``None`` when unavailable.
         """
-        if not column_property.columns:
+        column = cls._first_column(column_property)
+        if column is None:
             return None
         try:
-            return column_property.columns[0].type.python_type
+            return column.type.python_type
         except (AttributeError, NotImplementedError):
             return None
 
-    @staticmethod
+    @classmethod
     def _is_json_column(
+        cls,
         column_property: ColumnProperty[Any],
     ) -> bool:
         """Returns whether the column property stores JSON-like data.
@@ -177,6 +190,7 @@ class SQLAlchemyModelInspector:
         Returns:
             ``True`` when the column property stores JSON-like data.
         """
-        if not column_property.columns:
+        column = cls._first_column(column_property)
+        if column is None:
             return False
-        return isinstance(column_property.columns[0].type, JSON)
+        return isinstance(column.type, JSON)

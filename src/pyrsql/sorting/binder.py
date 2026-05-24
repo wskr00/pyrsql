@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyrsql._policy import (
+from pyrsql.core.binding_policy import (
     MappedFieldBindingOptions,
     enforce_field_access_policy,
     enforce_function_access_policy,

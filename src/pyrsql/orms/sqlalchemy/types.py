@@ -6,20 +6,19 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 import msgspec
-from sqlalchemy.orm import Mapper
-from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm import Mapper, QueryableAttribute
 from sqlalchemy.sql import Select
-from sqlalchemy.sql.elements import ColumnElement
 
 from pyrsql.core.json.path import JSONPath
 
 if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
+
     from pyrsql.core.joins import JoinHint
 
 SQLAlchemyModel: TypeAlias = type[Any]
 SQLAlchemySelect: TypeAlias = Select[Any]
-SQLAlchemyExpression: TypeAlias = ColumnElement[Any]
-SQLAlchemyAttribute: TypeAlias = InstrumentedAttribute[Any]
+SQLAlchemyAttribute: TypeAlias = QueryableAttribute[Any]
 SQLAlchemyMapper: TypeAlias = Mapper[Any]
 
 
@@ -56,7 +55,7 @@ class SQLAlchemyResolvedPath(
     leaf_model: SQLAlchemyModel
     field_path: str
     joins: tuple[SQLAlchemyJoinPlan, ...]
-    leaf_attribute: SQLAlchemyExpression
+    leaf_attribute: ColumnElement[Any]
     python_type: type[Any] | None
     json_path: JSONPath = msgspec.field(default_factory=JSONPath)
     is_json: bool = False

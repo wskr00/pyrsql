@@ -9,6 +9,8 @@ pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]
 pytest.importorskip("sqlalchemy")
 
 from sqlalchemy import func, select
+from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.types import Integer
 
 import pyrsql
 from pyrsql.core.custom import CustomPredicateDefinition
@@ -26,6 +28,14 @@ from .conftest import (
     User,
     render_sql,
 )
+
+
+class TypedLength(GenericFunction[int]):
+    """Typed SQL function used to validate SQLAlchemy-first inference."""
+
+    name = "typed_length"
+    type = Integer()
+    inherit_cache = True
 
 
 def test_orm_applies_simple_where_clause(orm) -> None:
@@ -53,6 +63,22 @@ def test_orm_uses_exists_for_collection_relationship_filter(orm) -> None:
     sql = render_sql(statement)
     assert "EXISTS" in sql
     assert "FROM address" in sql
+    assert "JOIN address" not in sql
+
+
+def test_orm_keeps_exists_for_collection_filter_with_unrelated_join_hint(
+    orm,
+) -> None:
+    """Unrelated join hints do not disable EXISTS collection semantics."""
+    query = pyrsql.parse(
+        "addresses.city==belem",
+        options=QueryOptions(
+            join_hints={"User.company": JoinHint.LEFT},
+        ),
+    )
+    statement = orm.compile_query(query).apply(select(User), User)
+    sql = render_sql(statement)
+    assert "EXISTS" in sql
     assert "JOIN address" not in sql
 
 
@@ -110,6 +136,16 @@ def test_orm_applies_case_insensitive_equality_marker(orm) -> None:
     assert "=" in sql
 
 
+def test_orm_keeps_literal_caret_inside_string_equality(orm) -> None:
+    """Treats '^' as a case-insensitive marker only when used as a prefix."""
+    query = pyrsql.parse("name=='de^mo'")
+    statement = orm.compile_query(query).apply(select(User), User)
+    sql = render_sql(statement)
+    compiled = statement.compile()
+    assert "lower(" not in sql.lower()
+    assert compiled.params["name_1"] == "de^mo"
+
+
 def test_orm_uses_escape_character_for_like_queries(orm) -> None:
     """Propagates the configured escape character to LIKE expressions."""
     query = pyrsql.parse(
@@ -130,6 +166,19 @@ def test_orm_applies_function_selector_where_clause(orm) -> None:
     statement = orm.compile_query(query).apply(select(User), User)
     sql = render_sql(statement)
     assert "upper(user_account.name) =" in sql
+
+
+def test_orm_uses_sqlalchemy_function_return_type_for_argument_coercion(
+    orm,
+) -> None:
+    """Uses SQLAlchemy function typing before heuristic fallback."""
+    query = pyrsql.parse(
+        "@typed_length[name]==4",
+        options=QueryOptions(procedure_whitelist=("typed_length",)),
+    )
+    statement = orm.compile_query(query).apply(select(User), User)
+    compiled = statement.compile()
+    assert compiled.params["typed_length_1"] == 4
 
 
 def test_orm_applies_distinct_option(orm) -> None:

@@ -7,6 +7,8 @@ pytestmark = [pytest.mark.integration, pytest.mark.sqlalchemy]
 pytest.importorskip("sqlalchemy")
 
 from sqlalchemy import select
+from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.types import Integer
 
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.options import JSONOptions, JSONSortScalarType
@@ -15,6 +17,14 @@ from pyrsql.core.sort import Sort
 from pyrsql.orms.sqlalchemy import SQLAlchemyJSONSupportError
 
 from .conftest import Company, JsonEvent, User, render_sql
+
+
+class TypedLength(GenericFunction[int]):
+    """Typed SQL function used to validate SQLAlchemy-first sort inference."""
+
+    name = "typed_length_sort"
+    type = Integer()
+    inherit_cache = True
 
 
 def test_orm_applies_simple_order_by_clause(orm) -> None:
@@ -85,6 +95,23 @@ def test_orm_applies_function_selector_sort(orm) -> None:
     )
     sql = render_sql(statement)
     assert "upper(user_account.name) ASC" in sql
+
+
+def test_orm_keeps_ignore_case_off_for_typed_non_string_function_sort(
+    orm,
+) -> None:
+    """Does not wrap typed non-string function sorts in lower()."""
+    statement = Sort.parse(
+        "@typed_length_sort[name],asc,ic",
+        options=SortOptions(procedure_whitelist=("typed_length_sort",)),
+    ).apply(
+        select(User),
+        User,
+        orm=orm,
+    )
+    sql = render_sql(statement)
+    assert "typed_length_sort(" in sql
+    assert "lower(" not in sql.lower()
 
 
 def test_orm_applies_left_join_hint_in_sort(orm) -> None:

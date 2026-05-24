@@ -273,6 +273,45 @@ def test_path_resolver_applies_model_field_mapping(
     assert resolved.leaf_model is Company
 
 
+def test_path_resolver_preserves_requested_json_field_path_after_mapping(
+    path_resolver: SQLAlchemyPathResolver,
+) -> None:
+    """Keeps the user-facing path in the resolved JSON payload."""
+    resolved = path_resolver.resolve(
+        Event,
+        "meta.user.id",
+        field_policy=FieldPolicySet(
+            field_whitelist=frozenset(),
+            field_blacklist=frozenset(),
+            model_field_mapping={Event: {"meta": "payload"}},
+            model_field_whitelist={},
+            model_field_blacklist={},
+        ),
+    )
+
+    assert resolved.field_path == "meta.user.id"
+    assert resolved.json_path == JSONPath(segments=("user", "id"))
+    assert resolved.is_json is True
+
+
+def test_path_resolver_enforces_global_field_whitelist_on_json_paths(
+    path_resolver: SQLAlchemyPathResolver,
+) -> None:
+    """Applies global field policies when resolving nested JSON paths."""
+    with pytest.raises(SQLAlchemyPathResolutionError, match=r"not allowed"):
+        path_resolver.resolve(
+            Event,
+            "payload.user.id",
+            field_policy=FieldPolicySet(
+                field_whitelist=frozenset({"payload"}),
+                field_blacklist=frozenset(),
+                model_field_mapping={},
+                model_field_whitelist={},
+                model_field_blacklist={},
+            ),
+        )
+
+
 def test_path_resolver_enforces_model_field_whitelist(
     path_resolver: SQLAlchemyPathResolver,
 ) -> None:

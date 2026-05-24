@@ -66,6 +66,19 @@ if TYPE_CHECKING:
         SQLAlchemyResolvedPath,
     )
 
+_IGNORE_CASE_LIKE_OPERATORS = frozenset(
+    {
+        IGNORE_CASE_LIKE.name,
+        IGNORE_CASE_NOT_LIKE.name,
+    },
+)
+_NEGATED_LIKE_OPERATORS = frozenset(
+    {
+        NOT_LIKE.name,
+        IGNORE_CASE_NOT_LIKE.name,
+    },
+)
+
 
 class SQLAlchemyExpressionTranslator:
     """Lowers bound query IR to SQLAlchemy predicates.
@@ -315,13 +328,19 @@ class SQLAlchemyExpressionTranslator:
             sa.func,
             selector.function_name,
         )(*argument_expressions)
+        function_expression = cast(
+            "ColumnElement[Any]",
+            function_expression,
+        )
+        python_type = infer_sql_function_python_type(
+            selector.function_name,
+            tuple(argument_types),
+            function_expression=function_expression,
+        )
         return (
             tuple(joins),
-            cast("ColumnElement[Any]", function_expression),
-            infer_sql_function_python_type(
-                selector.function_name,
-                tuple(argument_types),
-            ),
+            function_expression,
+            python_type,
         )
 
     def _resolve_column_expression(
@@ -414,16 +433,8 @@ class SQLAlchemyExpressionTranslator:
                 return self._build_contains_predicate(
                     expression,
                     str(values[0]),
-                    ignore_case=operator_name
-                    in {
-                        IGNORE_CASE_LIKE.name,
-                        IGNORE_CASE_NOT_LIKE.name,
-                    },
-                    negated=operator_name
-                    in {
-                        NOT_LIKE.name,
-                        IGNORE_CASE_NOT_LIKE.name,
-                    },
+                    ignore_case=operator_name in _IGNORE_CASE_LIKE_OPERATORS,
+                    negated=operator_name in _NEGATED_LIKE_OPERATORS,
                     options=options,
                 )
             case IGNORE_CASE.name:
@@ -489,8 +500,8 @@ class SQLAlchemyExpressionTranslator:
         if options.strict_equality:
             return expression == value
 
-        ignore_case = "^" in value
-        normalized_value = value.replace("^", "")
+        ignore_case = value.startswith("^")
+        normalized_value = value[1:] if ignore_case else value
         if "*" in normalized_value:
             pattern = normalized_value.replace("*", "%")
             return self._build_pattern_predicate(
@@ -594,9 +605,13 @@ class SQLAlchemyExpressionTranslator:
         Returns:
             ``True`` when the filter should use EXISTS wrapping.
         """
-        if options.join_hints:
-            return False
-        return any(join_plan.is_collection for join_plan in joins)
+        has_collection_join = False
+        for join_plan in joins:
+            if join_plan.key in options.join_hints:
+                return False
+            if join_plan.is_collection:
+                has_collection_join = True
+        return has_collection_join
 
     def _finalize_predicate(
         self,

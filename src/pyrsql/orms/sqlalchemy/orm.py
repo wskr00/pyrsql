@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from typing_extensions import override
 
 from pyrsql.orms import base
-from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_page import SQLAlchemyCompiledPageRequest
+from pyrsql.orms.sqlalchemy.compiled_query import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
 from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
 from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
@@ -36,21 +36,38 @@ class SQLAlchemyORM(base.ORM):
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
     ) -> None:
-        """Creates a SQLAlchemy ORM adapter.
-
-        Raises:
-            ValueError: If custom predicates are provided together with an
-                explicit translator.
-        """
-        if translator is not None and custom_predicates is not None:
-            raise ValueError(
-                "custom_predicates cannot be provided when translator is "
-                "passed explicitly.",
-            )
-        self._translator = translator or SQLAlchemyExpressionTranslator(
+        """Creates a SQLAlchemy ORM adapter."""
+        self._translator = self._build_translator(
+            translator=translator,
             custom_predicates=custom_predicates,
         )
         self._sort_translator = sort_translator or SQLAlchemySortTranslator()
+
+    @staticmethod
+    def _build_translator(
+        *,
+        translator: SQLAlchemyExpressionTranslator | None,
+        custom_predicates: (Mapping[str, SQLAlchemyCustomPredicate] | None),
+    ) -> SQLAlchemyExpressionTranslator:
+        """Builds the effective query translator.
+
+        Returns:
+            The translator to use for query compilation.
+
+        Raises:
+            ValueError: If custom predicates are combined with an explicit
+                translator.
+        """
+        if translator is not None:
+            if custom_predicates is not None:
+                raise ValueError(
+                    "custom_predicates cannot be provided when translator is "
+                    "passed explicitly.",
+                )
+            return translator
+        return SQLAlchemyExpressionTranslator(
+            custom_predicates=custom_predicates,
+        )
 
     @property
     def name(self) -> str:

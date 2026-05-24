@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 import sqlalchemy as sa
@@ -34,6 +35,17 @@ if TYPE_CHECKING:
         SQLAlchemyJoinPlan,
         SQLAlchemyResolvedPath,
     )
+
+
+_JSON_SORT_PYTHON_TYPES = MappingProxyType(
+    {
+        JSONSortScalarType.TEXT: str,
+        JSONSortScalarType.INTEGER: int,
+        JSONSortScalarType.FLOAT: float,
+        JSONSortScalarType.NUMERIC: float,
+        JSONSortScalarType.BOOLEAN: bool,
+    },
+)
 
 
 class SQLAlchemySortTranslator:
@@ -152,13 +164,19 @@ class SQLAlchemySortTranslator:
             sa.func,
             selector.function_name,
         )(*argument_expressions)
+        function_expression = cast(
+            "ColumnElement[Any]",
+            function_expression,
+        )
+        python_type = infer_sql_function_python_type(
+            selector.function_name,
+            tuple(argument_types),
+            function_expression=function_expression,
+        )
         return (
             tuple(joins),
-            cast("ColumnElement[Any]", function_expression),
-            infer_sql_function_python_type(
-                selector.function_name,
-                tuple(argument_types),
-            ),
+            function_expression,
+            python_type,
         )
 
     def _resolve_column_expression(
@@ -198,17 +216,7 @@ class SQLAlchemySortTranslator:
             field_path,
             JSONSortScalarType.TEXT,
         )
-        match sort_type:
-            case JSONSortScalarType.TEXT:
-                return str
-            case JSONSortScalarType.INTEGER:
-                return int
-            case JSONSortScalarType.FLOAT | JSONSortScalarType.NUMERIC:
-                return float
-            case JSONSortScalarType.BOOLEAN:
-                return bool
-            case _:
-                return None
+        return _JSON_SORT_PYTHON_TYPES.get(sort_type)
 
     @staticmethod
     def _build_order_clause(

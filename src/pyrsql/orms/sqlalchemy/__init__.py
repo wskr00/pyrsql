@@ -1,10 +1,10 @@
 """SQLAlchemy ORM exports."""
 
 from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
-from pyrsql.orms.sqlalchemy.compiled import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_page import (
     SQLAlchemyCompiledPageRequest,
 )
+from pyrsql.orms.sqlalchemy.compiled_query import SQLAlchemyCompiledQuery
 from pyrsql.orms.sqlalchemy.compiled_sort import SQLAlchemyCompiledSort
 from pyrsql.orms.sqlalchemy.errors import (
     SQLAlchemyJSONSupportError,
