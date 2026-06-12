@@ -440,6 +440,37 @@ class QueryOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             model_field_converters=self.model_field_value_converters,
         )
 
+    def with_field_whitelist(
+        self,
+        field_whitelist: frozenset[str],
+    ) -> QueryOptions:
+        """Returns one copy with only the global field whitelist replaced.
+
+        Returns:
+            A query options copy with the provided field whitelist.
+        """
+        return QueryOptions(
+            strict_equality=self.strict_equality,
+            distinct=self.distinct,
+            like_escape_character=self.like_escape_character,
+            field_mapping=self.field_mapping,
+            model_field_mapping=self.model_field_mapping,
+            join_hints=self.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=self.field_blacklist,
+            model_field_whitelist=self.model_field_whitelist,
+            model_field_blacklist=self.model_field_blacklist,
+            procedure_whitelist=self.procedure_whitelist,
+            procedure_blacklist=self.procedure_blacklist,
+            parse_limits=self.parse_limits,
+            operator_registry=self.operator_registry,
+            custom_predicates=self.custom_predicates,
+            value_converter_registry=self.value_converter_registry,
+            field_value_converters=self.field_value_converters,
+            model_field_value_converters=self.model_field_value_converters,
+            json_options=self.json_options,
+        )
+
 
 class SortOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral sort options."""
@@ -500,6 +531,29 @@ class SortOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             The compiled procedure access policy for this sort configuration.
         """
         return self._procedure_policy
+
+    def with_field_whitelist(
+        self,
+        field_whitelist: frozenset[str],
+    ) -> SortOptions:
+        """Returns one copy with only the global field whitelist replaced.
+
+        Returns:
+            A sort options copy with the provided field whitelist.
+        """
+        return SortOptions(
+            field_mapping=self.field_mapping,
+            model_field_mapping=self.model_field_mapping,
+            join_hints=self.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=self.field_blacklist,
+            model_field_whitelist=self.model_field_whitelist,
+            model_field_blacklist=self.model_field_blacklist,
+            procedure_whitelist=self.procedure_whitelist,
+            procedure_blacklist=self.procedure_blacklist,
+            sort_limits=self.sort_limits,
+            json_options=self.json_options,
+        )
 
 
 def _normalize_nested_mapping(

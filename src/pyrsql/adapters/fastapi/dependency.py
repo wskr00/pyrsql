@@ -1,9 +1,7 @@
 """Dependency factories for FastAPI request integration."""
 
 from inspect import signature
-from typing import TYPE_CHECKING, Annotated
-
-import msgspec
+from typing import TYPE_CHECKING, Annotated, cast
 
 try:
     from fastapi import HTTPException, Query
@@ -16,9 +14,7 @@ except ImportError as error:  # pragma: no cover - import guard
 from pyrsql.adapters.fastapi.config import FastAPICriteriaConfig
 from pyrsql.adapters.fastapi.criteria import RequestCriteria
 from pyrsql.adapters.fastapi.errors import (
-    build_page_error_payload,
-    build_query_error_payload,
-    build_sort_error_payload,
+    FastAPIAdapterErrorPayload,
 )
 from pyrsql.core.page import PageRequest
 from pyrsql.core.query import Query as PyrsqlQuery
@@ -36,10 +32,6 @@ from pyrsql.sorting.errors import (
 if TYPE_CHECKING:
     from collections.abc import Callable
     from inspect import Signature
-
-    from pyrsql.adapters.fastapi.errors import (
-        FastAPIAdapterErrorPayload,
-    )
 
 _QUERY_ERROR_TYPES = (ParseError, SemanticError)
 _SORT_ERROR_TYPES = (
@@ -61,12 +53,8 @@ def _raise_http_error(
         HTTPException: Always raised with a normalized adapter payload.
     """
     raise HTTPException(
-        status_code=422,
-        detail={
-            "parameter": payload.parameter,
-            "type": payload.error_type,
-            "errors": msgspec.to_builtins(payload.details),
-        },
+        status_code=payload.status_code,
+        detail=payload.to_http_detail(),
     )
 
 
@@ -81,10 +69,12 @@ def _build_page_request(
     Returns:
         A normalized page request, or ``None`` when pagination is absent.
 
-    Raises:
-        ValueError: If internal validation leaves the resolved page size unset.
     """
-    resolved_page_size = size_value or config.default_page_size
+    resolved_page_size = (
+        config.default_page_size
+        if size_value is None
+        else size_value
+    )
 
     if page_value is None:
         if resolved_page_size is None:
@@ -95,9 +85,10 @@ def _build_page_request(
 
     if resolved_page_size is None:
         _raise_http_error(
-            build_page_error_payload(
+            FastAPIAdapterErrorPayload.from_page_error(
                 config.size_parameter,
                 error_type="page_configuration_error",
+                detail_code="missing_page_size",
                 message=(
                     f"'{config.size_parameter}' is required when "
                     f"'{config.page_parameter}' is provided."
@@ -108,9 +99,10 @@ def _build_page_request(
     if config.one_based_paging:
         if resolved_page_number <= 0:
             _raise_http_error(
-                build_page_error_payload(
+                FastAPIAdapterErrorPayload.from_page_error(
                     config.page_parameter,
                     error_type="page_validation_error",
+                    detail_code="invalid_page_number",
                     message=(
                         f"'{config.page_parameter}' must be greater than 0 "
                         "when one_based_paging is enabled."
@@ -119,10 +111,10 @@ def _build_page_request(
             )
         resolved_page_number -= 1
 
-    page_size = resolved_page_size
-    if page_size is None:
-        raise ValueError("page_size cannot be None after page validation.")
-    return PageRequest.of(resolved_page_number, page_size)
+    return PageRequest.of(
+        resolved_page_number,
+        cast("int", resolved_page_size),
+    )
 
 
 def _build_criteria_callable(
@@ -178,7 +170,10 @@ def _build_criteria_callable(
                 )
             except _QUERY_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_query_error_payload(config.filter_parameter, error),
+                    FastAPIAdapterErrorPayload.from_query_error(
+                        config.filter_parameter,
+                        error,
+                    ),
                 )
 
         if sort_value:
@@ -189,7 +184,10 @@ def _build_criteria_callable(
                 )
             except _SORT_ERROR_TYPES as error:
                 _raise_http_error(
-                    build_sort_error_payload(config.sort_parameter, error),
+                    FastAPIAdapterErrorPayload.from_sort_error(
+                        config.sort_parameter,
+                        error,
+                    ),
                 )
 
         page_request = _build_page_request(
@@ -225,7 +223,11 @@ class CriteriaDependency:
         Args:
             config: Optional FastAPI criteria configuration.
         """
-        self.config = config or _DEFAULT_FASTAPI_CRITERIA_CONFIG
+        self.config = (
+            _DEFAULT_FASTAPI_CRITERIA_CONFIG
+            if config is None
+            else config
+        )
         self._dependency = _build_criteria_callable(self.config)
         self.__signature__: Signature = signature(self._dependency)
 

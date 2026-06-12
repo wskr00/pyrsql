@@ -18,6 +18,9 @@ pytestmark = [
     pytest.mark.sqlalchemy,
 ]
 
+QUERY_SEMANTIC_TYPE = "urn:pyrsql:problem:query-semantic-error"
+SORT_SEMANTIC_TYPE = "urn:pyrsql:problem:sort-semantic-error"
+
 
 def test_resource_rejects_filter_field_outside_declared_allowlist(
     resource_app_factory: Callable[..., TestClient],
@@ -29,7 +32,7 @@ def test_resource_rejects_filter_field_outside_declared_allowlist(
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_semantic_error"
+    assert response.json()["detail"]["type"] == QUERY_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "field_not_whitelisted"
     )
@@ -45,7 +48,7 @@ def test_resource_rejects_sort_field_outside_declared_allowlist(
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_semantic_error"
+    assert response.json()["detail"]["type"] == SORT_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "sort_field_not_whitelisted"
     )

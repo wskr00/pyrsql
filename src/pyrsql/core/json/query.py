@@ -46,7 +46,11 @@ class JSONPathComparison(
         Returns:
             One normalized JSON path comparison.
         """
-        value_normalizer = normalizer or DEFAULT_JSON_SCALAR_NORMALIZER
+        value_normalizer = (
+            DEFAULT_JSON_SCALAR_NORMALIZER
+            if normalizer is None
+            else normalizer
+        )
         return cls(
             path=path,
             operator_name=operator_name,

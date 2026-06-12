@@ -60,9 +60,15 @@ class SQLAlchemySortTranslator:
         json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
         """Initializes the translator with reusable helper collaborators."""
-        self._path_resolver = path_resolver or SQLAlchemyPathResolver()
+        self._path_resolver = (
+            SQLAlchemyPathResolver()
+            if path_resolver is None
+            else path_resolver
+        )
         self._json_path_builder = (
-            json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
+            SQLAlchemyJSONPathExpressionBuilder()
+            if json_path_builder is None
+            else json_path_builder
         )
 
     def translate(

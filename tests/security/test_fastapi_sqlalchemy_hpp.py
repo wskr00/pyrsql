@@ -20,6 +20,9 @@ pytestmark = [
     pytest.mark.sqlalchemy,
 ]
 
+QUERY_BACKEND_TYPE = "urn:pyrsql:problem:query-backend-error"
+SORT_BACKEND_TYPE = "urn:pyrsql:problem:sort-backend-error"
+
 
 def test_duplicate_filter_parameters_use_last_value_and_still_validate(
     integration_app_factory: Callable[..., TestClient],
@@ -31,7 +34,7 @@ def test_duplicate_filter_parameters_use_last_value_and_still_validate(
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_backend_error"
+    assert response.json()["detail"]["type"] == QUERY_BACKEND_TYPE
     assert response.json()["detail"]["errors"][0]["field"] == "password"
 
 
@@ -45,7 +48,7 @@ def test_duplicate_sort_parameters_use_last_value_and_still_validate(
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_backend_error"
+    assert response.json()["detail"]["type"] == SORT_BACKEND_TYPE
     assert response.json()["detail"]["errors"][0]["field"] == (
         "DROP TABLE users"
     )

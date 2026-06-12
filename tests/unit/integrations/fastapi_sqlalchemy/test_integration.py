@@ -221,8 +221,8 @@ def test_integration_count_select_uses_filtered_select_only(
         Mock(return_value=filtered_statement),
     )
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration,
-        "_count_from_filtered_select",
+        integration_module,
+        "count_from_filtered_select",
         Mock(return_value=count_statement),
     )
 
@@ -252,8 +252,8 @@ def test_integration_paginated_select_builds_bundle_from_shared_filtered_select(
         Mock(return_value=list_statement),
     )
     monkeypatch.setattr(
-        FastAPISQLAlchemyIntegration,
-        "_count_from_filtered_select",
+        integration_module,
+        "count_from_filtered_select",
         Mock(return_value=count_statement),
     )
 
@@ -570,13 +570,18 @@ def test_integration_rejects_invalid_request_criteria(
         method(User, cast("Any", "invalid"))
 
 
-def test_paginated_select_rejects_invalid_statements() -> None:
-    """Rejects non-select statement payloads in the paginated bundle."""
-    with pytest.raises(TypeError):
-        SQLAlchemyPaginatedSelect(
-            statement=cast("Any", "invalid"),
-            count_statement=select(User),
-        )
+def test_paginated_select_carries_list_and_count_statements() -> None:
+    """Carries the list and count statements without extra validation."""
+    list_statement = select(User)
+    count_statement = select(User.id)
+
+    bundle = SQLAlchemyPaginatedSelect(
+        statement=list_statement,
+        count_statement=count_statement,
+    )
+
+    assert bundle.statement is list_statement
+    assert bundle.count_statement is count_statement
 
 
 def test_resource_dependency_respects_explicit_max_page_size(
@@ -586,3 +591,43 @@ def test_resource_dependency_respects_explicit_max_page_size(
     resource = integration.resource(User, max_page_size=50)
 
     assert resource.criteria_config.max_page_size == 50
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "pattern"),
+    [
+        pytest.param(
+            {"query_parameter_name": ""},
+            "must not be empty",
+            id="blank-query-parameter-name",
+        ),
+        pytest.param(
+            {"sort_parameter_name": ""},
+            "must not be empty",
+            id="blank-sort-parameter-name",
+        ),
+        pytest.param(
+            {"page_parameter_name": ""},
+            "must not be empty",
+            id="blank-page-parameter-name",
+        ),
+        pytest.param(
+            {"size_parameter_name": ""},
+            "must not be empty",
+            id="blank-size-parameter-name",
+        ),
+        pytest.param(
+            {"max_page_size": 0},
+            "max_page_size",
+            id="invalid-max-page-size",
+        ),
+    ],
+)
+def test_resource_rejects_invalid_explicit_config_overrides(
+    integration: FastAPISQLAlchemyIntegration,
+    kwargs: dict[str, object],
+    pattern: str,
+) -> None:
+    """Rejects explicit invalid resource config instead of falling back."""
+    with pytest.raises((TypeError, ValueError), match=pattern):
+        integration.resource(User, **cast("Any", kwargs))

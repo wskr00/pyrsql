@@ -24,6 +24,8 @@ pytestmark = [
     pytest.mark.sqlalchemy,
 ]
 
+QUERY_PARSE_TYPE = "urn:pyrsql:problem:query-parse-error"
+
 
 def test_backend_query_errors_do_not_leak_stack_traces(
     integration_app_factory: Callable[..., TestClient],
@@ -66,8 +68,8 @@ def test_query_parse_errors_do_not_leak_internal_details(
         params={"filter": "name=='demo'"},
     )
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert_response_hides_internal_error_details(response)
 
 
@@ -94,6 +96,6 @@ def test_composed_hostile_request_fails_cleanly_at_first_limit(
         },
     )
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert_response_hides_internal_error_details(response)

@@ -56,7 +56,9 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         Returns:
             A parsed query object.
         """
-        resolved_options = options or _DEFAULT_QUERY_OPTIONS
+        resolved_options = (
+            _DEFAULT_QUERY_OPTIONS if options is None else options
+        )
         expression = cls.parse_expression(query_text, options=resolved_options)
         bound_expression = cls.bind_expression(
             expression,

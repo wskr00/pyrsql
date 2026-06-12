@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, ClassVar, TypeAlias
 
 from pyrsql.core.compiler import CompiledArtifact
 
@@ -15,6 +15,12 @@ if TYPE_CHECKING:
 CompiledQuery: TypeAlias = CompiledArtifact
 CompiledSort: TypeAlias = CompiledArtifact
 CompiledPageRequest: TypeAlias = CompiledArtifact
+
+
+class ORMError(ValueError):
+    """Base exception for ORM backend failures."""
+
+    code: ClassVar[str] = "orm_error"
 
 
 class ORM(ABC):

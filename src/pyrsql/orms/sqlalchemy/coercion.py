@@ -103,7 +103,7 @@ class SQLAlchemyValueCoercer:
             SQLAlchemyORMError: If no registry is available or conversion
                 fails.
         """
-        active_registry = registry or self._registry
+        active_registry = self._registry if registry is None else registry
         if active_registry is None:
             raise SQLAlchemyORMError(
                 "SQLAlchemyValueCoercer requires a conversion registry.",

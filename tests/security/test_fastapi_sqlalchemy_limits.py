@@ -23,6 +23,9 @@ pytestmark = [
     pytest.mark.sqlalchemy,
 ]
 
+QUERY_PARSE_TYPE = "urn:pyrsql:problem:query-parse-error"
+SORT_PARSE_TYPE = "urn:pyrsql:problem:sort-parse-error"
+
 
 def test_integration_rejects_filter_exceeding_query_length_limit(
     integration_app_factory: Callable[..., TestClient],
@@ -38,8 +41,8 @@ def test_integration_rejects_filter_exceeding_query_length_limit(
 
     response = client.get("/users", params={"filter": "name=='demo'"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "lex_error"
 
 
@@ -57,8 +60,8 @@ def test_integration_rejects_filter_exceeding_selector_length_limit(
 
     response = client.get("/users", params={"filter": "company.name==demo"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "lex_error"
 
 
@@ -76,8 +79,8 @@ def test_integration_rejects_filter_exceeding_argument_length_limit(
 
     response = client.get("/users", params={"filter": "name=='demo'"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "lex_error"
 
 
@@ -95,8 +98,8 @@ def test_integration_rejects_filter_with_too_many_list_arguments(
 
     response = client.get("/users", params={"filter": "id=in=(1,2,3)"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "parse_error"
 
 
@@ -114,8 +117,8 @@ def test_integration_rejects_filter_exceeding_expression_depth_limit(
 
     response = client.get("/users", params={"filter": "((name==demo))"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "parse_error"
 
 
@@ -136,8 +139,8 @@ def test_integration_rejects_filter_exceeding_node_count_limit(
         params={"filter": "name==demo;company.name==acme"},
     )
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == QUERY_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "parse_error"
 
 
@@ -155,8 +158,8 @@ def test_integration_rejects_sort_exceeding_total_length_limit(
 
     response = client.get("/users", params={"sort": "company.name,desc"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == SORT_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "sort_parse_error"
 
 
@@ -174,8 +177,8 @@ def test_integration_rejects_sort_with_too_many_fields(
 
     response = client.get("/users", params={"sort": "name;company.name"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == SORT_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "sort_parse_error"
 
 
@@ -193,8 +196,8 @@ def test_integration_rejects_sort_exceeding_field_path_length_limit(
 
     response = client.get("/users", params={"sort": "company.name,asc"})
 
-    assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_parse_error"
+    assert response.status_code == 400
+    assert response.json()["detail"]["type"] == SORT_PARSE_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == "sort_parse_error"
 
 

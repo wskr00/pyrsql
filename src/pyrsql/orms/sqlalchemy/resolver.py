@@ -42,7 +42,9 @@ class SQLAlchemyPathResolver:
     ) -> None:
         """Initializes the resolver with an optional shared inspector."""
         self._cache_lock = Lock()
-        self._inspector = inspector or SQLAlchemyModelInspector()
+        self._inspector = (
+            SQLAlchemyModelInspector() if inspector is None else inspector
+        )
         self._default_resolution_cache: dict[
             tuple[type[Any], str],
             SQLAlchemyResolvedPath,

@@ -1,8 +1,14 @@
 """FastAPI + SQLAlchemy integration helpers."""
 
-from .integration import FastAPISQLAlchemyIntegration
-from .payloads import SQLAlchemyPaginatedSelect
-from .resource import FastAPISQLAlchemyResource
+from pyrsql.integrations.fastapi.sqlalchemy.integration import (
+    FastAPISQLAlchemyIntegration,
+)
+from pyrsql.integrations.fastapi.sqlalchemy.payloads import (
+    SQLAlchemyPaginatedSelect,
+)
+from pyrsql.integrations.fastapi.sqlalchemy.resource import (
+    FastAPISQLAlchemyResource,
+)
 
 __all__ = (
     "FastAPISQLAlchemyIntegration",

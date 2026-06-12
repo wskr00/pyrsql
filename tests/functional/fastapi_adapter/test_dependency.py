@@ -94,8 +94,8 @@ def test_dependency_parses_filter_sort_and_page_params() -> None:
     }
 
 
-def test_dependency_translates_query_parse_errors_to_http_422() -> None:
-    """Maps query parsing failures to a stable HTTP error payload."""
+def test_dependency_translates_query_parse_errors_to_http_400() -> None:
+    """Maps query parsing failures to a stable HTTP 400 error payload."""
     app = FastAPI()
     dependency = criteria_dependency()
 
@@ -107,10 +107,11 @@ def test_dependency_translates_query_parse_errors_to_http_422() -> None:
 
     response = TestClient(app).get("/items", params={"filter": "name=="})
 
-    assert response.status_code == 422
+    assert response.status_code == 400
     payload = response.json()["detail"]
     assert payload["parameter"] == "filter"
-    assert payload["type"] == "query_parse_error"
+    assert payload["type"] == "urn:pyrsql:problem:query-parse-error"
+    assert payload["title"] == "Query parse error"
     assert payload["errors"][0]["code"] == "parse_error"
     assert payload["errors"][0]["location"] == {
         "index": 4,
@@ -141,7 +142,7 @@ def test_dependency_exposes_structured_field_policy_diagnostics() -> None:
 
     assert response.status_code == 422
     payload = response.json()["detail"]
-    assert payload["type"] == "query_semantic_error"
+    assert payload["type"] == "urn:pyrsql:problem:query-semantic-error"
     assert payload["errors"][0]["code"] == "field_not_whitelisted"
     assert payload["errors"][0]["field"] == "password"
     assert payload["errors"][0]["location"] == {

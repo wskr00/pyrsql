@@ -105,13 +105,23 @@ class SQLAlchemyExpressionTranslator:
         json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
         """Initializes the translator with reusable lowering collaborators."""
-        self._path_resolver = path_resolver or SQLAlchemyPathResolver()
-        self._value_coercer = value_coercer or SQLAlchemyValueCoercer()
+        self._path_resolver = (
+            SQLAlchemyPathResolver()
+            if path_resolver is None
+            else path_resolver
+        )
+        self._value_coercer = (
+            SQLAlchemyValueCoercer()
+            if value_coercer is None
+            else value_coercer
+        )
         self._json_path_builder = (
-            json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
+            SQLAlchemyJSONPathExpressionBuilder()
+            if json_path_builder is None
+            else json_path_builder
         )
         self._orm_custom_predicates = MappingProxyType(
-            dict(custom_predicates or {}),
+            {} if custom_predicates is None else dict(custom_predicates),
         )
 
     def translate(

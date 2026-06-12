@@ -109,6 +109,6 @@ async def test_async_dependency_translates_semantic_errors_to_http_422() -> (
 
     assert response.status_code == 422
     payload = response.json()["detail"]
-    assert payload["type"] == "query_semantic_error"
+    assert payload["type"] == "urn:pyrsql:problem:query-semantic-error"
     assert payload["errors"][0]["code"] == "field_not_whitelisted"
     assert payload["errors"][0]["field"] == "password"

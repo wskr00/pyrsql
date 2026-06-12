@@ -41,7 +41,11 @@ class SQLAlchemyORM(base.ORM):
             translator=translator,
             custom_predicates=custom_predicates,
         )
-        self._sort_translator = sort_translator or SQLAlchemySortTranslator()
+        self._sort_translator = (
+            SQLAlchemySortTranslator()
+            if sort_translator is None
+            else sort_translator
+        )
 
     @staticmethod
     def _build_translator(

@@ -222,6 +222,38 @@ def test_sort_options_are_normalized() -> None:
     assert options.join_hints["User.company"] is JoinHint.INNER
 
 
+def test_query_options_with_field_whitelist_returns_updated_copy() -> None:
+    """Copies query options while replacing only the global whitelist."""
+    options = QueryOptions(
+        distinct=True,
+        field_blacklist=frozenset({"blocked"}),
+        parse_limits=DEFAULT_PARSE_LIMITS,
+    )
+
+    updated = options.with_field_whitelist(frozenset({"name"}))
+
+    assert updated is not options
+    assert updated.field_whitelist == frozenset({"name"})
+    assert updated.field_blacklist == frozenset({"blocked"})
+    assert updated.distinct is True
+    assert updated.parse_limits is DEFAULT_PARSE_LIMITS
+
+
+def test_sort_options_with_field_whitelist_returns_updated_copy() -> None:
+    """Copies sort options while replacing only the global whitelist."""
+    options = SortOptions(
+        field_blacklist=frozenset({"blocked"}),
+        sort_limits=DEFAULT_SORT_LIMITS,
+    )
+
+    updated = options.with_field_whitelist(frozenset({"name"}))
+
+    assert updated is not options
+    assert updated.field_whitelist == frozenset({"name"})
+    assert updated.field_blacklist == frozenset({"blocked"})
+    assert updated.sort_limits is DEFAULT_SORT_LIMITS
+
+
 def test_sort_options_cache_derived_policy_objects() -> None:
     """Caches derived helper objects after normalization."""
     options = SortOptions()

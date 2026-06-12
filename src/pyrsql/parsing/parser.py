@@ -12,7 +12,10 @@ from pyrsql.parsing.ast import (
 )
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
+from pyrsql.parsing.normalization import (
+    normalize_operator_registry,
+    normalize_parse_limits,
+)
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
 )
@@ -60,9 +63,10 @@ class Parser:
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         """Initializes the parser with raw source text and limits."""
-        self._limits = self._normalize_limits(limits)
-        self._operator_registry = self._normalize_operator_registry(
+        self._limits = normalize_parse_limits(limits, owner_type=type(self))
+        self._operator_registry = normalize_operator_registry(
             operator_registry,
+            owner_type=type(self),
         )
         self._tokens = Lexer(
             source,
@@ -72,41 +76,6 @@ class Parser:
         self._token_count = len(self._tokens)
         self._index = 0
         self._node_count = 0
-
-    @staticmethod
-    def _normalize_limits(limits: ParseLimits | None) -> ParseLimits:
-        """Normalizes optional parser limits.
-
-        Returns:
-            The provided limits, or the shared defaults.
-
-        Raises:
-            TypeError: If ``limits`` is not a ``ParseLimits`` instance.
-        """
-        if limits is None:
-            return DEFAULT_PARSE_LIMITS
-        if not isinstance(limits, type(DEFAULT_PARSE_LIMITS)):
-            raise TypeError("Parser limits must be a ParseLimits instance.")
-        return limits
-
-    @staticmethod
-    def _normalize_operator_registry(
-        operator_registry: OperatorRegistry,
-    ) -> OperatorRegistry:
-        """Normalizes the operator registry dependency.
-
-        Returns:
-            The validated operator registry instance.
-
-        Raises:
-            TypeError: If the registry is not an ``OperatorRegistry``.
-        """
-        if not isinstance(operator_registry, type(DEFAULT_OPERATOR_REGISTRY)):
-            raise TypeError(
-                "Parser operator_registry must be an "
-                "OperatorRegistry instance.",
-            )
-        return operator_registry
 
     @property
     def limits(self) -> ParseLimits:

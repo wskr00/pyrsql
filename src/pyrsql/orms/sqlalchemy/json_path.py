@@ -180,7 +180,9 @@ class SQLAlchemyJSONPathExpressionBuilder:
         Returns:
             A PostgreSQL ``jsonb_path_exists`` predicate.
         """
-        active_options = options or DEFAULT_JSON_OPTIONS
+        active_options = (
+            DEFAULT_JSON_OPTIONS if options is None else options
+        )
         function_call = self._build_filter_call(
             comparison,
             options=active_options,
@@ -273,7 +275,9 @@ class SQLAlchemyJSONPathExpressionBuilder:
         Returns:
             The SQLAlchemy expression used for JSON sorting.
         """
-        active_options = options or DEFAULT_JSON_OPTIONS
+        active_options = (
+            DEFAULT_JSON_OPTIONS if options is None else options
+        )
         jsonb_column = cast(
             "ColumnElement[Any]",
             sa.cast(column, postgresql.JSONB),

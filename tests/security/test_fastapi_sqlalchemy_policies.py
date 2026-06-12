@@ -21,6 +21,9 @@ pytestmark = [
     pytest.mark.sqlalchemy,
 ]
 
+QUERY_SEMANTIC_TYPE = "urn:pyrsql:problem:query-semantic-error"
+SORT_SEMANTIC_TYPE = "urn:pyrsql:problem:sort-semantic-error"
+
 
 def test_integration_rejects_filter_field_outside_whitelist(
     integration_app_factory: Callable[..., TestClient],
@@ -35,7 +38,7 @@ def test_integration_rejects_filter_field_outside_whitelist(
     response = client.get("/users", params={"filter": "company.name==acme"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_semantic_error"
+    assert response.json()["detail"]["type"] == QUERY_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "field_not_whitelisted"
     )
@@ -54,7 +57,7 @@ def test_integration_rejects_filter_field_in_blacklist(
     response = client.get("/users", params={"filter": "name==demo"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_semantic_error"
+    assert response.json()["detail"]["type"] == QUERY_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "field_blacklisted"
     )
@@ -73,7 +76,7 @@ def test_integration_rejects_filter_function_outside_whitelist(
     response = client.get("/users", params={"filter": "@upper[name]==DEMO"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_semantic_error"
+    assert response.json()["detail"]["type"] == QUERY_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "function_not_whitelisted"
     )
@@ -95,7 +98,7 @@ def test_integration_rejects_filter_function_in_blacklist(
     response = client.get("/users", params={"filter": "@upper[name]==DEMO"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "query_semantic_error"
+    assert response.json()["detail"]["type"] == QUERY_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "function_blacklisted"
     )
@@ -114,7 +117,7 @@ def test_integration_rejects_sort_field_outside_whitelist(
     response = client.get("/users", params={"sort": "company.name,asc"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_semantic_error"
+    assert response.json()["detail"]["type"] == SORT_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "sort_field_not_whitelisted"
     )
@@ -133,7 +136,7 @@ def test_integration_rejects_sort_field_in_blacklist(
     response = client.get("/users", params={"sort": "name,asc"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_semantic_error"
+    assert response.json()["detail"]["type"] == SORT_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "sort_field_blacklisted"
     )
@@ -152,7 +155,7 @@ def test_integration_rejects_sort_function_outside_whitelist(
     response = client.get("/users", params={"sort": "@upper[name],asc"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_semantic_error"
+    assert response.json()["detail"]["type"] == SORT_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "sort_function_not_whitelisted"
     )
@@ -174,7 +177,7 @@ def test_integration_rejects_sort_function_in_blacklist(
     response = client.get("/users", params={"sort": "@upper[name],asc"})
 
     assert response.status_code == 422
-    assert response.json()["detail"]["type"] == "sort_semantic_error"
+    assert response.json()["detail"]["type"] == SORT_SEMANTIC_TYPE
     assert response.json()["detail"]["errors"][0]["code"] == (
         "sort_function_blacklisted"
     )

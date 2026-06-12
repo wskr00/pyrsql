@@ -7,6 +7,7 @@ from typing import Any
 import msgspec
 
 from pyrsql.core.options import QueryOptions, SortOptions
+from pyrsql.core.validation import validate_positive_int
 
 _DEFAULT_FILTER_PARAMETER = "filter"
 _DEFAULT_SORT_PARAMETER = "sort"
@@ -15,6 +16,28 @@ _DEFAULT_SIZE_PARAMETER = "size"
 _DEFAULT_QUERY_OPTIONS = QueryOptions()
 _DEFAULT_SORT_OPTIONS = SortOptions()
 _EMPTY_OPENAPI_EXAMPLES: Mapping[str, Any] = MappingProxyType({})
+
+
+def _normalize_parameter_name(name: object, *, field_name: str) -> str:
+    """Validates and normalizes one public FastAPI parameter name.
+
+    Returns:
+        The validated parameter name.
+
+    Raises:
+        TypeError: If the parameter name is not a string.
+        ValueError: If the parameter name is empty or has outer whitespace.
+    """
+    if not isinstance(name, str):
+        raise TypeError(f"{field_name} must be a string.")
+    normalized_name = name.strip()
+    if not normalized_name:
+        raise ValueError("FastAPI parameter names must not be empty.")
+    if normalized_name != name:
+        raise ValueError(
+            "FastAPI parameter names must not contain outer whitespace.",
+        )
+    return normalized_name
 
 
 class FastAPICriteriaConfig(
@@ -61,24 +84,35 @@ class FastAPICriteriaConfig(
                 limits are inconsistent.
         """
         parameter_names = (
-            self.filter_parameter,
-            self.sort_parameter,
-            self.page_parameter,
-            self.size_parameter,
+            _normalize_parameter_name(
+                self.filter_parameter,
+                field_name="filter_parameter",
+            ),
+            _normalize_parameter_name(
+                self.sort_parameter,
+                field_name="sort_parameter",
+            ),
+            _normalize_parameter_name(
+                self.page_parameter,
+                field_name="page_parameter",
+            ),
+            _normalize_parameter_name(
+                self.size_parameter,
+                field_name="size_parameter",
+            ),
         )
-        normalized_names = tuple(name.strip() for name in parameter_names)
-        if any(not name for name in normalized_names):
-            raise ValueError("FastAPI parameter names must not be empty.")
-        if normalized_names != parameter_names:
-            raise ValueError(
-                "FastAPI parameter names must not contain outer whitespace.",
-            )
-        if len(set(normalized_names)) != len(normalized_names):
+        if len(set(parameter_names)) != len(parameter_names):
             raise ValueError("FastAPI parameter names must be unique.")
-        if self.default_page_size is not None and self.default_page_size <= 0:
-            raise ValueError("default_page_size must be greater than 0.")
-        if self.max_page_size is not None and self.max_page_size <= 0:
-            raise ValueError("max_page_size must be greater than 0.")
+        if self.default_page_size is not None:
+            validate_positive_int(
+                self.default_page_size,
+                field_name="default_page_size",
+            )
+        if self.max_page_size is not None:
+            validate_positive_int(
+                self.max_page_size,
+                field_name="max_page_size",
+            )
         if (
             self.default_page_size is not None
             and self.max_page_size is not None

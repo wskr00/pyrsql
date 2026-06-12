@@ -53,7 +53,7 @@ class Sort(msgspec.Struct, frozen=True, gc=False):
         Returns:
             A parsed sort object.
         """
-        resolved_options = options or _DEFAULT_SORT_OPTIONS
+        resolved_options = _DEFAULT_SORT_OPTIONS if options is None else options
         fields = cls.parse_fields(sort_text, options=resolved_options)
         bound_sort = cls.bind_fields(fields, options=resolved_options)
         return cls(

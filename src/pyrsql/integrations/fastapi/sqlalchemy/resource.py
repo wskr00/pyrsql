@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from threading import Lock
-from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
@@ -13,9 +13,7 @@ from pyrsql.adapters.fastapi import (
     RequestCriteria,
 )
 from pyrsql.core.sort import Sort as PyrsqlSort
-from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-
-from .helpers import (
+from pyrsql.integrations.fastapi.sqlalchemy.helpers import (
     apply_query_with_orm,
     apply_sort_and_page_with_orm,
     count_from_filtered_select,
@@ -23,41 +21,28 @@ from .helpers import (
     require_request_criteria,
     sort_backend_http_errors,
 )
-from .payloads import SQLAlchemyPaginatedSelect
+import pyrsql.integrations.fastapi.sqlalchemy.integration
+from pyrsql.integrations.fastapi.sqlalchemy.payloads import (
+    SQLAlchemyPaginatedSelect,
+)
+from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+    from pyrsql.integrations.fastapi.sqlalchemy.integration import (
+        FastAPISQLAlchemyIntegration,
+    )
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
-
-    from .integration import FastAPISQLAlchemyIntegration
-
-
-@runtime_checkable
-class _ResourceIntegrationProtocol(Protocol):
-    """Structural contract required by declarative resources."""
-
-    orm: SQLAlchemyORM
-
-    def apply(
-        self,
-        statement: SQLAlchemySelect,
-        model: SQLAlchemyModel,
-        criteria: RequestCriteria,
-    ) -> SQLAlchemySelect: ...
-
-    def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect: ...
 
 
 class FastAPISQLAlchemyResource:
     """Declarative FastAPI + SQLAlchemy resource integration."""
 
-    integration: _ResourceIntegrationProtocol
+    integration: FastAPISQLAlchemyIntegration
     model: SQLAlchemyModel
     criteria_config: FastAPICriteriaConfig
     _criteria_dependency: Callable[..., RequestCriteria]
-    _default_sort: PyrsqlSort | None
     _statement_factory: Callable[[], SQLAlchemySelect] | None
     _applier_dependency: (
         Callable[..., Callable[[SQLAlchemySelect], SQLAlchemySelect]] | None
@@ -73,7 +58,6 @@ class FastAPISQLAlchemyResource:
         "_cache_lock",
         "_count_select_dependency",
         "_criteria_dependency",
-        "_default_sort",
         "_paginated_select_dependency",
         "_select_dependency",
         "_statement_factory",
@@ -97,14 +81,16 @@ class FastAPISQLAlchemyResource:
             TypeError: If the integration, criteria config, default sort, or
                 statement factory have the wrong runtime type.
         """
-        if not isinstance(integration, _ResourceIntegrationProtocol):
+        integration_type = (
+            pyrsql.integrations.fastapi.sqlalchemy.integration.FastAPISQLAlchemyIntegration
+        )
+        if not isinstance(
+            integration,
+            integration_type,
+        ):
             raise TypeError(
                 "integration must be a FastAPISQLAlchemyIntegration.",
             )
-        validated_integration = cast(
-            "_ResourceIntegrationProtocol",
-            integration,
-        )
         if not isinstance(criteria_config, FastAPICriteriaConfig):
             raise TypeError("criteria_config must be a FastAPICriteriaConfig.")
         if default_sort is not None and not isinstance(
@@ -114,10 +100,9 @@ class FastAPISQLAlchemyResource:
             raise TypeError("default_sort must be a Sort or None.")
         if statement_factory is not None and not callable(statement_factory):
             raise TypeError("statement_factory must be a callable or None.")
-        self.integration = validated_integration
+        self.integration = integration
         self.model = model
         self.criteria_config = criteria_config
-        self._default_sort = default_sort
         self._statement_factory = statement_factory
         self._cache_lock = Lock()
         self._applier_dependency: (
@@ -144,7 +129,7 @@ class FastAPISQLAlchemyResource:
                 return criteria
             return RequestCriteria(
                 query=criteria.query,
-                sort=self._default_sort,
+                sort=default_sort,
                 page_request=criteria.page_request,
             )
 
@@ -213,6 +198,57 @@ class FastAPISQLAlchemyResource:
 
         return apply_to
 
+    def _filtered_statement(
+        self,
+        criteria: RequestCriteria,
+    ) -> SQLAlchemySelect:
+        """Builds the filtered base statement for validated criteria.
+
+        Returns:
+            The filtered base statement.
+        """
+        return apply_query_with_orm(
+            self._base_statement(),
+            self.model,
+            criteria,
+            self.integration.orm,
+        )
+
+    def _sorted_statement(
+        self,
+        filtered_statement: SQLAlchemySelect,
+        criteria: RequestCriteria,
+    ) -> SQLAlchemySelect:
+        """Applies sort and page semantics to a filtered statement.
+
+        Returns:
+            The filtered statement with sort and page semantics applied.
+        """
+        return apply_sort_and_page_with_orm(
+            filtered_statement,
+            self.model,
+            criteria,
+            self.integration.orm,
+        )
+
+    def _paginated_bundle(
+        self,
+        filtered_statement: SQLAlchemySelect,
+        criteria: RequestCriteria,
+    ) -> SQLAlchemyPaginatedSelect:
+        """Builds the list/count bundle from one filtered statement.
+
+        Returns:
+            The paired list and count statements.
+        """
+        return SQLAlchemyPaginatedSelect(
+            statement=self._sorted_statement(
+                filtered_statement,
+                criteria,
+            ),
+            count_statement=count_from_filtered_select(filtered_statement),
+        )
+
     def count_select(self, criteria: RequestCriteria) -> SQLAlchemySelect:
         """Builds a count select for the configured resource model.
 
@@ -220,12 +256,7 @@ class FastAPISQLAlchemyResource:
             A count SQLAlchemy select statement.
         """
         validated_criteria = require_request_criteria(criteria)
-        filtered_statement = apply_query_with_orm(
-            self._base_statement(),
-            self.model,
-            validated_criteria,
-            self.integration.orm,
-        )
+        filtered_statement = self._filtered_statement(validated_criteria)
         return count_from_filtered_select(filtered_statement)
 
     def paginated_select(
@@ -238,21 +269,8 @@ class FastAPISQLAlchemyResource:
             Paired list and count SQLAlchemy statements.
         """
         validated_criteria = require_request_criteria(criteria)
-        filtered_statement = apply_query_with_orm(
-            self._base_statement(),
-            self.model,
-            validated_criteria,
-            self.integration.orm,
-        )
-        return SQLAlchemyPaginatedSelect(
-            statement=apply_sort_and_page_with_orm(
-                filtered_statement,
-                self.model,
-                validated_criteria,
-                self.integration.orm,
-            ),
-            count_statement=count_from_filtered_select(filtered_statement),
-        )
+        filtered_statement = self._filtered_statement(validated_criteria)
+        return self._paginated_bundle(filtered_statement, validated_criteria)
 
     def select_dependency(self) -> Callable[..., SQLAlchemySelect]:
         """Returns a FastAPI dependency yielding a filtered select.
@@ -270,20 +288,14 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
-                    filtered_statement = apply_query_with_orm(
-                        self._base_statement(),
-                        self.model,
-                        validated_criteria,
-                        self.integration.orm,
+                    filtered_statement = self._filtered_statement(
+                        criteria,
                     )
                 with sort_backend_http_errors(self.criteria_config):
-                    return apply_sort_and_page_with_orm(
+                    return self._sorted_statement(
                         filtered_statement,
-                        self.model,
-                        validated_criteria,
-                        self.integration.orm,
+                        criteria,
                     )
 
             self._select_dependency = dependency
@@ -328,13 +340,9 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
-                    filtered_statement = apply_query_with_orm(
-                        self._base_statement(),
-                        self.model,
-                        validated_criteria,
-                        self.integration.orm,
+                    filtered_statement = self._filtered_statement(
+                        criteria,
                     )
                 return count_from_filtered_select(filtered_statement)
 
@@ -359,25 +367,14 @@ class FastAPISQLAlchemyResource:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemyPaginatedSelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
-                    filtered_statement = apply_query_with_orm(
-                        self._base_statement(),
-                        self.model,
-                        validated_criteria,
-                        self.integration.orm,
+                    filtered_statement = self._filtered_statement(
+                        criteria,
                     )
                 with sort_backend_http_errors(self.criteria_config):
-                    return SQLAlchemyPaginatedSelect(
-                        statement=apply_sort_and_page_with_orm(
-                            filtered_statement,
-                            self.model,
-                            validated_criteria,
-                            self.integration.orm,
-                        ),
-                        count_statement=count_from_filtered_select(
-                            filtered_statement,
-                        ),
+                    return self._paginated_bundle(
+                        filtered_statement,
+                        criteria,
                     )
 
             self._paginated_select_dependency = dependency

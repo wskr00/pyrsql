@@ -30,7 +30,7 @@ def test_integration_returns_http_422_for_malicious_sort_field(
 
     assert response.status_code == 422
     assert '"parameter":"sort"' in response.text
-    assert '"type":"sort_backend_error"' in response.text
+    assert '"type":"urn:pyrsql:problem:sort-backend-error"' in response.text
     assert '"field":"DROP TABLE users"' in response.text
 
 
@@ -45,5 +45,5 @@ def test_integration_returns_http_422_for_malicious_filter_field(
 
     assert response.status_code == 422
     assert '"parameter":"filter"' in response.text
-    assert '"type":"query_backend_error"' in response.text
+    assert '"type":"urn:pyrsql:problem:query-backend-error"' in response.text
     assert '"field":"password"' in response.text

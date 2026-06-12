@@ -27,24 +27,19 @@ ValueConverter: TypeAlias = Callable[[RawValue], ConvertedValue]
 class ValueConversionError(ValueError):
     """Raised when a raw RSQL value cannot be converted."""
 
-
-def _build_conversion_error(
-    raw_value: RawValue,
-    target_type: TargetType,
-    *,
-    cause: Exception | None = None,
-) -> ValueConversionError:
-    """Builds one normalized conversion error instance.
-
-    Returns:
-        A normalized value conversion error.
-    """
-    error = ValueConversionError(
-        f"Failed to convert {raw_value!r} to {target_type.__name__}.",
-    )
-    if cause is not None:
-        error.__cause__ = cause
-    return error
+    def __init__(
+        self,
+        raw_value: RawValue,
+        target_type: TargetType,
+        *,
+        cause: Exception | None = None,
+    ) -> None:
+        """Builds one normalized conversion error instance."""
+        super().__init__(
+            f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+        )
+        if cause is not None:
+            self.__cause__ = cause
 
 
 def _convert_bool(raw_value: RawValue) -> bool:
@@ -74,8 +69,8 @@ def _convert_datetime(raw_value: RawValue) -> dt.datetime:
         The converted datetime value.
 
     Raises:
-        _build_conversion_error: If the input cannot be parsed as datetime or
-            ISO date.
+        ValueConversionError: If the input cannot be parsed as datetime or ISO
+            date.
     """
     try:
         return msgspec.convert(
@@ -88,7 +83,7 @@ def _convert_datetime(raw_value: RawValue) -> dt.datetime:
     try:
         parsed_date = dt.date.fromisoformat(raw_value)
     except ValueError as date_error:
-        raise _build_conversion_error(
+        raise ValueConversionError(
             raw_value,
             dt.datetime,
             cause=date_error,
@@ -113,7 +108,7 @@ def _build_msgspec_converter(
                 strict=False,
             )
         except msgspec.ValidationError as error:
-            raise _build_conversion_error(
+            raise ValueConversionError(
                 raw_value,
                 target_type,
                 cause=error,
@@ -208,15 +203,13 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
 
         Raises:
             ValueConversionError: If the converter fails.
-            _build_conversion_error: If the converter raises an unexpected
-                exception.
         """
         try:
             return converter(raw_value)
         except ValueConversionError:
             raise
         except Exception as error:  # pragma: no cover - defensive wrap
-            raise _build_conversion_error(
+            raise ValueConversionError(
                 raw_value,
                 target_type,
                 cause=error,
@@ -259,7 +252,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             The resolved enum member.
 
         Raises:
-            _build_conversion_error: If no enum member matches the raw value.
+            ValueConversionError: If no enum member matches the raw value.
         """
         try:
             return target_type[raw_value]
@@ -267,7 +260,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             try:
                 return target_type(raw_value)
             except ValueError as error:
-                raise _build_conversion_error(
+                raise ValueConversionError(
                     raw_value,
                     target_type,
                     cause=error,
@@ -284,12 +277,12 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             The converted value produced by the target type constructor.
 
         Raises:
-            _build_conversion_error: If the target type constructor fails.
+            ValueConversionError: If the target type constructor fails.
         """
         try:
             return target_type(raw_value)
         except Exception as error:
-            raise _build_conversion_error(
+            raise ValueConversionError(
                 raw_value,
                 target_type,
                 cause=error,
@@ -306,9 +299,8 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             The converted mapping or sequence value.
 
         Raises:
-            ValueConversionError: If the target type is not a supported JSON
-                container type.
-            _build_conversion_error: If decoding or rewrapping fails.
+            ValueConversionError: If conversion to the requested JSON
+                container type fails.
         """
         expected_type: TargetType
         if issubclass(target_type, dict):
@@ -325,7 +317,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
         try:
             decoded = decoder.decode(raw_value)
         except (msgspec.DecodeError, msgspec.ValidationError) as error:
-            raise _build_conversion_error(
+            raise ValueConversionError(
                 raw_value,
                 target_type,
                 cause=error,
@@ -336,7 +328,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
         try:
             return target_type(decoded)
         except Exception as error:
-            raise _build_conversion_error(
+            raise ValueConversionError(
                 raw_value,
                 target_type,
                 cause=error,

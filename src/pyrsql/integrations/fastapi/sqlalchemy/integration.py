@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from threading import Lock
-from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
@@ -13,18 +12,14 @@ from pyrsql.adapters.fastapi import (
     CriteriaDependency,
     FastAPICriteriaConfig,
 )
-from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.sort import Sort as PyrsqlSort
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
-from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
-
-from .examples import (
+from pyrsql.integrations.fastapi.sqlalchemy.examples import (
     build_filter_examples,
     build_sort_examples,
     merge_openapi_examples,
     normalize_default_sort,
 )
-from .helpers import (
+from pyrsql.integrations.fastapi.sqlalchemy.helpers import (
     apply_query_with_orm,
     apply_sort_and_page_with_orm,
     count_from_filtered_select,
@@ -32,8 +27,14 @@ from .helpers import (
     require_request_criteria,
     sort_backend_http_errors,
 )
-from .payloads import SQLAlchemyPaginatedSelect
-from .resource import FastAPISQLAlchemyResource
+from pyrsql.integrations.fastapi.sqlalchemy.payloads import (
+    SQLAlchemyPaginatedSelect,
+)
+from pyrsql.integrations.fastapi.sqlalchemy.resource import (
+    FastAPISQLAlchemyResource,
+)
+from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
-_EMPTY_OPENAPI_EXAMPLES = MappingProxyType({})
 
 
 class FastAPISQLAlchemyIntegration:
@@ -82,9 +82,11 @@ class FastAPISQLAlchemyIntegration:
             raise TypeError(
                 "criteria_config must be a FastAPICriteriaConfig or None.",
             )
-        self.orm = orm or SQLAlchemyORM()
+        self.orm = SQLAlchemyORM() if orm is None else orm
         self.criteria_config = (
-            criteria_config or _DEFAULT_FASTAPI_CRITERIA_CONFIG
+            _DEFAULT_FASTAPI_CRITERIA_CONFIG
+            if criteria_config is None
+            else criteria_config
         )
         self._criteria_dependency = CriteriaDependency(self.criteria_config)
         self._cache_lock = Lock()
@@ -109,54 +111,6 @@ class FastAPISQLAlchemyIntegration:
             A configured FastAPI criteria dependency.
         """
         return self._criteria_dependency
-
-    @staticmethod
-    def _with_query_field_whitelist(
-        options: QueryOptions,
-        field_whitelist: frozenset[str],
-    ) -> QueryOptions:
-        """Returns query options overriding only the field whitelist."""
-        return QueryOptions(
-            strict_equality=options.strict_equality,
-            distinct=options.distinct,
-            like_escape_character=options.like_escape_character,
-            field_mapping=options.field_mapping,
-            model_field_mapping=options.model_field_mapping,
-            join_hints=options.join_hints,
-            field_whitelist=field_whitelist,
-            field_blacklist=options.field_blacklist,
-            model_field_whitelist=options.model_field_whitelist,
-            model_field_blacklist=options.model_field_blacklist,
-            procedure_whitelist=options.procedure_whitelist,
-            procedure_blacklist=options.procedure_blacklist,
-            parse_limits=options.parse_limits,
-            operator_registry=options.operator_registry,
-            custom_predicates=options.custom_predicates,
-            value_converter_registry=options.value_converter_registry,
-            field_value_converters=options.field_value_converters,
-            model_field_value_converters=(options.model_field_value_converters),
-            json_options=options.json_options,
-        )
-
-    @staticmethod
-    def _with_sort_field_whitelist(
-        options: SortOptions,
-        field_whitelist: frozenset[str],
-    ) -> SortOptions:
-        """Returns sort options overriding only the field whitelist."""
-        return SortOptions(
-            field_mapping=options.field_mapping,
-            model_field_mapping=options.model_field_mapping,
-            join_hints=options.join_hints,
-            field_whitelist=field_whitelist,
-            field_blacklist=options.field_blacklist,
-            model_field_whitelist=options.model_field_whitelist,
-            model_field_blacklist=options.model_field_blacklist,
-            procedure_whitelist=options.procedure_whitelist,
-            procedure_blacklist=options.procedure_blacklist,
-            sort_limits=options.sort_limits,
-            json_options=options.json_options,
-        )
 
     def _apply_query(
         self,
@@ -204,13 +158,13 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             The shared filtered select statement used by list and count flows.
         """
-        return self._apply_query(self._base_select(model), model, criteria)
+        return self._apply_query(self.base_select(model), model, criteria)
 
-    def _base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
-        """Returns a cached base select(model) statement.
+    def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
+        """Returns the cached base select for a model.
 
         Returns:
-            A cached base ``select(model)`` statement.
+            The cached base ``select(model)`` statement.
         """
         statement = self._base_selects.get(model)
         if statement is not None:
@@ -222,25 +176,6 @@ class FastAPISQLAlchemyIntegration:
             statement = select(model)
             self._base_selects[model] = statement
             return statement
-
-    def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
-        """Returns the cached base select for a model.
-
-        Returns:
-            The cached base ``select(model)`` statement.
-        """
-        return self._base_select(model)
-
-    @staticmethod
-    def _count_from_filtered_select(
-        filtered_statement: SQLAlchemySelect,
-    ) -> SQLAlchemySelect:
-        """Builds a count statement from an already-filtered select.
-
-        Returns:
-            A count statement derived from the filtered select.
-        """
-        return count_from_filtered_select(filtered_statement)
 
     def apply(
         self,
@@ -286,7 +221,7 @@ class FastAPISQLAlchemyIntegration:
             A count statement derived from the filtered query semantics.
         """
         criteria = require_request_criteria(criteria)
-        return self._count_from_filtered_select(
+        return count_from_filtered_select(
             self._filtered_select(model, criteria),
         )
 
@@ -308,9 +243,7 @@ class FastAPISQLAlchemyIntegration:
                 model,
                 criteria,
             ),
-            count_statement=self._count_from_filtered_select(
-                filtered_statement,
-            ),
+            count_statement=count_from_filtered_select(filtered_statement),
         )
 
     def select_dependency(
@@ -334,17 +267,16 @@ class FastAPISQLAlchemyIntegration:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
                     filtered_statement = self._filtered_select(
                         model,
-                        validated_criteria,
+                        criteria,
                     )
                 with sort_backend_http_errors(self.criteria_config):
                     return self._apply_sort_and_page(
                         filtered_statement,
                         model,
-                        validated_criteria,
+                        criteria,
                     )
 
             self._select_dependencies[model] = dependency
@@ -371,13 +303,12 @@ class FastAPISQLAlchemyIntegration:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemySelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
                     filtered_statement = self._filtered_select(
                         model,
-                        validated_criteria,
+                        criteria,
                     )
-                return self._count_from_filtered_select(filtered_statement)
+                return count_from_filtered_select(filtered_statement)
 
             self._count_select_dependencies[model] = dependency
             return dependency
@@ -403,20 +334,19 @@ class FastAPISQLAlchemyIntegration:
             def dependency(
                 criteria: RequestCriteria = Depends(criteria_dependency),
             ) -> SQLAlchemyPaginatedSelect:
-                validated_criteria = require_request_criteria(criteria)
                 with query_backend_http_errors(self.criteria_config):
                     filtered_statement = self._filtered_select(
                         model,
-                        validated_criteria,
+                        criteria,
                     )
                 with sort_backend_http_errors(self.criteria_config):
                     return SQLAlchemyPaginatedSelect(
                         statement=self._apply_sort_and_page(
                             filtered_statement,
                             model,
-                            validated_criteria,
+                            criteria,
                         ),
-                        count_statement=self._count_from_filtered_select(
+                        count_statement=count_from_filtered_select(
                             filtered_statement,
                         ),
                     )
@@ -448,18 +378,21 @@ class FastAPISQLAlchemyIntegration:
         query_options = self.criteria_config.query_options
         sort_options = self.criteria_config.sort_options
         if filterable_fields is not None:
-            query_options = self._with_query_field_whitelist(
-                query_options,
+            query_options = query_options.with_field_whitelist(
                 frozenset(filterable_fields),
             )
         if sortable_fields is not None:
-            sort_options = self._with_sort_field_whitelist(
-                sort_options,
+            sort_options = sort_options.with_field_whitelist(
                 frozenset(sortable_fields),
             )
 
         filter_openapi_examples = merge_openapi_examples(
-            build_filter_examples(filterable_fields),
+            build_filter_examples(
+                model,
+                filterable_fields,
+                field_mapping=query_options.field_mapping,
+                field_policy=query_options.field_policy,
+            ),
             filter_examples,
         )
         sort_openapi_examples = merge_openapi_examples(
@@ -469,27 +402,43 @@ class FastAPISQLAlchemyIntegration:
 
         criteria_config = FastAPICriteriaConfig(
             filter_parameter=(
-                query_parameter_name or self.criteria_config.filter_parameter
+                self.criteria_config.filter_parameter
+                if query_parameter_name is None
+                else query_parameter_name
             ),
             sort_parameter=(
-                sort_parameter_name or self.criteria_config.sort_parameter
+                self.criteria_config.sort_parameter
+                if sort_parameter_name is None
+                else sort_parameter_name
             ),
             page_parameter=(
-                page_parameter_name or self.criteria_config.page_parameter
+                self.criteria_config.page_parameter
+                if page_parameter_name is None
+                else page_parameter_name
             ),
             size_parameter=(
-                size_parameter_name or self.criteria_config.size_parameter
+                self.criteria_config.size_parameter
+                if size_parameter_name is None
+                else size_parameter_name
             ),
             default_page_size=self.criteria_config.default_page_size,
-            max_page_size=max_page_size or self.criteria_config.max_page_size,
+            max_page_size=(
+                self.criteria_config.max_page_size
+                if max_page_size is None
+                else max_page_size
+            ),
             one_based_paging=self.criteria_config.one_based_paging,
             query_options=query_options,
             sort_options=sort_options,
             filter_openapi_examples=(
-                filter_openapi_examples or _EMPTY_OPENAPI_EXAMPLES
+                {}
+                if filter_openapi_examples is None
+                else filter_openapi_examples
             ),
             sort_openapi_examples=(
-                sort_openapi_examples or _EMPTY_OPENAPI_EXAMPLES
+                {}
+                if sort_openapi_examples is None
+                else sort_openapi_examples
             ),
             page_openapi_examples=self.criteria_config.page_openapi_examples,
             size_openapi_examples=self.criteria_config.size_openapi_examples,
