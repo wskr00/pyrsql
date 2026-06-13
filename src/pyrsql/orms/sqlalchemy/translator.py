@@ -103,14 +103,10 @@ class SQLAlchemyExpressionTranslator:
     ) -> None:
         """Initializes the translator with reusable lowering collaborators."""
         self._path_resolver = (
-            SQLAlchemyPathResolver()
-            if path_resolver is None
-            else path_resolver
+            SQLAlchemyPathResolver() if path_resolver is None else path_resolver
         )
         self._value_coercer = (
-            SQLAlchemyValueCoercer()
-            if value_coercer is None
-            else value_coercer
+            SQLAlchemyValueCoercer() if value_coercer is None else value_coercer
         )
         self._json_path_builder = (
             SQLAlchemyJSONPathExpressionBuilder()

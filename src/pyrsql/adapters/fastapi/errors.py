@@ -23,7 +23,6 @@ from pyrsql.sorting.errors import (
 )
 
 if TYPE_CHECKING:
-
     from pyrsql.orms import ORMError
     from pyrsql.parsing.source import SourceSpan
 

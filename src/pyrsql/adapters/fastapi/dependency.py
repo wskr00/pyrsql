@@ -71,9 +71,7 @@ def _build_page_request(
 
     """
     resolved_page_size = (
-        config.default_page_size
-        if size_value is None
-        else size_value
+        config.default_page_size if size_value is None else size_value
     )
 
     if page_value is None:
@@ -224,9 +222,7 @@ class CriteriaDependency:
             config: Optional FastAPI criteria configuration.
         """
         self.config = (
-            _DEFAULT_FASTAPI_CRITERIA_CONFIG
-            if config is None
-            else config
+            _DEFAULT_FASTAPI_CRITERIA_CONFIG if config is None else config
         )
         self._dependency = _build_criteria_callable(self.config)
         self.__signature__: Signature = signature(self._dependency)

@@ -435,9 +435,7 @@ class FastAPISQLAlchemyIntegration:
                 else filter_openapi_examples
             ),
             sort_openapi_examples=(
-                {}
-                if sort_openapi_examples is None
-                else sort_openapi_examples
+                {} if sort_openapi_examples is None else sort_openapi_examples
             ),
             page_openapi_examples=self.criteria_config.page_openapi_examples,
             size_openapi_examples=self.criteria_config.size_openapi_examples,

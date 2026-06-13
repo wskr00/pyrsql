@@ -59,9 +59,7 @@ class SQLAlchemySortTranslator:
     ) -> None:
         """Initializes the translator with reusable helper collaborators."""
         self._path_resolver = (
-            SQLAlchemyPathResolver()
-            if path_resolver is None
-            else path_resolver
+            SQLAlchemyPathResolver() if path_resolver is None else path_resolver
         )
         self._json_path_builder = (
             SQLAlchemyJSONPathExpressionBuilder()

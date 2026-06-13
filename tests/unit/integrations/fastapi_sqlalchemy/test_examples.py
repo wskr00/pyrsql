@@ -45,9 +45,7 @@ def test_build_filter_examples_uses_resolved_python_types() -> None:
         == "id==1"
     )
     assert (
-        build_filter_examples(ExampleModel, {"name"})["filter_by_name"][
-            "value"
-        ]
+        build_filter_examples(ExampleModel, {"name"})["filter_by_name"]["value"]
         == "name==demo"
     )
     assert (
@@ -87,9 +85,9 @@ def test_resource_generates_filter_examples_for_field_aliases() -> None:
     )
 
     assert (
-        resource.criteria_config.filter_openapi_examples[
-            "filter_by_public_id"
-        ]["value"]
+        resource.criteria_config.filter_openapi_examples["filter_by_public_id"][
+            "value"
+        ]
         == "public_id==1"
     )
 
