@@ -2,78 +2,50 @@
 
 ## Identity
 
-pyrsql is a **compiler-oriented RSQL query engine**. It compiles RSQL query
-strings into ORM-specific statement objects through a multi-stage pipeline:
-parsing → semantic binding → logical IR → backend lowering.
-
-The core is deliberately **ORM-neutral**. Adding a new backend (Django ORM,
-SQLModel, raw SQL) means implementing the `ORM` interface - the parser,
-semantic analyzer, and logical IR stay unchanged.
-
-## Purpose
-
-pyrsql compiles an RSQL-like query language into ORM-specific query objects.
-
-The project is designed around:
-
-- a language frontend (parsing)
-- semantic binding (field policies, aliases, access control)
-- a logical IR (backend-independent query/sort/page representation)
-- backend lowering (ORM-specific statement construction)
-- optional framework adapters and integrations (FastAPI)
-
-The current production backend is `SQLAlchemy 2.0`.
-Planned backends include `Django ORM` and `SQLModel`.
-
-## Extensibility
-
-### Adding a new ORM backend
-
-Implement `pyrsql.orms.base.ORM`:
-
-```python
-class ORM(ABC):
-    def compile_query(self, query: Query) -> CompiledQuery: ...
-    def compile_sort(self, sort: Sort) -> CompiledSort: ...
-    def compile_page_request(self, page_request: PageRequest) -> CompiledPageRequest: ...
-```
-
-Each method receives the ORM-neutral IR and returns a compiled object with an
-`apply(target, model)` method. The core never imports ORM-specific code.
-
-### Adding a new framework adapter
-
-Implement `pyrsql.adapters.*` to extract RSQL parameters from HTTP requests.
-The FastAPI adapter is the reference implementation - it shows how to
-translate query params into `RequestCriteria` and raise `HTTP 422` on
-parse/semantic errors.
-
-## Current Pipeline
-
-The internal pipeline is:
+`pyrsql` is a compiler-oriented RSQL query engine. It turns RSQL-like filter
+and sort expressions into ORM-specific statement updates through a staged
+pipeline:
 
 ```text
 query text
 -> parsing
 -> selector AST
 -> semantic binding
--> logical IR
--> ORM lowering
+-> backend lowering
 -> ORM-specific statement
 ```
 
-More concretely:
+The core is deliberately ORM-neutral. Adding a new backend means implementing
+the `ORM` interface, not rewriting the parser, selector grammar, or semantic
+rules.
+
+## Purpose
+
+The project is designed around four major responsibilities:
+
+- language frontend: parse text into syntax trees
+- semantic binding: resolve fields, functions, and access policies
+- backend lowering: turn validated query objects into ORM-specific statements
+- optional framework adapters and integrations: expose the core in HTTP stacks
+
+The current production backend is SQLAlchemy 2.0. The current framework
+adapter is FastAPI.
+
+## Current Pipeline
+
+More concretely, the runtime flow looks like this:
 
 ```text
 RSQL string
--> parser AST
+-> parsing AST
+-> selector nodes
 -> SemanticBinder / SortBinder
--> Bound IR
+-> Query / Sort / PageRequest application
 -> SQLAlchemyORM lowering
 -> SQLAlchemy Select
 ```
 
-This is not just a parser. It is a small DSL compiler for query backends.
+For pagination-only flows, `PageRequest` goes directly to backend lowering.
 
 ## Module Boundaries
 
@@ -83,7 +55,6 @@ The project is split into these main modules:
 - `selector`
 - `semantic`
 - `sorting`
-- `ir`
 - `core`
 - `orms`
 - `adapters`
@@ -118,22 +89,11 @@ Owns semantic binding:
 - function policy checks
 - field mapping
 - semantic diagnostics and errors
-- translation from AST to logical IR
+- normalization for backend lowering
 
 ### `sorting`
 
 Owns sort syntax and sort binding.
-
-### `ir`
-
-Owns the backend-independent logical representation:
-
-- `BoundNode`, `BoundComparison`, `BoundLogical` (query)
-- `BoundSort`, `BoundSortField` (sort)
-- `BoundPage` (page)
-- `BoundField`, `BoundFunction`, `BoundLiteral`, `BoundArgument`
-
-This IR is the contract between semantic binding and ORM lowering.
 
 ### `core`
 
@@ -150,7 +110,7 @@ Owns user-facing ORM-agnostic objects:
 - `JoinHint`
 - `CompilationResult`, `SortCompilationResult`, `PageCompilationResult`
 
-The `core/json/` package owns JSON-aware query comparison models and value
+The `core/json/` package owns JSON-aware comparison models and value
 normalization, keeping JSON semantics ORM-neutral.
 
 ### `orms`
@@ -163,24 +123,21 @@ Current production backend:
 
 Its job is:
 
-- consume bound IR
+- consume normalized query, sort, and page objects
 - resolve model metadata
 - coerce values
 - lower to SQLAlchemy statements
 
 It should not redo semantic interpretation already handled upstream.
 
-For PostgreSQL JSON/JSONB lowering, the current design intentionally separates:
+For PostgreSQL JSON/JSONB lowering, the current design separates:
 
-- whole-document JSON predicates:
-  - direct JSONB comparison/containment-style primitives where appropriate
-- nested JSON predicates:
-  - PostgreSQL `jsonpath`
-  - `JSONPATH`-typed binds
-  - vars payloads for structured values
+- whole-document JSON predicates
+- nested JSON path predicates
+- JSON sort extraction rules
 
-This keeps the backend closer to PostgreSQL/SQLAlchemy primitives instead of
-forcing every JSON case through the same lowering strategy.
+This keeps the backend close to SQLAlchemy and PostgreSQL primitives instead of
+forcing every JSON case through one generic lowering path.
 
 ### `adapters`
 
@@ -210,7 +167,7 @@ It is responsible for:
 - request criteria application helpers
 - route-ready dependencies
 - declarative resource configuration
-- stack-specific product DX
+- stack-specific DX
 
 ### `api`
 
@@ -220,6 +177,29 @@ Owns the smallest public helper surface:
 - `compile(...)`
 - `apply(...)`
 
+## Extensibility
+
+### Adding a new ORM backend
+
+Implement `pyrsql.orms.base.ORM`:
+
+```python
+class ORM(ABC):
+    def compile_query(self, query: Query) -> CompiledQuery: ...
+    def compile_sort(self, sort: Sort) -> CompiledSort: ...
+    def compile_page_request(self, page_request: PageRequest) -> CompiledPageRequest: ...
+```
+
+Each method receives one ORM-neutral core object and returns a compiled object
+with an `apply(target, model)` method.
+
+### Adding a new framework adapter
+
+Implement `pyrsql.adapters.*` to extract query parameters from requests and
+translate pyrsql failures into framework-native HTTP responses.
+
+The FastAPI adapter is the reference implementation.
+
 ## Design Principles
 
 The project follows:
@@ -227,7 +207,6 @@ The project follows:
 - object-oriented design
 - SOLID
 - strong typing
-- explicit invariants
 - backend-independent core semantics
 - performance-oriented data modeling
 - explicit concurrency boundaries
@@ -241,151 +220,26 @@ The project follows:
 
 ## Performance Direction
 
-The project uses `msgspec` aggressively where it helps:
+The project uses `msgspec` where it improves compactness and immutable data
+modeling:
 
-- compact immutable records
 - diagnostics
-- IR nodes
 - parser/source structures
 - adapter and integration payloads
 - core query/sort/options/value-policy models
-
-The current direction is to prefer immutable `msgspec.Struct` models for
-hot-path internal data wherever that improves compactness, validation, and
-normalization consistency.
 
 Other performance principles:
 
 - cache repeated base statements when safe
 - avoid repeating semantic work in the ORM backend
-- keep hot-path allocations small
-- prefer explicit invariants over defensive branching spread everywhere
+- keep shared cache lock scope small in concurrency-sensitive paths
 
-## Concurrency and runtime model
+## Async and Free-Threaded Support
 
-`pyrsql` is intentionally mostly pure compilation logic:
+These are related but separate concerns:
 
-- parse input
-- bind semantics
-- lower to ORM statements
+- async support means generated SQLAlchemy statements work with both `Session`
+  and `AsyncSession`
+- free-threaded support means shared mutable caches are synchronized explicitly
 
-It does not own database sessions or perform network/database I/O itself.
-
-That has two consequences:
-
-- async compatibility is achieved by executing the generated statements with
-  `AsyncSession`, not by duplicating the whole core as “async code”
-- free-threaded support depends mainly on protecting shared caches and keeping
-  configuration/value models immutable
-
-Shared caches in FastAPI integrations and SQLAlchemy metadata helpers are
-guarded explicitly for free-threaded execution.
-
-## Security boundary
-
-`pyrsql` can provide:
-
-- structural validation of selectors and functions
-- parser/sort complexity limits
-- safe value binding through backend lowering
-- sanitized FastAPI error payloads
-
-It does not replace application-level authorization. Exposing a field safely at
-the SQL layer is not the same thing as authorizing clients to filter or sort by
-that field. That policy remains with the application.
-
-For JSON specifically:
-
-- whole-document predicates avoid unnecessary `jsonpath` construction
-- structured nested JSON comparisons use vars payloads instead of invalid
-  literal embedding
-- JSON sort semantics are explicit when non-text ordering is required
-
-## FastAPI Product Layer
-
-The FastAPI story now has three layers:
-
-### Adapter layer
-
-`adapters.fastapi`
-
-Provides:
-
-- `FastAPICriteriaConfig`
-- `CriteriaDependency`
-- `RequestCriteria`
-
-### Integration layer
-
-`integrations.fastapi.sqlalchemy`
-
-Provides:
-
-- `FastAPISQLAlchemyIntegration`
-- `FastAPISQLAlchemyResource`
-- `SQLAlchemyPaginatedSelect`
-
-### Resource layer
-
-`integration.resource(...)`
-
-Provides declarative endpoint-oriented configuration:
-
-- filterable fields
-- sortable fields
-- default sort
-- max page size
-- OpenAPI examples
-- `statement_factory`
-- route-ready dependencies
-
-This is the current productized FastAPI interface.
-
-## Current Public Direction
-
-The public API is intentionally small and ORM-neutral at the top level.
-
-Top-level public names include:
-
-- `parse`
-- `compile`
-- `apply`
-- `Query`
-- `Sort`
-- `PageRequest`
-
-Framework and backend integrations live in subpackages, not in `pyrsql.__init__`.
-
-## Out of Scope
-
-The project intentionally does not provide:
-
-- automatic query execution
-- repository abstractions
-- response serialization
-- export/summarization helpers
-- non-SQLAlchemy backend implementations yet
-
-## Future Direction
-
-Planned long-term areas include:
-
-- richer diagnostics
-- additional ORMs
-- SQLAlchemy-driven OpenAPI example generation
-- more ergonomic integration helpers where justified
-
-Current deliberate JSON limitation:
-
-- whole-document JSON sort only supports explicit text semantics
-
-This is intentional. The project prefers rejecting ambiguous ordering over
-pretending to offer typed whole-document JSON sort semantics that would be
-misleading or backend-fragile.
-
-Rewrite and optimizer-style passes remain a future concern, not a current
-priority. The present architecture is centered on:
-
-```text
-parse -> bind -> IR -> lower
-```
+The core query pipeline stays synchronous and ORM-neutral in both cases.

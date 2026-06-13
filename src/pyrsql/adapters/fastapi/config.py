@@ -96,8 +96,6 @@ class FastAPICriteriaConfig(
         """Validates adapter configuration invariants.
 
         Raises:
-            TypeError: If query, sort, or OpenAPI example options have invalid
-                runtime types.
             ValueError: If parameter names are empty, duplicated, or paging
                 limits are inconsistent.
         """
@@ -137,10 +135,6 @@ class FastAPICriteriaConfig(
             and self.default_page_size > self.max_page_size
         ):
             raise ValueError("default_page_size must not exceed max_page_size.")
-        if not isinstance(self.query_options, QueryOptions):
-            raise TypeError("query_options must be a QueryOptions instance.")
-        if not isinstance(self.sort_options, SortOptions):
-            raise TypeError("sort_options must be a SortOptions instance.")
         for field_name in (
             "filter_openapi_examples",
             "sort_openapi_examples",

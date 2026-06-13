@@ -9,6 +9,17 @@ for both:
 
 The async work happens in your application when you execute the statement.
 
+## What async support means in pyrsql
+
+`pyrsql` is async-compatible, not async-only:
+
+- the core query/sort/page APIs are synchronous object transformations
+- the FastAPI adapter parses request data synchronously
+- async execution happens when your app runs the generated SQLAlchemy
+  statements through `AsyncSession`
+
+This keeps the same query pipeline usable in both sync and async applications.
+
 ## SQLAlchemy async session
 
 ```python
@@ -30,9 +41,6 @@ async def get_async_session():
     async with SessionFactory() as session:
         yield session
 ```
-
-`expire_on_commit=False` is the recommended baseline for async SQLAlchemy
-usage.
 
 ## FastAPI async route
 
@@ -104,8 +112,22 @@ async with SessionFactory() as session:
   requests.
 - The integration layer only builds statements; it does not manage session
   lifetime.
-- Parse, semantic, and backend integration failures still become structured
-  `HTTP 422` responses in FastAPI.
+- Parse and page-validation failures still become structured `HTTP 400`
+  responses in FastAPI.
+- Semantic and backend integration failures still become structured `HTTP 422`
+  responses in FastAPI.
+
+## Free-threaded note
+
+Async support and free-threaded support are separate concerns:
+
+- async support is about how your application executes the generated
+  SQLAlchemy statements
+- free-threaded support is about protecting shared mutable caches used by the
+  integration and SQLAlchemy helper layers
+
+You can use async routes without a free-threaded Python build, and you can
+benefit from free-threaded-safe cache handling in synchronous applications too.
 
 ## Test coverage
 

@@ -7,9 +7,9 @@ filtering, sorting, and pagination in Python APIs.
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 pyrsql compiles RSQL query strings into ORM-specific statement objects
-through a language frontend, semantic binder, logical IR, and pluggable
-backend lowering - making it easy to expose complex query capabilities in
-your API without coupling to a specific ORM or framework.
+through a language frontend, semantic binding, and pluggable backend
+lowering - making it easy to expose complex query capabilities in your API
+without coupling to a specific ORM or framework.
 
 **Current backends:** SQLAlchemy 2.0  
 **Current framework adapters:** FastAPI  
@@ -18,9 +18,10 @@ your API without coupling to a specific ORM or framework.
 ## Why pyrsql?
 
 Most API filtering libraries are tightly coupled to one ORM or one framework.
-pyrsql is built as a **compiler pipeline** - parsing, semantic analysis, and
-IR lowering are separate stages. Adding a new ORM backend means implementing
-one interface (`ORM`), not rewriting the parser or query language.
+pyrsql is built as a **compiler pipeline**. Parsing, semantic analysis, and
+backend lowering are separate stages. Adding a new ORM backend means
+implementing one interface (`ORM`), not rewriting the parser or query
+language.
 
 - **ORM-neutral core** - `Query`, `Sort`, `PageRequest` have zero ORM dependencies
 - **Pluggable backends** - implement `compile_query` / `compile_sort` /
@@ -166,11 +167,13 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 - Declarative `resource()` with auto-generated OpenAPI examples
 - `applier_dependency` for custom base statements
 - Compatible with both sync `Session` and async `AsyncSession` execution
-- Backend integration errors are translated into structured `HTTP 422` payloads
+- FastAPI parse and page-validation failures become structured `HTTP 400` payloads
+- FastAPI semantic and backend integration failures become structured `HTTP 422` payloads
 
 ### Concurrency and Validation
 
 - Shared integration and ORM metadata caches are protected for free-threaded execution
+- Async support is validated for adapter, ORM, and integration flows
 - Dedicated async, free-threaded, and security test suites validate these flows
 
 ## Documentation

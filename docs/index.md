@@ -36,10 +36,10 @@ stmt = pyrsql.parse("name==demo;age=gt=18").apply(select(User), User, orm=orm)
 - **Type-safe** - strict mypy, Google-style docstrings, immutable value objects
 - **Async-compatible execution** - generated SQLAlchemy statements work with
   both `Session` and `AsyncSession`
-- **Security-oriented request handling** - parser/sort limits, structural
-  allowlists/blocklists, and sanitized FastAPI error payloads
 - **Free-threaded-safe shared caches** - integration and ORM helper caches are
   guarded for concurrent access
+- **Security-oriented request handling** - parser/sort limits, structural
+  allowlists/blocklists, and sanitized FastAPI error payloads
 
 ## Integration options
 
@@ -47,7 +47,7 @@ stmt = pyrsql.parse("name==demo;age=gt=18").apply(select(User), User, orm=orm)
   `RequestCriteria`
 - **FastAPI + SQLAlchemy integration** - route-ready dependencies,
   declarative `resource()` helpers, count/paginated bundles, and normalized
-  backend `HTTP 422` translation
+  backend error translation
 
 ## Next steps
 

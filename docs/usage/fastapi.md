@@ -67,18 +67,23 @@ config = FastAPICriteriaConfig(
 
 ## Error handling
 
-When parsing or semantic binding fails, the adapter raises `HTTPException(422)`
-with a structured payload:
+The adapter distinguishes between request-shape errors and semantic policy
+errors:
+
+- `400` for parse failures and page validation/configuration failures
+- `422` for semantic query/sort failures
+
+Example parse failure payload:
 
 ```json
 {
   "detail": {
     "parameter": "filter",
-    "type": "query_parse_error",
+    "type": "urn:pyrsql:problem:query-parse-error",
     "errors": [
       {
         "code": "parse_error",
-        "message": "...",
+        "detail": "...",
         "location": {"index": 4, "line": 1, "column": 5}
       }
     ]
@@ -92,3 +97,12 @@ Error types: `query_parse_error`, `query_semantic_error`, `sort_parse_error`,
 When used together with the SQLAlchemy integration layer, backend ORM failures
 such as unmapped fields are also translated into structured `HTTP 422`
 responses instead of bubbling up as raw `500` errors.
+
+## Async compatibility
+
+The adapter dependency itself does not perform I/O. It is safe to use in both:
+
+- synchronous FastAPI routes
+- `async def` FastAPI routes
+
+If you also use SQLAlchemy async execution, see [Async Flows](async.md).

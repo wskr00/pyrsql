@@ -16,6 +16,11 @@ The integration composes:
 
 It does not execute database I/O. It only builds SQLAlchemy statements.
 
+The integration works with:
+
+- synchronous SQLAlchemy execution through `Session`
+- asynchronous SQLAlchemy execution through `AsyncSession`
+
 ## Route-ready dependencies
 
 ```python
@@ -119,8 +124,10 @@ layers or tests.
 
 ## Error behavior
 
-Adapter-layer failures still return the structured FastAPI `422` payloads from
-the request adapter.
+Adapter-layer failures keep the same status behavior as the request adapter:
+
+- `400` for parse and page-validation failures
+- `422` for semantic failures
 
 Backend-layer failures are also normalized to `422` in the integration layer.
 Examples:
@@ -134,8 +141,8 @@ This avoids leaking raw SQLAlchemy exceptions as `500` responses.
 ## Free-threaded behavior
 
 The integration caches dependency callables and base `select(model)` statements
-per model. Those shared caches are protected explicitly for free-threaded
-execution.
+per model. Those shared caches are published with explicit synchronization for
+free-threaded execution.
 
 ## Async note
 

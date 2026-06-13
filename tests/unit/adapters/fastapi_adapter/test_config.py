@@ -62,16 +62,6 @@ def test_config_rejects_invalid_parameter_names(
             id="bool-max-page-size",
         ),
         pytest.param(
-            {"query_options": "invalid"},
-            r"query_options",
-            id="invalid-query-options",
-        ),
-        pytest.param(
-            {"sort_options": "invalid"},
-            r"sort_options",
-            id="invalid-sort-options",
-        ),
-        pytest.param(
             {"filter_openapi_examples": "invalid"},
             r"filter_openapi_examples",
             id="invalid-filter-examples",

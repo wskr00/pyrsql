@@ -23,7 +23,7 @@ uv run pytest                # tests
 - strict mypy type checking
 - ruff for linting and formatting
 - pytest with `unit`, `integration`, `functional`, `performance` layers
-- ORM-neutral core - zero ORM imports in `pyrsql.core`, `pyrsql.ir`, `pyrsql.parsing`, `pyrsql.semantic`
+- ORM-neutral core - zero ORM imports in `pyrsql.core`, `pyrsql.parsing`, `pyrsql.semantic`, `pyrsql.sorting`
 
 ## Test layers
 

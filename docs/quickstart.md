@@ -79,7 +79,9 @@ def list_items(
 ```
 
 Query params `filter`, `sort`, `page`, `size` are extracted automatically.
-Parse and semantic errors become `HTTP 422` with structured diagnostics.
+Parse and page-validation errors become structured `HTTP 400` responses.
+Semantic and backend integration errors become structured `HTTP 422`
+responses.
 
 ## FastAPI + SQLAlchemy
 
@@ -133,6 +135,8 @@ them through sync or async SQLAlchemy sessions.
 
 ## Notes
 
+- `pyrsql` builds statements and criteria objects only. Your application
+  decides whether execution happens through sync or async SQLAlchemy sessions.
 - Shared integration and ORM metadata caches are validated for free-threaded
   execution.
 - Dedicated async, free-threaded, and security suites are documented in

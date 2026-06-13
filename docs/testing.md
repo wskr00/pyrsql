@@ -135,6 +135,7 @@ shared mutable state.
 In `pyrsql`, the main targets are:
 
 - integration dependency caches
+- integration base-statement caches
 - SQLAlchemy model-introspection caches
 - resolver caches
 
