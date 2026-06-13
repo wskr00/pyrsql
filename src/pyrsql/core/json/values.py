@@ -15,6 +15,8 @@ _FLOAT_PATTERN = re.compile(
 JSONValue: TypeAlias = (
     bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"] | None
 )
+_JSON_ENCODER = msgspec.json.Encoder()
+_JSON_DECODER = msgspec.json.Decoder()
 
 
 class JSONScalarValue(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -55,9 +57,13 @@ class JSONScalarNormalizer:
             case _:
                 pass
         if _INTEGER_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(int(raw_value))
+            parsed_integer = self._try_parse_json_number(raw_value)
+            if parsed_integer is not None:
+                return self._from_python_value(parsed_integer)
         if _FLOAT_PATTERN.fullmatch(raw_value):
-            return self._from_python_value(float(raw_value))
+            parsed_float = self._try_parse_json_number(raw_value)
+            if parsed_float is not None:
+                return self._from_python_value(parsed_float)
         return self._from_python_value(raw_value)
 
     @staticmethod
@@ -69,23 +75,38 @@ class JSONScalarNormalizer:
         """
         return JSONScalarValue(
             value=value,
-            json_literal=msgspec.json.encode(value).decode("utf-8"),
+            json_literal=_JSON_ENCODER.encode(value).decode("utf-8"),
             python_type=type(value) if value is not None else None,
         )
 
     @staticmethod
     def _try_parse_json(raw_value: str) -> JSONValue | None:
-        """Parses quoted JSON arguments when they contain JSON values.
+        """Parses quoted JSON arguments when they contain containers.
 
         Returns:
             The parsed JSON value, or ``None`` when the argument should remain
             a plain string.
         """
         try:
-            parsed = cast("JSONValue", msgspec.json.decode(raw_value))
+            parsed = cast("JSONValue", _JSON_DECODER.decode(raw_value))
         except msgspec.DecodeError:
             return None
-        if isinstance(parsed, str):
+        if not isinstance(parsed, dict | list):
+            return None
+        return parsed
+
+    @staticmethod
+    def _try_parse_json_number(raw_value: str) -> int | float | None:
+        """Parses one unquoted JSON number using JSON number semantics.
+
+        Returns:
+            The parsed numeric value, or ``None`` when the number is invalid.
+        """
+        try:
+            parsed = _JSON_DECODER.decode(raw_value)
+        except msgspec.DecodeError:
+            return None
+        if isinstance(parsed, bool) or not isinstance(parsed, int | float):
             return None
         return parsed
 

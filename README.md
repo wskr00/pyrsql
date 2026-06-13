@@ -3,13 +3,13 @@
 A compiler-oriented RSQL query engine for safe, typed, and extensible
 filtering, sorting, and pagination in Python APIs.
 
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://pypi.org/project/pyrsql/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.14t-blue?logo=python)](https://pypi.org/project/pyrsql/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 pyrsql compiles RSQL query strings into ORM-specific statement objects
-through a language frontend, semantic binder, logical IR, and pluggable
-backend lowering - making it easy to expose complex query capabilities in
-your API without coupling to a specific ORM or framework.
+through a language frontend, semantic binding, and pluggable backend
+lowering - making it easy to expose complex query capabilities in your API
+without coupling to a specific ORM or framework.
 
 **Current backends:** SQLAlchemy 2.0  
 **Current framework adapters:** FastAPI  
@@ -18,9 +18,10 @@ your API without coupling to a specific ORM or framework.
 ## Why pyrsql?
 
 Most API filtering libraries are tightly coupled to one ORM or one framework.
-pyrsql is built as a **compiler pipeline** - parsing, semantic analysis, and
-IR lowering are separate stages. Adding a new ORM backend means implementing
-one interface (`ORM`), not rewriting the parser or query language.
+pyrsql is built as a **compiler pipeline**. Parsing, semantic analysis, and
+backend lowering are separate stages. Adding a new ORM backend means
+implementing one interface (`ORM`), not rewriting the parser or query
+language.
 
 - **ORM-neutral core** - `Query`, `Sort`, `PageRequest` have zero ORM dependencies
 - **Pluggable backends** - implement `compile_query` / `compile_sort` /
@@ -29,6 +30,10 @@ one interface (`ORM`), not rewriting the parser or query language.
 - **Custom operators** - define your own RSQL operators with per-ORM lowering
 - **Field policies** - whitelist, blacklist, aliases at global and per-model level
 - **Type-safe** - strict mypy, Google-style docstrings, immutable value objects
+- **Performance-oriented internals** - immutable `msgspec` models across the
+  core pipeline and configuration objects
+- **Security-oriented request handling** - parser/sort limits, structural
+  allowlists/blocklists, sanitized FastAPI error payloads
 
 ## Quickstart
 
@@ -161,6 +166,15 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 - `select_dependency`, `count_select_dependency`, `paginated_select_dependency`
 - Declarative `resource()` with auto-generated OpenAPI examples
 - `applier_dependency` for custom base statements
+- Compatible with both sync `Session` and async `AsyncSession` execution
+- FastAPI parse and page-validation failures become structured `HTTP 400` payloads
+- FastAPI semantic and backend integration failures become structured `HTTP 422` payloads
+
+### Concurrency and Validation
+
+- Shared integration and ORM metadata caches are protected for free-threaded execution
+- Async support is validated for adapter, ORM, and integration flows
+- Dedicated async, free-threaded, and security test suites validate these flows
 
 ## Documentation
 
@@ -169,12 +183,13 @@ Full documentation at **[wskr00.github.io/pyrsql](https://wskr00.github.io/pyrsq
 | Section | Description |
 |---------|-------------|
 | [Quickstart](https://wskr00.github.io/pyrsql/quickstart/) | One-minute primer |
-| [Usage](https://wskr00.github.io/pyrsql/usage/query/) | Filter, sort, page, JSON, FastAPI, custom predicates |
+| [Usage](https://wskr00.github.io/pyrsql/usage/query/) | Filter, sort, page, JSON, FastAPI, async flows, custom predicates |
 | [API Reference](https://wskr00.github.io/pyrsql/reference/api/) | Auto-generated from docstrings |
 | [Operators](https://wskr00.github.io/pyrsql/reference/operators/) | Complete operator table |
 | [Options](https://wskr00.github.io/pyrsql/reference/options/) | QueryOptions, SortOptions, JSONOptions |
 | [Architecture](https://wskr00.github.io/pyrsql/explanation/architecture/) | Pipeline, modules, design |
 | [Extensibility](https://wskr00.github.io/pyrsql/explanation/extensibility/) | Adding backends and adapters |
+| [Testing](https://wskr00.github.io/pyrsql/testing/) | Test layers, async, security, free-threaded validation |
 | [Contributing](https://wskr00.github.io/pyrsql/contributing/) | Setup, workflow, standards |
 
 ## Development Principles

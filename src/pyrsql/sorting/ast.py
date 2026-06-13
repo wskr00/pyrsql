@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import TYPE_CHECKING
 
 import msgspec
 
-from pyrsql.selector.ast import SelectorNode
+if TYPE_CHECKING:
+    from pyrsql.selector.ast import SelectorNode
 
 
 class SortDirection(Enum):
@@ -24,6 +26,7 @@ class SortDirection(Enum):
 
         Returns:
             The matching direction, or None when the token is unsupported.
+
         """
         match raw_direction.lower():
             case "asc":
@@ -46,16 +49,3 @@ class SortField(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     selector: SelectorNode
     direction: SortDirection
     ignore_case: bool
-
-    def __post_init__(self) -> None:
-        """Validates sort field invariants.
-
-        Raises:
-            TypeError: If any sort field component has the wrong type.
-        """
-        if not isinstance(self.selector, SelectorNode):
-            raise TypeError("Sort field selector must be a SelectorNode.")
-        if not isinstance(self.direction, SortDirection):
-            raise TypeError("Sort field direction must be a SortDirection.")
-        if not isinstance(self.ignore_case, bool):
-            raise TypeError("Sort field ignore_case must be a bool.")

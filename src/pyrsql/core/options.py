@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar, cast
+
+import msgspec
 
 from pyrsql.core.conversion import (
     DEFAULT_FIELD_VALUE_CONVERTER_SET,
@@ -108,48 +109,49 @@ def _normalize_shared_policy_options(
     options: _SharedPolicyOptionsProtocol,
 ) -> None:
     """Normalizes option fields shared by query and sort configuration."""
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    struct_options = cast("msgspec.Struct", options)
+    msgspec.structs.force_setattr(
+        struct_options,
         "field_mapping",
         _normalize_mapping(options.field_mapping),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "model_field_mapping",
         _normalize_nested_mapping(options.model_field_mapping),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "join_hints",
         _normalize_mapping(options.join_hints),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "field_whitelist",
         _normalize_frozenset(options.field_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "field_blacklist",
         _normalize_frozenset(options.field_blacklist),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "model_field_whitelist",
         _normalize_nested_sets(options.model_field_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "model_field_blacklist",
         _normalize_nested_sets(options.model_field_blacklist),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "procedure_whitelist",
         _normalize_tuple(options.procedure_whitelist),
     )
-    object.__setattr__(  # noqa: PLC2801
-        options,
+    msgspec.structs.force_setattr(
+        struct_options,
         "procedure_blacklist",
         _normalize_tuple(options.procedure_blacklist),
     )
@@ -172,7 +174,6 @@ def _validate_like_escape_character(
 
 def _build_field_policy(
     *,
-    field_mapping: Mapping[str, str],
     field_whitelist: frozenset[str],
     field_blacklist: frozenset[str],
     model_field_mapping: Mapping[type[Any], Mapping[str, str]],
@@ -185,7 +186,60 @@ def _build_field_policy(
         A compiled field policy object.
     """
     return FieldPolicySet(
-        field_mapping=field_mapping,
+        field_whitelist=field_whitelist,
+        field_blacklist=field_blacklist,
+        model_field_mapping=model_field_mapping,
+        model_field_whitelist=model_field_whitelist,
+        model_field_blacklist=model_field_blacklist,
+    )
+
+
+def _has_field_policy_configuration(
+    *,
+    field_whitelist: frozenset[str],
+    field_blacklist: frozenset[str],
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]],
+    model_field_whitelist: Mapping[type[Any], frozenset[str]],
+    model_field_blacklist: Mapping[type[Any], frozenset[str]],
+) -> bool:
+    """Whether any runtime field-policy settings are configured.
+
+    Returns:
+        ``True`` when at least one runtime field-policy option is configured.
+    """
+    return any(
+        (
+            field_whitelist,
+            field_blacklist,
+            model_field_mapping,
+            model_field_whitelist,
+            model_field_blacklist,
+        ),
+    )
+
+
+def _resolve_field_policy(
+    *,
+    field_whitelist: frozenset[str],
+    field_blacklist: frozenset[str],
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]],
+    model_field_whitelist: Mapping[type[Any], frozenset[str]],
+    model_field_blacklist: Mapping[type[Any], frozenset[str]],
+) -> FieldPolicySet:
+    """Builds one field policy, reusing the shared default when empty.
+
+    Returns:
+        A normalized field policy instance.
+    """
+    if not _has_field_policy_configuration(
+        field_whitelist=field_whitelist,
+        field_blacklist=field_blacklist,
+        model_field_mapping=model_field_mapping,
+        model_field_whitelist=model_field_whitelist,
+        model_field_blacklist=model_field_blacklist,
+    ):
+        return DEFAULT_FIELD_POLICY_SET
+    return _build_field_policy(
         field_whitelist=field_whitelist,
         field_blacklist=field_blacklist,
         model_field_mapping=model_field_mapping,
@@ -206,8 +260,21 @@ def _build_procedure_policy(
     return ProcedureAccessPolicy.from_patterns(whitelist, blacklist)
 
 
-@dataclass(frozen=True, slots=True)
-class QueryOptions:
+def _resolve_procedure_policy(
+    whitelist: tuple[str, ...],
+    blacklist: tuple[str, ...],
+) -> ProcedureAccessPolicy:
+    """Builds one procedure policy, reusing the shared default when empty.
+
+    Returns:
+        A compiled procedure access policy instance.
+    """
+    if not whitelist and not blacklist:
+        return DEFAULT_PROCEDURE_ACCESS_POLICY
+    return _build_procedure_policy(whitelist, blacklist)
+
+
+class QueryOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral configuration for parsing and compiling queries.
 
     The options bundle parser limits, operator registries, field policies,
@@ -218,87 +285,82 @@ class QueryOptions:
     strict_equality: bool = False
     distinct: bool = False
     like_escape_character: str | None = None
-    field_mapping: Mapping[str, str] = field(default_factory=dict)
-    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
-        default_factory=dict,
-    )
-    join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
-    field_whitelist: frozenset[str] = field(default_factory=frozenset)
-    field_blacklist: frozenset[str] = field(default_factory=frozenset)
-    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
-    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
+    field_mapping: Mapping[str, str] = {}
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = {}
+    join_hints: Mapping[str, JoinHint] = {}
+    field_whitelist: frozenset[str] = frozenset()
+    field_blacklist: frozenset[str] = frozenset()
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = {}
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = {}
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     parse_limits: ParseLimits = DEFAULT_PARSE_LIMITS
     operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY
-    custom_predicates: Mapping[str, CustomPredicateDefinition] = field(
-        default_factory=dict,
-    )
+    custom_predicates: Mapping[str, CustomPredicateDefinition] = {}
     value_converter_registry: ValueConverterRegistry = (
         DEFAULT_VALUE_CONVERTER_REGISTRY
     )
-    field_value_converters: Mapping[str, ValueConverter] = field(
-        default_factory=dict,
-    )
+    field_value_converters: Mapping[str, ValueConverter] = {}
     model_field_value_converters: Mapping[
         type[Any],
         Mapping[str, ValueConverter],
-    ] = field(default_factory=dict)
-    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
-    _field_policy: FieldPolicySet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    ] = {}
+    json_options: JSONOptions = msgspec.field(
+        default_factory=lambda: DEFAULT_JSON_OPTIONS,
     )
-    _field_converter_set: FieldValueConverterSet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    _field_policy: FieldPolicySet = DEFAULT_FIELD_POLICY_SET
+    _field_converter_set: FieldValueConverterSet = (
+        DEFAULT_FIELD_VALUE_CONVERTER_SET
     )
-    _procedure_policy: ProcedureAccessPolicy = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
+    _procedure_policy: ProcedureAccessPolicy = DEFAULT_PROCEDURE_ACCESS_POLICY
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         _normalize_shared_policy_options(self)
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "field_value_converters",
             _normalize_mapping(self.field_value_converters),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "model_field_value_converters",
             _normalize_nested_mapping(self.model_field_value_converters),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "custom_predicates",
             _normalize_mapping(self.custom_predicates),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "operator_registry",
             self._build_operator_registry(),
         )
         _validate_like_escape_character(self.like_escape_character)
-        object.__setattr__(self, "_field_policy", self._build_field_policy())
-        object.__setattr__(
+        msgspec.structs.force_setattr(
+            self,
+            "_field_policy",
+            _resolve_field_policy(
+                field_whitelist=self.field_whitelist,
+                field_blacklist=self.field_blacklist,
+                model_field_mapping=self.model_field_mapping,
+                model_field_whitelist=self.model_field_whitelist,
+                model_field_blacklist=self.model_field_blacklist,
+            ),
+        )
+        msgspec.structs.force_setattr(
             self,
             "_field_converter_set",
             self._build_field_converter_set(),
         )
-        object.__setattr__(
+        msgspec.structs.force_setattr(
             self,
             "_procedure_policy",
-            self._build_procedure_policy(),
+            _resolve_procedure_policy(
+                self.procedure_whitelist,
+                self.procedure_blacklist,
+            ),
         )
 
     def _build_operator_registry(self) -> OperatorRegistry:
@@ -363,32 +425,6 @@ class QueryOptions:
         """
         return self._procedure_policy
 
-    def _build_field_policy(self) -> FieldPolicySet:
-        """Builds the immutable field-policy object once.
-
-        Returns:
-            The normalized field policy for this query configuration.
-        """
-        if not any(
-            (
-                self.field_mapping,
-                self.field_whitelist,
-                self.field_blacklist,
-                self.model_field_mapping,
-                self.model_field_whitelist,
-                self.model_field_blacklist,
-            ),
-        ):
-            return DEFAULT_FIELD_POLICY_SET
-        return _build_field_policy(
-            field_mapping=self.field_mapping,
-            field_whitelist=self.field_whitelist,
-            field_blacklist=self.field_blacklist,
-            model_field_mapping=self.model_field_mapping,
-            model_field_whitelist=self.model_field_whitelist,
-            model_field_blacklist=self.model_field_blacklist,
-        )
-
     def _build_field_converter_set(self) -> FieldValueConverterSet:
         """Builds the immutable field-converter object once.
 
@@ -405,60 +441,78 @@ class QueryOptions:
             model_field_converters=self.model_field_value_converters,
         )
 
-    def _build_procedure_policy(self) -> ProcedureAccessPolicy:
-        """Builds the compiled procedure policy once.
+    def with_field_whitelist(
+        self,
+        field_whitelist: frozenset[str],
+    ) -> QueryOptions:
+        """Returns one copy with only the global field whitelist replaced.
 
         Returns:
-            The compiled procedure access policy for this query configuration.
+            A query options copy with the provided field whitelist.
         """
-        if not self.procedure_whitelist and not self.procedure_blacklist:
-            return DEFAULT_PROCEDURE_ACCESS_POLICY
-        return _build_procedure_policy(
-            self.procedure_whitelist,
-            self.procedure_blacklist,
+        return QueryOptions(
+            strict_equality=self.strict_equality,
+            distinct=self.distinct,
+            like_escape_character=self.like_escape_character,
+            field_mapping=self.field_mapping,
+            model_field_mapping=self.model_field_mapping,
+            join_hints=self.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=self.field_blacklist,
+            model_field_whitelist=self.model_field_whitelist,
+            model_field_blacklist=self.model_field_blacklist,
+            procedure_whitelist=self.procedure_whitelist,
+            procedure_blacklist=self.procedure_blacklist,
+            parse_limits=self.parse_limits,
+            operator_registry=self.operator_registry,
+            custom_predicates=self.custom_predicates,
+            value_converter_registry=self.value_converter_registry,
+            field_value_converters=self.field_value_converters,
+            model_field_value_converters=self.model_field_value_converters,
+            json_options=self.json_options,
         )
 
 
-@dataclass(frozen=True, slots=True)
-class SortOptions:
+class SortOptions(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """ORM-neutral sort options."""
 
-    field_mapping: Mapping[str, str] = field(default_factory=dict)
-    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = field(
-        default_factory=dict,
-    )
-    join_hints: Mapping[str, JoinHint] = field(default_factory=dict)
-    field_whitelist: frozenset[str] = field(default_factory=frozenset)
-    field_blacklist: frozenset[str] = field(default_factory=frozenset)
-    model_field_whitelist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
-    model_field_blacklist: Mapping[type[Any], frozenset[str]] = field(
-        default_factory=dict,
-    )
+    field_mapping: Mapping[str, str] = {}
+    model_field_mapping: Mapping[type[Any], Mapping[str, str]] = {}
+    join_hints: Mapping[str, JoinHint] = {}
+    field_whitelist: frozenset[str] = frozenset()
+    field_blacklist: frozenset[str] = frozenset()
+    model_field_whitelist: Mapping[type[Any], frozenset[str]] = {}
+    model_field_blacklist: Mapping[type[Any], frozenset[str]] = {}
     procedure_whitelist: tuple[str, ...] = ()
     procedure_blacklist: tuple[str, ...] = ()
     sort_limits: SortLimits = DEFAULT_SORT_LIMITS
-    json_options: JSONOptions = DEFAULT_JSON_OPTIONS
-    _field_policy: FieldPolicySet = field(
-        init=False,
-        repr=False,
-        compare=False,
+    json_options: JSONOptions = msgspec.field(
+        default_factory=lambda: DEFAULT_JSON_OPTIONS,
     )
-    _procedure_policy: ProcedureAccessPolicy = field(
-        init=False,
-        repr=False,
-        compare=False,
-    )
+    _field_policy: FieldPolicySet = DEFAULT_FIELD_POLICY_SET
+    _procedure_policy: ProcedureAccessPolicy = DEFAULT_PROCEDURE_ACCESS_POLICY
 
     def __post_init__(self) -> None:
         """Normalizes option containers into immutable representations."""
         _normalize_shared_policy_options(self)
-        object.__setattr__(self, "_field_policy", self._build_field_policy())
-        object.__setattr__(
+        msgspec.structs.force_setattr(
+            self,
+            "_field_policy",
+            _resolve_field_policy(
+                field_whitelist=self.field_whitelist,
+                field_blacklist=self.field_blacklist,
+                model_field_mapping=self.model_field_mapping,
+                model_field_whitelist=self.model_field_whitelist,
+                model_field_blacklist=self.model_field_blacklist,
+            ),
+        )
+        msgspec.structs.force_setattr(
             self,
             "_procedure_policy",
-            self._build_procedure_policy(),
+            _resolve_procedure_policy(
+                self.procedure_whitelist,
+                self.procedure_blacklist,
+            ),
         )
 
     @property
@@ -479,43 +533,27 @@ class SortOptions:
         """
         return self._procedure_policy
 
-    def _build_field_policy(self) -> FieldPolicySet:
-        """Builds the immutable field-policy object once.
+    def with_field_whitelist(
+        self,
+        field_whitelist: frozenset[str],
+    ) -> SortOptions:
+        """Returns one copy with only the global field whitelist replaced.
 
         Returns:
-            The normalized field policy for this sort configuration.
+            A sort options copy with the provided field whitelist.
         """
-        if not any(
-            (
-                self.field_mapping,
-                self.field_whitelist,
-                self.field_blacklist,
-                self.model_field_mapping,
-                self.model_field_whitelist,
-                self.model_field_blacklist,
-            ),
-        ):
-            return DEFAULT_FIELD_POLICY_SET
-        return _build_field_policy(
+        return SortOptions(
             field_mapping=self.field_mapping,
-            field_whitelist=self.field_whitelist,
-            field_blacklist=self.field_blacklist,
             model_field_mapping=self.model_field_mapping,
+            join_hints=self.join_hints,
+            field_whitelist=field_whitelist,
+            field_blacklist=self.field_blacklist,
             model_field_whitelist=self.model_field_whitelist,
             model_field_blacklist=self.model_field_blacklist,
-        )
-
-    def _build_procedure_policy(self) -> ProcedureAccessPolicy:
-        """Builds the compiled procedure policy once.
-
-        Returns:
-            The compiled procedure access policy for this sort configuration.
-        """
-        if not self.procedure_whitelist and not self.procedure_blacklist:
-            return DEFAULT_PROCEDURE_ACCESS_POLICY
-        return _build_procedure_policy(
-            self.procedure_whitelist,
-            self.procedure_blacklist,
+            procedure_whitelist=self.procedure_whitelist,
+            procedure_blacklist=self.procedure_blacklist,
+            sort_limits=self.sort_limits,
+            json_options=self.json_options,
         )
 
 

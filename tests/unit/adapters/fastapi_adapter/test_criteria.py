@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import pytest
@@ -67,27 +67,6 @@ def test_request_criteria_reports_empty_state(query_stub: Query) -> None:
     """Indicates whether any request criteria were populated."""
     assert RequestCriteria().is_empty is True
     assert RequestCriteria(query=query_stub).is_empty is False
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param({"query": "invalid"}, r"query", id="invalid-query"),
-        pytest.param({"sort": "invalid"}, r"sort", id="invalid-sort"),
-        pytest.param(
-            {"page_request": "invalid"},
-            r"page_request",
-            id="invalid-page-request",
-        ),
-    ],
-)
-def test_request_criteria_rejects_invalid_member_types(
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Rejects criteria payloads with invalid runtime types."""
-    with pytest.raises(TypeError, match=pattern):
-        RequestCriteria(**cast("Any", kwargs))
 
 
 def test_request_criteria_applies_query_sort_and_page_in_order(

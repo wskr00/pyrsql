@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 import pytest
 
@@ -10,14 +11,12 @@ from pyrsql.core.field_policy import FieldPolicySet
 from pyrsql.core.joins import JoinHint
 from pyrsql.core.json.path import JSONPath
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyPathResolutionError
+from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
+from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
 
 from .conftest import Address, Company, Event, User
 
-if TYPE_CHECKING:
-    from pyrsql.orms.sqlalchemy.introspection import SQLAlchemyModelInspector
-    from pyrsql.orms.sqlalchemy.resolver import SQLAlchemyPathResolver
-
-pytestmark = [pytest.mark.sqlalchemy]
+pytestmark = pytest.mark.sqlalchemy
 
 
 @pytest.mark.parametrize(
@@ -61,6 +60,41 @@ def test_model_inspector_marks_collection_relationships(
     assert mapped_attribute.is_collection is True
     assert mapped_attribute.mapper is not None
     assert mapped_attribute.mapper.class_ is Address
+
+
+def test_model_inspector_attribute_cache_is_safe_under_concurrency(
+    model_inspector: SQLAlchemyModelInspector,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Publishes one shared cached attribute under concurrent access."""
+    original_inspect_model = model_inspector.inspect_model
+    call_count = 0
+
+    def slow_inspect_model(
+        self: SQLAlchemyModelInspector,
+        model: type[object],
+    ):
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.02)
+        return original_inspect_model(model)
+
+    monkeypatch.setattr(
+        SQLAlchemyModelInspector,
+        "inspect_model",
+        slow_inspect_model,
+    )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        attributes = list(
+            executor.map(
+                lambda _: model_inspector.get_mapped_attribute(User, "name"),
+                range(8),
+            )
+        )
+
+    assert 1 <= call_count <= 8
+    assert all(attribute is attributes[0] for attribute in attributes)
 
 
 @pytest.mark.parametrize(
@@ -155,6 +189,42 @@ def test_path_resolver_resolves_relationship_joins_with_metadata(
     assert resolved.joins[0].is_collection is False
 
 
+def test_path_resolver_default_cache_is_safe_under_concurrency(
+    path_resolver: SQLAlchemyPathResolver,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Publishes one shared cached path under concurrent access."""
+    original_resolve = SQLAlchemyPathResolver._resolve_with_field_policy
+    call_count = 0
+
+    def slow_resolve(
+        self: SQLAlchemyPathResolver,
+        *args: object,
+        **kwargs: object,
+    ):
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.02)
+        return original_resolve(self, *args, **kwargs)
+
+    monkeypatch.setattr(
+        SQLAlchemyPathResolver,
+        "_resolve_with_field_policy",
+        slow_resolve,
+    )
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        resolved_paths = list(
+            executor.map(
+                lambda _: path_resolver.resolve(User, "company.name"),
+                range(8),
+            )
+        )
+
+    assert 1 <= call_count <= 8
+    assert all(resolved is resolved_paths[0] for resolved in resolved_paths)
+
+
 def test_path_resolver_marks_collection_relationship_joins(
     path_resolver: SQLAlchemyPathResolver,
 ) -> None:
@@ -191,7 +261,6 @@ def test_path_resolver_applies_model_field_mapping(
         User,
         "company.companyName",
         field_policy=FieldPolicySet(
-            field_mapping={},
             field_whitelist=frozenset(),
             field_blacklist=frozenset(),
             model_field_mapping={Company: {"companyName": "name"}},
@@ -204,6 +273,45 @@ def test_path_resolver_applies_model_field_mapping(
     assert resolved.leaf_model is Company
 
 
+def test_path_resolver_preserves_requested_json_field_path_after_mapping(
+    path_resolver: SQLAlchemyPathResolver,
+) -> None:
+    """Keeps the user-facing path in the resolved JSON payload."""
+    resolved = path_resolver.resolve(
+        Event,
+        "meta.user.id",
+        field_policy=FieldPolicySet(
+            field_whitelist=frozenset(),
+            field_blacklist=frozenset(),
+            model_field_mapping={Event: {"meta": "payload"}},
+            model_field_whitelist={},
+            model_field_blacklist={},
+        ),
+    )
+
+    assert resolved.field_path == "meta.user.id"
+    assert resolved.json_path == JSONPath(segments=("user", "id"))
+    assert resolved.is_json is True
+
+
+def test_path_resolver_enforces_global_field_whitelist_on_json_paths(
+    path_resolver: SQLAlchemyPathResolver,
+) -> None:
+    """Applies global field policies when resolving nested JSON paths."""
+    with pytest.raises(SQLAlchemyPathResolutionError, match=r"not allowed"):
+        path_resolver.resolve(
+            Event,
+            "payload.user.id",
+            field_policy=FieldPolicySet(
+                field_whitelist=frozenset({"payload"}),
+                field_blacklist=frozenset(),
+                model_field_mapping={},
+                model_field_whitelist={},
+                model_field_blacklist={},
+            ),
+        )
+
+
 def test_path_resolver_enforces_model_field_whitelist(
     path_resolver: SQLAlchemyPathResolver,
 ) -> None:
@@ -213,7 +321,6 @@ def test_path_resolver_enforces_model_field_whitelist(
             User,
             "company.name",
             field_policy=FieldPolicySet(
-                field_mapping={},
                 field_whitelist=frozenset(),
                 field_blacklist=frozenset(),
                 model_field_mapping={},

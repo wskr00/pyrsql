@@ -12,7 +12,10 @@ from pyrsql.parsing.ast import (
 )
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
+from pyrsql.parsing.normalization import (
+    normalize_operator_registry,
+    normalize_parse_limits,
+)
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
 )
@@ -40,6 +43,9 @@ _EXPRESSION_TERMINATORS = (
     TokenKind.SEMICOLON,
     TokenKind.COMMA,
 )
+_VALUE_TOKEN_KINDS = frozenset(
+    (TokenKind.UNQUOTED_TEXT, TokenKind.QUOTED_TEXT),
+)
 
 
 class Parser:
@@ -57,14 +63,17 @@ class Parser:
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         """Initializes the parser with raw source text and limits."""
-        self._limits = limits or DEFAULT_PARSE_LIMITS
-        self._operator_registry = operator_registry
+        self._limits = normalize_parse_limits(limits, owner_type=type(self))
+        self._operator_registry = normalize_operator_registry(
+            operator_registry,
+            owner_type=type(self),
+        )
         self._tokens = Lexer(
             source,
             limits=self._limits,
-            operator_registry=operator_registry,
+            operator_registry=self._operator_registry,
         ).tokenize()
-        self._selector_parser = DEFAULT_SELECTOR_PARSER
+        self._token_count = len(self._tokens)
         self._index = 0
         self._node_count = 0
 
@@ -94,9 +103,9 @@ class Parser:
             The parsed expression subtree.
         """
         self._enforce_depth(depth)
-        nodes = [self._parse_and_expression(depth + 1)]
+        nodes = [self._parse_and_expression(depth)]
         while self._match(TokenKind.OR, TokenKind.COMMA):
-            nodes.append(self._parse_and_expression(depth + 1))
+            nodes.append(self._parse_and_expression(depth))
         if len(nodes) == 1:
             return nodes[0]
         return self._make_logical_node(LogicalOperator.OR, nodes)
@@ -107,10 +116,9 @@ class Parser:
         Returns:
             The parsed expression subtree.
         """
-        self._enforce_depth(depth)
-        nodes = [self._parse_primary_expression(depth + 1)]
+        nodes = [self._parse_primary_expression(depth)]
         while self._match(TokenKind.AND, TokenKind.SEMICOLON):
-            nodes.append(self._parse_primary_expression(depth + 1))
+            nodes.append(self._parse_primary_expression(depth))
         if len(nodes) == 1:
             return nodes[0]
         return self._make_logical_node(LogicalOperator.AND, nodes)
@@ -120,13 +128,20 @@ class Parser:
 
         Returns:
             The parsed primary expression.
+
+        Raises:
+            ParseError: If a grouped expression is malformed.
         """
-        self._enforce_depth(depth)
         if self._current().kind is TokenKind.LPAREN:
             opening = self._expect(
                 TokenKind.LPAREN,
                 message="Expected '(' to start grouped expression",
             )
+            if self._current().kind is TokenKind.RPAREN:
+                raise ParseError(
+                    message="Grouped expression cannot be empty",
+                    span=self._current().span,
+                )
             expression = self._parse_or_expression(depth + 1)
             closing = self._expect(
                 TokenKind.RPAREN,
@@ -151,7 +166,7 @@ class Parser:
             message="Expected a selector before the comparison operator",
         )
         try:
-            parsed_selector = self._selector_parser.parse(
+            parsed_selector = DEFAULT_SELECTOR_PARSER.parse(
                 selector.lexeme,
                 max_length=self._limits.max_selector_length,
                 context="Comparison selector",
@@ -318,7 +333,7 @@ class Parser:
             ParseError: If the current token is not a value token.
         """
         current = self._current()
-        if current.kind not in {TokenKind.UNQUOTED_TEXT, TokenKind.QUOTED_TEXT}:
+        if current.kind not in _VALUE_TOKEN_KINDS:
             raise ParseError(message=message, span=current.span)
         self._advance()
         return current
@@ -390,5 +405,5 @@ class Parser:
 
     def _advance(self) -> None:
         """Advances to the next token when possible."""
-        if self._index < len(self._tokens) - 1:
+        if self._index < self._token_count - 1:
             self._index += 1

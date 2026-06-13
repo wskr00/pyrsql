@@ -36,7 +36,6 @@
 - `pyrsql.integrations.fastapi` - FastAPI + SQLAlchemy (FastAPISQLAlchemyIntegration, FastAPISQLAlchemyResource)
 - `pyrsql.orms.sqlalchemy` - SQLAlchemy backend (SQLAlchemyORM)
 - `pyrsql.core` - ORM-neutral core types and options
-- `pyrsql.ir` - Logical intermediate representation
 - `pyrsql.parsing` - Lexer, parser, operators, limits
 - `pyrsql.selector` - Selector syntax
 - `pyrsql.semantic` - Semantic binding

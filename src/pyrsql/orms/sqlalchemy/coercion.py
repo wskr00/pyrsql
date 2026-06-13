@@ -12,6 +12,7 @@ from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 if TYPE_CHECKING:
     from pyrsql.core.conversion import (
         FieldValueConverterSet,
+        ValueConverter,
         ValueConverterRegistry,
     )
 
@@ -44,26 +45,65 @@ class SQLAlchemyValueCoercer:
 
         Returns:
             The coerced Python value.
-
-        Raises:
-            SQLAlchemyORMError: If coercion fails or no registry is available.
         """
-        field_label = field_path or field_name
+        field_converter = None
         if field_converter_set is not None:
             field_converter = field_converter_set.resolve(
                 model=model,
                 field_name=field_name,
                 field_path=field_path,
             )
-            if field_converter is not None:
-                try:
-                    return field_converter(raw_value)
-                except Exception as error:
-                    raise SQLAlchemyORMError(
-                        f"Failed to convert {raw_value!r} for field "
-                        f"{field_label!r}.",
-                    ) from error
-        active_registry = registry or self._registry
+        if field_converter is not None:
+            return self._coerce_with_field_converter(
+                raw_value,
+                field_converter,
+                field_label=field_path or field_name,
+            )
+        return self._coerce_with_registry(
+            raw_value,
+            python_type,
+            registry=registry,
+        )
+
+    @staticmethod
+    def _coerce_with_field_converter(
+        raw_value: str,
+        field_converter: ValueConverter,
+        *,
+        field_label: str | None,
+    ) -> object:
+        """Coerces one value using a resolved field-specific converter.
+
+        Returns:
+            The coerced Python value.
+
+        Raises:
+            SQLAlchemyORMError: If the field-specific conversion fails.
+        """
+        try:
+            return field_converter(raw_value)
+        except Exception as error:
+            raise SQLAlchemyORMError(
+                f"Failed to convert {raw_value!r} for field {field_label!r}.",
+            ) from error
+
+    def _coerce_with_registry(
+        self,
+        raw_value: str,
+        python_type: type[object] | None,
+        *,
+        registry: ValueConverterRegistry | None,
+    ) -> object:
+        """Coerces one value using the active conversion registry.
+
+        Returns:
+            The coerced Python value.
+
+        Raises:
+            SQLAlchemyORMError: If no registry is available or conversion
+                fails.
+        """
+        active_registry = self._registry if registry is None else registry
         if active_registry is None:
             raise SQLAlchemyORMError(
                 "SQLAlchemyValueCoercer requires a conversion registry.",

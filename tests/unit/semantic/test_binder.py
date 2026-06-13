@@ -7,13 +7,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyrsql.ir.query import (
-    BoundComparison,
-    BoundField,
-    BoundFunction,
-    BoundLogical,
-)
+from pyrsql.parsing.ast import ComparisonNode, LogicalNode
 from pyrsql.parsing.parser import Parser
+from pyrsql.selector.ast import FieldSelector, FunctionSelector
 from pyrsql.semantic.binder import SemanticBinder
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
@@ -89,10 +85,9 @@ def test_semantic_binder_applies_field_mapping() -> None:
     options = _SemanticOptions(field_mapping={"username": "user.name"})
     bound_expression = SemanticBinder(options).bind(expression)
 
-    assert isinstance(bound_expression, BoundComparison)
-    assert isinstance(bound_expression.selector, BoundField)
-    assert bound_expression.selector.raw_path == "username"
-    assert bound_expression.selector.field_path == "user.name"
+    assert isinstance(bound_expression, ComparisonNode)
+    assert isinstance(bound_expression.selector, FieldSelector)
+    assert bound_expression.selector.raw_path == "user.name"
 
 
 def test_semantic_binder_preserves_logical_shape() -> None:
@@ -101,11 +96,11 @@ def test_semantic_binder_preserves_logical_shape() -> None:
     options = _SemanticOptions(field_mapping={"username": "user.name"})
     bound_expression = SemanticBinder(options).bind(expression)
 
-    assert isinstance(bound_expression, BoundLogical)
+    assert isinstance(bound_expression, LogicalNode)
     first_child = bound_expression.children[0]
-    assert isinstance(first_child, BoundComparison)
-    assert isinstance(first_child.selector, BoundField)
-    assert first_child.selector.field_path == "user.name"
+    assert isinstance(first_child, ComparisonNode)
+    assert isinstance(first_child.selector, FieldSelector)
+    assert first_child.selector.raw_path == "user.name"
 
 
 @pytest.mark.parametrize(
@@ -143,10 +138,10 @@ def test_semantic_binder_maps_field_selectors_inside_functions() -> None:
     )
     bound_expression = SemanticBinder(options).bind(expression)
 
-    assert isinstance(bound_expression, BoundComparison)
-    assert isinstance(bound_expression.selector, BoundFunction)
-    assert isinstance(bound_expression.selector.arguments[0], BoundField)
-    assert bound_expression.selector.arguments[0].field_path == "user.name"
+    assert isinstance(bound_expression, ComparisonNode)
+    assert isinstance(bound_expression.selector, FunctionSelector)
+    assert isinstance(bound_expression.selector.arguments[0], FieldSelector)
+    assert bound_expression.selector.arguments[0].raw_path == "user.name"
 
 
 @pytest.mark.parametrize(
@@ -178,6 +173,32 @@ def test_semantic_binder_enforces_function_policies(
     expression = _parse(source)
 
     with pytest.raises(expected_error):
+        SemanticBinder(options).bind(expression)
+
+
+def test_semantic_binder_prefers_blacklist_over_whitelist_for_fields() -> None:
+    """Explicit field blacklist takes precedence over whitelist membership."""
+    expression = _parse("name==demo")
+    options = _SemanticOptions(
+        field_whitelist=frozenset({"name"}),
+        field_blacklist=frozenset({"name"}),
+    )
+
+    with pytest.raises(FieldBlacklistedError, match=r"blocked"):
+        SemanticBinder(options).bind(expression)
+
+
+def test_semantic_binder_prefers_blacklist_over_whitelist_for_functions() -> (
+    None
+):
+    """Explicit function blacklist takes precedence over whitelist matches."""
+    expression = _parse("@upper[name]==demo")
+    options = _SemanticOptions(
+        procedure_whitelist=("upper",),
+        procedure_blacklist=("upper",),
+    )
+
+    with pytest.raises(FunctionBlacklistedError, match=r"blacklisted"):
         SemanticBinder(options).bind(expression)
 
 

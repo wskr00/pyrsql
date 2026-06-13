@@ -1,14 +1,16 @@
 """Immutable JSON path primitives."""
 
-import json
+from __future__ import annotations
+
 import re
 
 import msgspec
 
 _SIMPLE_JSONPATH_SEGMENT_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_JSON_ENCODER = msgspec.json.Encoder()
 
 
-class JSONPath(msgspec.Struct, gc=False, kw_only=True):
+class JSONPath(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents an ORM-neutral JSON path.
 
     Attributes:
@@ -20,20 +22,23 @@ class JSONPath(msgspec.Struct, gc=False, kw_only=True):
     _postgresql_jsonpath: str = "$"
 
     def __post_init__(self) -> None:
-        """Validates path segments.
-
-        Raises:
-            ValueError: If any segment is empty or padded with whitespace.
-        """
-        for segment in self.segments:
-            if not segment:
-                raise ValueError("JSON path segments cannot be empty.")
-            if segment != segment.strip():
-                raise ValueError(
-                    "JSON path segments must not contain outer whitespace.",
-                )
-        self._dot_path = ".".join(self.segments)
-        self._postgresql_jsonpath = self._build_postgresql_jsonpath()
+        """Materializes derived cached path representations."""
+        normalized_segments = tuple(self.segments)
+        msgspec.structs.force_setattr(
+            self,
+            "segments",
+            normalized_segments,
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "_dot_path",
+            ".".join(normalized_segments),
+        )
+        msgspec.structs.force_setattr(
+            self,
+            "_postgresql_jsonpath",
+            self._build_postgresql_jsonpath(normalized_segments),
+        )
 
     @property
     def is_root(self) -> bool:
@@ -60,17 +65,19 @@ class JSONPath(msgspec.Struct, gc=False, kw_only=True):
         """
         return self._postgresql_jsonpath
 
-    def _build_postgresql_jsonpath(self) -> str:
+    def _build_postgresql_jsonpath(
+        self,
+        segments: tuple[str, ...],
+    ) -> str:
         """Builds one PostgreSQL jsonpath root expression.
 
         Returns:
             A PostgreSQL ``jsonpath`` string rooted at ``$``.
         """
-        if self.is_root:
+        if not segments:
             return "$"
         return "$" + "".join(
-            self._render_postgresql_segment(segment)
-            for segment in self.segments
+            self._render_postgresql_segment(segment) for segment in segments
         )
 
     @staticmethod
@@ -82,4 +89,4 @@ class JSONPath(msgspec.Struct, gc=False, kw_only=True):
         """
         if _SIMPLE_JSONPATH_SEGMENT_PATTERN.fullmatch(segment) is not None:
             return f".{segment}"
-        return "." + json.dumps(segment)
+        return "." + _JSON_ENCODER.encode(segment).decode()

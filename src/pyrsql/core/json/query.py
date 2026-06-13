@@ -8,14 +8,16 @@ import msgspec
 
 from pyrsql.core.json.values import (
     DEFAULT_JSON_SCALAR_NORMALIZER,
+    JSONScalarValue,
 )
 
 if TYPE_CHECKING:
     from pyrsql.core.json.path import JSONPath
     from pyrsql.core.json.values import (
         JSONScalarNormalizer,
-        JSONScalarValue,
     )
+
+RawJSONArgument = tuple[str, bool]
 
 
 class JSONPathComparison(
@@ -30,26 +32,13 @@ class JSONPathComparison(
     operator_name: str
     values: tuple[JSONScalarValue, ...]
 
-    def __post_init__(self) -> None:
-        """Validates logical JSON comparison invariants.
-
-        Raises:
-            ValueError: If the operator name is empty or padded.
-        """
-        if not self.operator_name:
-            raise ValueError("operator_name cannot be empty.")
-        if self.operator_name != self.operator_name.strip():
-            raise ValueError(
-                "operator_name must not contain outer whitespace.",
-            )
-
     @classmethod
     def from_raw_arguments(
         cls,
         *,
         path: JSONPath,
         operator_name: str,
-        raw_arguments: tuple[tuple[str, bool], ...],
+        raw_arguments: tuple[RawJSONArgument, ...],
         normalizer: JSONScalarNormalizer | None = None,
     ) -> JSONPathComparison:
         """Builds a normalized JSON comparison from raw RSQL arguments.
@@ -57,7 +46,11 @@ class JSONPathComparison(
         Returns:
             One normalized JSON path comparison.
         """
-        value_normalizer = normalizer or DEFAULT_JSON_SCALAR_NORMALIZER
+        value_normalizer = (
+            DEFAULT_JSON_SCALAR_NORMALIZER
+            if normalizer is None
+            else normalizer
+        )
         return cls(
             path=path,
             operator_name=operator_name,

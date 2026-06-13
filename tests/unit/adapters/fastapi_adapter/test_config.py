@@ -26,13 +26,20 @@ pytestmark = [pytest.mark.fastapi]
             {"filter_parameter": " filter "},
             id="outer-whitespace",
         ),
+        pytest.param(
+            {"filter_parameter": 123},
+            id="non-string-parameter-name",
+        ),
     ],
 )
 def test_config_rejects_invalid_parameter_names(
     kwargs: dict[str, object],
 ) -> None:
     """Rejects duplicate aliases and names with outer whitespace."""
-    with pytest.raises(ValueError, match=r"(?i)parameter|whitespace|unique"):
+    with pytest.raises(
+        (TypeError, ValueError),
+        match=r"(?i)parameter|whitespace|unique|string",
+    ):
         FastAPICriteriaConfig(**cast("Any", kwargs))
 
 
@@ -50,14 +57,9 @@ def test_config_rejects_invalid_parameter_names(
             id="default-page-size-above-max",
         ),
         pytest.param(
-            {"query_options": "invalid"},
-            r"query_options",
-            id="invalid-query-options",
-        ),
-        pytest.param(
-            {"sort_options": "invalid"},
-            r"sort_options",
-            id="invalid-sort-options",
+            {"max_page_size": True},
+            r"max_page_size|integer",
+            id="bool-max-page-size",
         ),
         pytest.param(
             {"filter_openapi_examples": "invalid"},

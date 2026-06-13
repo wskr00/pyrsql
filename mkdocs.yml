@@ -67,7 +67,9 @@ nav:
       - Value Conversion: usage/value-conversion.md
       - Join Hints: usage/join-hints.md
       - FastAPI Adapter: usage/fastapi.md
+      - Error Handling: usage/errors.md
       - FastAPI + SQLAlchemy: usage/fastapi-sqlalchemy.md
+      - Async Flows: usage/async.md
   - Reference:
       - API: reference/api.md
       - Operators: reference/operators.md
@@ -75,4 +77,5 @@ nav:
   - Explanation:
       - Architecture: explanation/architecture.md
       - Extensibility: explanation/extensibility.md
+  - Testing: testing.md
   - Contributing: contributing.md

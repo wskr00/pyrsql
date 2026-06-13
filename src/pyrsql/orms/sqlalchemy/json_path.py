@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
@@ -62,6 +61,28 @@ _ISO_DATE_TIME_PATTERN = re.compile(
 )
 _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
+_JSON_ENCODER = msgspec.json.Encoder()
+_ORDERED_COMPARISON_OPERATORS = MappingProxyType(
+    {
+        GREATER_THAN.name: ">",
+        GREATER_THAN_OR_EQUAL.name: ">=",
+        LESS_THAN.name: "<",
+        LESS_THAN_OR_EQUAL.name: "<=",
+    },
+)
+_IGNORE_CASE_JSON_OPERATORS = frozenset(
+    {
+        IGNORE_CASE.name,
+        IGNORE_CASE_LIKE.name,
+        IGNORE_CASE_NOT_LIKE.name,
+    },
+)
+_NEGATED_REGEX_JSON_OPERATORS = frozenset(
+    {
+        NOT_LIKE.name,
+        IGNORE_CASE_NOT_LIKE.name,
+    },
+)
 
 
 class SQLAlchemyJSONPathExpressionBuilder:
@@ -159,9 +180,12 @@ class SQLAlchemyJSONPathExpressionBuilder:
         Returns:
             A PostgreSQL ``jsonb_path_exists`` predicate.
         """
+        active_options = (
+            DEFAULT_JSON_OPTIONS if options is None else options
+        )
         function_call = self._build_filter_call(
             comparison,
-            options=options or DEFAULT_JSON_OPTIONS,
+            options=active_options,
         )
         jsonb_column = cast(
             "ColumnElement[Any]",
@@ -171,34 +195,17 @@ class SQLAlchemyJSONPathExpressionBuilder:
             function_call.json_path_expression,
         )
         vars_payload = self._jsonpath_vars_payload(function_call.vars_payload)
-        if function_call.use_timezone_function:
-            function_expression = getattr(
-                sa.func,
-                function_call.path_exists_tz_function,
-            )(
-                jsonb_column,
-                json_path_literal,
-                vars_payload,
-            )
-            return cast("ColumnElement[bool]", function_expression)
-        if options and options.path_exists_function != "jsonb_path_exists":
-            function_expression = getattr(
-                sa.func,
-                options.path_exists_function,
-            )(
-                jsonb_column,
-                json_path_literal,
-                vars_payload,
-            )
-            return cast("ColumnElement[bool]", function_expression)
-        return cast(
-            "ColumnElement[bool]",
-            sa.func.jsonb_path_exists(
-                jsonb_column,
-                json_path_literal,
-                vars_payload,
-            ),
+        function_name = (
+            function_call.path_exists_tz_function
+            if function_call.use_timezone_function
+            else active_options.path_exists_function
         )
+        function_expression = getattr(sa.func, function_name)(
+            jsonb_column,
+            json_path_literal,
+            vars_payload,
+        )
+        return cast("ColumnElement[bool]", function_expression)
 
     @staticmethod
     def _jsonpath_literal(expression: str) -> ColumnElement[Any]:
@@ -268,7 +275,9 @@ class SQLAlchemyJSONPathExpressionBuilder:
         Returns:
             The SQLAlchemy expression used for JSON sorting.
         """
-        active_options = options or DEFAULT_JSON_OPTIONS
+        active_options = (
+            DEFAULT_JSON_OPTIONS if options is None else options
+        )
         jsonb_column = cast(
             "ColumnElement[Any]",
             sa.cast(column, postgresql.JSONB),
@@ -381,16 +390,20 @@ class SQLAlchemyJSONPathExpressionBuilder:
         """
         target_path = comparison.path.to_postgresql_jsonpath()
         use_datetime = options.use_datetime
-        use_timezone_function = use_datetime and any(
-            self._is_timezone_datetime_value(value)
-            for value in comparison.values
-        )
+        has_datetime_value = False
+        use_timezone_function = False
+        if use_datetime:
+            for value in comparison.values:
+                if self._is_timezone_datetime_value(value):
+                    has_datetime_value = True
+                    use_timezone_function = True
+                    break
+                if self._is_datetime_value(value):
+                    has_datetime_value = True
         vars_payload: dict[str, Any] = {}
-        value_reference = "@"
-        if use_datetime and any(
-            self._is_datetime_value(value) for value in comparison.values
-        ):
-            value_reference = "@.datetime()"
+        value_reference = (
+            "@.datetime()" if use_datetime and has_datetime_value else "@"
+        )
         match comparison.operator_name:
             case NOT_NULL.name:
                 comparison_clause = "(@ != null)"
@@ -415,12 +428,9 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 | LESS_THAN.name
                 | LESS_THAN_OR_EQUAL.name
             ):
-                operator = {
-                    GREATER_THAN.name: ">",
-                    GREATER_THAN_OR_EQUAL.name: ">=",
-                    LESS_THAN.name: "<",
-                    LESS_THAN_OR_EQUAL.name: "<=",
-                }[comparison.operator_name]
+                operator = _ORDERED_COMPARISON_OPERATORS[
+                    comparison.operator_name
+                ]
                 value_literal = self._render_value_operand(
                     comparison.values[0],
                     variable_name="value_0",
@@ -457,19 +467,14 @@ class SQLAlchemyJSONPathExpressionBuilder:
                 | IGNORE_CASE_LIKE.name
                 | IGNORE_CASE_NOT_LIKE.name
             ):
-                ignore_case = comparison.operator_name in {
-                    IGNORE_CASE.name,
-                    IGNORE_CASE_LIKE.name,
-                    IGNORE_CASE_NOT_LIKE.name,
-                }
+                ignore_case = (
+                    comparison.operator_name in _IGNORE_CASE_JSON_OPERATORS
+                )
                 comparison_clause = self._regex_comparison(
                     comparison.values[0],
                     ignore_case=ignore_case,
                 )
-                if comparison.operator_name in {
-                    NOT_LIKE.name,
-                    IGNORE_CASE_NOT_LIKE.name,
-                }:
+                if comparison.operator_name in _NEGATED_REGEX_JSON_OPERATORS:
                     comparison_clause = f"!{comparison_clause}"
             case BETWEEN.name | NOT_BETWEEN.name:
                 lower_literal = self._render_value_operand(
@@ -555,7 +560,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
         if "*" not in normalized:
             normalized = f"*{normalized}*"
         pattern = re.escape(normalized).replace(r"\*", ".*")
-        literal = json.dumps(pattern)
+        literal = _JSON_ENCODER.encode(pattern).decode()
         if ignore_case:
             return f'(@ like_regex {literal} flag "i")'
         return f"(@ like_regex {literal})"
@@ -640,6 +645,7 @@ class SQLAlchemyJSONPathExpressionBuilder:
 
 class _JSONPathFilterCall(
     msgspec.Struct,
+    frozen=True,
     gc=False,
     kw_only=True,
 ):
@@ -649,7 +655,3 @@ class _JSONPathFilterCall(
     use_timezone_function: bool
     path_exists_tz_function: str
     vars_payload: Mapping[str, Any]
-
-    def __post_init__(self) -> None:
-        """Normalizes vars payload into an immutable mapping."""
-        self.vars_payload = MappingProxyType(dict(self.vars_payload))

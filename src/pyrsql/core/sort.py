@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, TypeVar
+
+import msgspec
 
 from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
@@ -11,7 +12,6 @@ from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.parser import SortParser
 
 if TYPE_CHECKING:
-    from pyrsql.ir.sort import BoundSort
     from pyrsql.orms.base import ORM
     from pyrsql.sorting.ast import SortField
 
@@ -21,50 +21,7 @@ _ModelT = TypeVar("_ModelT")
 _DEFAULT_SORT_OPTIONS = SortOptions()
 
 
-def _resolve_sort_options(
-    options: SortOptions | None,
-) -> SortOptions:
-    """Returns the provided options or the shared immutable default.
-
-    Returns:
-        The provided options, or the shared default when omitted.
-    """
-    return options or _DEFAULT_SORT_OPTIONS
-
-
-def _parse_sort_fields(
-    sort_text: str | None,
-    *,
-    options: SortOptions,
-) -> tuple[SortField, ...]:
-    """Parses raw sort text into sort fields.
-
-    Returns:
-        The parsed sort fields.
-    """
-    return SortParser(
-        sort_text,
-        limits=options.sort_limits,
-    ).parse()
-
-
-def _bind_sort_fields(
-    fields: tuple[SortField, ...],
-    *,
-    options: SortOptions,
-) -> BoundSort | None:
-    """Binds parsed sort fields into logical sort IR.
-
-    Returns:
-        The bound logical sort IR, or ``None`` when no fields were parsed.
-    """
-    if not fields:
-        return None
-    return SortBinder(options).bind(fields)
-
-
-@dataclass(frozen=True, slots=True)
-class Sort:
+class Sort(msgspec.Struct, frozen=True, gc=False):
     """Represents an ORM-neutral parsed sort request.
 
     Attributes:
@@ -77,7 +34,7 @@ class Sort:
     text: str | None
     options: SortOptions
     fields: tuple[SortField, ...] = ()
-    bound_sort: BoundSort | None = None
+    bound_sort: tuple[SortField, ...] = ()
 
     @classmethod
     def parse(
@@ -95,7 +52,7 @@ class Sort:
         Returns:
             A parsed sort object.
         """
-        resolved_options = _resolve_sort_options(options)
+        resolved_options = _DEFAULT_SORT_OPTIONS if options is None else options
         fields = cls.parse_fields(sort_text, options=resolved_options)
         bound_sort = cls.bind_fields(fields, options=resolved_options)
         return cls(
@@ -120,14 +77,17 @@ class Sort:
         Returns:
             The parsed sort fields.
         """
-        return _parse_sort_fields(sort_text, options=options)
+        return SortParser(
+            sort_text,
+            limits=options.sort_limits,
+        ).parse()
 
     @staticmethod
     def bind_fields(
         fields: tuple[SortField, ...],
         *,
         options: SortOptions,
-    ) -> BoundSort | None:
+    ) -> tuple[SortField, ...]:
         """Binds parsed sort fields into logical sort IR.
 
         Args:
@@ -135,9 +95,11 @@ class Sort:
             options: Sort configuration used by semantic binding.
 
         Returns:
-            The bound logical sort IR, or None when no fields were parsed.
+            The semantically validated sort fields.
         """
-        return _bind_sort_fields(fields, options=options)
+        if not fields:
+            return ()
+        return SortBinder(options).bind(fields)
 
     def compile(self, *, orm: ORM) -> SortCompilationResult:
         """Compiles the sort using the provided ORM.
@@ -151,7 +113,7 @@ class Sort:
         compiled_sort = orm.compile_sort(self)
         return SortCompilationResult(
             orm_name=orm.name,
-            compiled_sort=compiled_sort,
+            compiled=compiled_sort,
         )
 
     def apply(
@@ -171,4 +133,4 @@ class Sort:
         Returns:
             The value returned by the ORM-specific apply operation.
         """
-        return self.compile(orm=orm).apply(target=target, model=model)
+        return orm.compile_sort(self).apply(target=target, model=model)

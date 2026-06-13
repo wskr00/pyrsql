@@ -9,6 +9,8 @@ import msgspec
 if TYPE_CHECKING:
     from pyrsql.parsing.operators import ComparisonOperator
 
+ArgumentType = type[Any]
+
 
 class CustomPredicateDefinition(
     msgspec.Struct,
@@ -16,7 +18,13 @@ class CustomPredicateDefinition(
     gc=False,
     kw_only=True,
 ):
-    """Defines a custom predicate independently of any orm."""
+    """Defines one ORM-neutral custom predicate contract.
+
+    Attributes:
+        operator: The query-language operator exposed to users.
+        argument_type: Runtime type used to coerce raw predicate arguments
+            before backend-specific lowering.
+    """
 
     operator: ComparisonOperator
-    argument_type: type[Any]
+    argument_type: ArgumentType

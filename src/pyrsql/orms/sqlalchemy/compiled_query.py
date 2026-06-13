@@ -13,9 +13,9 @@ from pyrsql.orms.sqlalchemy.statement import (
 
 if TYPE_CHECKING:
     from pyrsql.core.options import QueryOptions
-    from pyrsql.ir.query import BoundComparison, BoundLogical
     from pyrsql.orms.sqlalchemy.translator import SQLAlchemyExpressionTranslator
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+    from pyrsql.parsing.ast import Expression
 
 
 class SQLAlchemyCompiledQuery(
@@ -27,12 +27,12 @@ class SQLAlchemyCompiledQuery(
     """Compiled SQLAlchemy query plan.
 
     Attributes:
-        expression: Bound query IR to lower into SQLAlchemy clauses.
+        expression: Semantically validated query expression to lower.
         options: Query configuration used during translation.
         translator: Translator responsible for producing SQLAlchemy objects.
     """
 
-    expression: BoundComparison | BoundLogical
+    expression: Expression
     options: QueryOptions
     translator: SQLAlchemyExpressionTranslator
 

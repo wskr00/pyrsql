@@ -13,9 +13,9 @@ from pyrsql.orms.sqlalchemy.statement import (
 
 if TYPE_CHECKING:
     from pyrsql.core.options import SortOptions
-    from pyrsql.ir.sort import BoundSort
     from pyrsql.orms.sqlalchemy.sorter import SQLAlchemySortTranslator
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
+    from pyrsql.sorting.ast import SortField
 
 
 class SQLAlchemyCompiledSort(
@@ -27,12 +27,12 @@ class SQLAlchemyCompiledSort(
     """Compiled SQLAlchemy sort plan.
 
     Attributes:
-        sort_plan: Bound sort IR to lower into order clauses.
+        sort_fields: Semantically validated sort fields to lower.
         options: Sort configuration used during translation.
         translator: Translator responsible for producing SQLAlchemy objects.
     """
 
-    sort_plan: BoundSort | None
+    sort_fields: tuple[SortField, ...]
     options: SortOptions
     translator: SQLAlchemySortTranslator
 
@@ -51,11 +51,11 @@ class SQLAlchemyCompiledSort(
             A SQLAlchemy select with joins and ordering applied.
         """
         statement = require_sqlalchemy_select(target)
-        if self.sort_plan is None:
+        if not self.sort_fields:
             return statement
         joins, order_clauses = self.translator.translate(
             model,
-            self.sort_plan,
+            self.sort_fields,
             options=self.options,
         )
         statement = apply_relationship_joins(

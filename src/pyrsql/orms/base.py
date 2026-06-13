@@ -3,60 +3,24 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Protocol, TypeVar
+from typing import TYPE_CHECKING, ClassVar, TypeAlias
+
+from pyrsql.core.compiler import CompiledArtifact
 
 if TYPE_CHECKING:
     from pyrsql.core.page import PageRequest
     from pyrsql.core.query import Query
     from pyrsql.core.sort import Sort
 
-_TargetT = TypeVar("_TargetT")
-_ModelT = TypeVar("_ModelT")
+CompiledQuery: TypeAlias = CompiledArtifact
+CompiledSort: TypeAlias = CompiledArtifact
+CompiledPageRequest: TypeAlias = CompiledArtifact
 
 
-class CompiledQuery(Protocol):
-    """Protocol implemented by ORM-specific compiled query objects."""
+class ORMError(ValueError):
+    """Base exception for ORM backend failures."""
 
-    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies a compiled query to an ORM-specific target.
-
-        Args:
-            target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the query.
-
-        Returns:
-            The value returned by the compiled query application.
-        """
-
-
-class CompiledSort(Protocol):
-    """Protocol implemented by ORM-specific compiled sort objects."""
-
-    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies a compiled sort to an ORM-specific target.
-
-        Args:
-            target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the sort.
-
-        Returns:
-            The value returned by the compiled sort application.
-        """
-
-
-class CompiledPageRequest(Protocol):
-    """Protocol implemented by ORM-specific compiled page objects."""
-
-    def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT:
-        """Applies a compiled page request to an ORM-specific target.
-
-        Args:
-            target: ORM-specific target to mutate.
-            model: ORM model class used to resolve the page request.
-
-        Returns:
-            The value returned by the compiled page application.
-        """
+    code: ClassVar[str] = "orm_error"
 
 
 class ORM(ABC):

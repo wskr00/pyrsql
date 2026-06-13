@@ -2,25 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from pyrsql.core.json.path import JSONPath
-
-
-@pytest.mark.parametrize(
-    ("segments", "pattern"),
-    [
-        pytest.param(("user", ""), r"empty", id="empty-segment"),
-        pytest.param((" user ",), r"outer whitespace", id="whitespace-segment"),
-    ],
-)
-def test_json_path_rejects_invalid_segments(
-    segments: tuple[str, ...],
-    pattern: str,
-) -> None:
-    """JSON paths reject empty and whitespace-padded segments."""
-    with pytest.raises(ValueError, match=pattern):
-        JSONPath(segments=segments)
 
 
 def test_json_path_reports_root_and_dot_path() -> None:
@@ -33,6 +15,13 @@ def test_json_path_reports_root_and_dot_path() -> None:
     assert nested_path.to_dot_path() == "user.id"
     assert root_path.to_postgresql_jsonpath() == "$"
     assert nested_path.to_postgresql_jsonpath() == "$.user.id"
+
+
+def test_json_path_materializes_iterable_segments_to_tuple() -> None:
+    """JSON paths normalize iterable segments into an immutable tuple."""
+    path = JSONPath(segments=["user", "id"])
+
+    assert path.segments == ("user", "id")
 
 
 def test_json_path_quotes_postgresql_special_segments() -> None:

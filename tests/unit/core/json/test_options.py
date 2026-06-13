@@ -58,6 +58,11 @@ def test_json_options_accept_function_name_overrides() -> None:
             id="invalid-path-exists-function",
         ),
         pytest.param(
+            {"path_exists_function": cast("Any", 123)},
+            r"path_exists_function.*string",
+            id="non-string-path-exists-function",
+        ),
+        pytest.param(
             {"path_exists_tz_function": " jsonb_path_exists_tz "},
             r"outer whitespace",
             id="whitespace-path-exists-tz-function",
@@ -75,6 +80,15 @@ def test_json_options_accept_function_name_overrides() -> None:
             },
             r"outer whitespace",
             id="whitespace-sort-field-path",
+        ),
+        pytest.param(
+            {
+                "sort_field_types": {
+                    cast("Any", 123): JSONSortScalarType.NUMERIC,
+                },
+            },
+            r"field paths must be strings",
+            id="non-string-sort-field-path",
         ),
     ],
 )

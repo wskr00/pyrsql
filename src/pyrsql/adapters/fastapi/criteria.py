@@ -6,11 +6,10 @@ from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
-from pyrsql.core.page import PageRequest
-from pyrsql.core.query import Query
-from pyrsql.core.sort import Sort
-
 if TYPE_CHECKING:
+    from pyrsql.core.page import PageRequest
+    from pyrsql.core.query import Query
+    from pyrsql.core.sort import Sort
     from pyrsql.orms.base import ORM
 
 _TargetT = TypeVar("_TargetT")
@@ -28,24 +27,6 @@ class RequestCriteria(
     query: Query | None = None
     sort: Sort | None = None
     page_request: PageRequest | None = None
-
-    def __post_init__(self) -> None:
-        """Validates criteria payload types.
-
-        Raises:
-            TypeError: If any provided criterion has the wrong runtime type.
-        """
-        if self.query is not None and not isinstance(self.query, Query):
-            raise TypeError("query must be a Query instance or None.")
-        if self.sort is not None and not isinstance(self.sort, Sort):
-            raise TypeError("sort must be a Sort instance or None.")
-        if self.page_request is not None and not isinstance(
-            self.page_request,
-            PageRequest,
-        ):
-            raise TypeError(
-                "page_request must be a PageRequest instance or None.",
-            )
 
     @property
     def is_empty(self) -> bool:
@@ -72,6 +53,8 @@ class RequestCriteria(
         Returns:
             The transformed ORM-specific target after applying all criteria.
         """
+        if self.is_empty:
+            return target
         current_target = target
         if self.query is not None:
             current_target = self.query.apply(

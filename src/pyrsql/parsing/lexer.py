@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyrsql.parsing.errors import LexError
-from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
+from pyrsql.parsing.normalization import (
+    normalize_operator_registry,
+    normalize_parse_limits,
+)
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
 from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
 from pyrsql.parsing.tokens import Token, TokenKind
@@ -26,17 +29,33 @@ class Lexer:
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         """Initializes the lexer with source text and parser limits."""
-        self._source = (
-            source
-            if isinstance(source, SourceText)
-            else SourceText(text=source)
+        self._text = self._normalize_source(source).text
+        self._length = len(self._text)
+        self._limits = normalize_parse_limits(limits, owner_type=type(self))
+        self._operator_registry = normalize_operator_registry(
+            operator_registry,
+            owner_type=type(self),
         )
-        self._limits = limits or DEFAULT_PARSE_LIMITS
-        self._operator_registry = operator_registry
         self._index = 0
         self._line = 1
         self._column = 1
         self._validate_source_length()
+
+    @staticmethod
+    def _normalize_source(source: str | SourceText) -> SourceText:
+        """Normalizes the lexer source input.
+
+        Returns:
+            A wrapped immutable source object.
+
+        Raises:
+            TypeError: If the source is neither raw text nor ``SourceText``.
+        """
+        if isinstance(source, SourceText):
+            return source
+        if not isinstance(source, str):
+            raise TypeError("Lexer source must be a string or SourceText.")
+        return SourceText(text=source)
 
     @property
     def limits(self) -> ParseLimits:
@@ -137,11 +156,11 @@ class Lexer:
                 break
             if current_char in "(),;":
                 break
-            if self._starts_with_operator():
+            if self._match_operator_spelling(current_char) is not None:
                 break
             self._advance()
 
-        lexeme = self._source.slice(start_index, self._index)
+        lexeme = self._text[start_index : self._index]
         if not lexeme:
             raise LexError(
                 message=f"Unexpected character {self._peek()!r}",
@@ -175,35 +194,33 @@ class Lexer:
         Returns:
             The matched operator token, or ``None``.
         """
+        spelling = self._match_operator_spelling()
+        if spelling is None:
+            return None
         start = self._current_position()
-        for spelling in self._candidate_operator_spellings():
-            if self._source.text.startswith(spelling, self._index):
-                self._advance_operator(spelling)
-                return self._make_token(
-                    TokenKind.COMPARISON_OPERATOR,
-                    spelling,
-                    start,
-                )
+        self._advance_operator(spelling)
+        return self._make_token(
+            TokenKind.COMPARISON_OPERATOR,
+            spelling,
+            start,
+        )
+
+    def _match_operator_spelling(
+        self,
+        prefix: str | None = None,
+    ) -> str | None:
+        """Returns the matching operator spelling at the current cursor.
+
+        Returns:
+            The matched operator spelling, or ``None``.
+        """
+        current_prefix = prefix or self._peek()
+        for spelling in self._operator_registry.match_candidates(
+            current_prefix,
+        ):
+            if self._text.startswith(spelling, self._index):
+                return spelling
         return None
-
-    def _starts_with_operator(self) -> bool:
-        """Checks whether the current position begins an operator.
-
-        Returns:
-            ``True`` when the current position can start a known operator.
-        """
-        for spelling in self._candidate_operator_spellings():
-            if self._source.text.startswith(spelling, self._index):
-                return True
-        return False
-
-    def _candidate_operator_spellings(self) -> tuple[str, ...]:
-        """Returns spellings matching the current prefix character.
-
-        Returns:
-            Candidate operator spellings for the current prefix.
-        """
-        return self._operator_registry.match_candidates(self._peek())
 
     def _skip_whitespace(self) -> None:
         """Skips ASCII whitespace characters."""
@@ -218,7 +235,7 @@ class Lexer:
         Raises:
             LexError: If the source exceeds the configured length.
         """
-        if self._source.length > self._limits.max_query_length:
+        if self._length > self._limits.max_query_length:
             position = SourcePosition(index=0, line=1, column=1)
             raise LexError(
                 message=(
@@ -272,7 +289,7 @@ class Lexer:
         Returns:
             The consumed character.
         """
-        character = self._source.text[self._index]
+        character = self._text[self._index]
         self._index += 1
         if character == "\n":
             self._line += 1
@@ -292,7 +309,7 @@ class Lexer:
         Returns:
             The current character.
         """
-        return self._source.text[self._index]
+        return self._text[self._index]
 
     def _current_position(self) -> SourcePosition:
         """Returns the current source position.
@@ -329,4 +346,4 @@ class Lexer:
         Returns:
             ``True`` when the lexer cursor reached the end of input.
         """
-        return self._index >= self._source.length
+        return self._index >= self._length

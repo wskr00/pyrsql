@@ -9,7 +9,7 @@ import msgspec
 from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 
 if TYPE_CHECKING:
-    from pyrsql.ir.page import BoundPage
+    from pyrsql.core.page import PageRequest
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 
@@ -22,10 +22,10 @@ class SQLAlchemyCompiledPageRequest(
     """Compiled SQLAlchemy pagination plan.
 
     Attributes:
-        page: Bound pagination request to apply to a select statement.
+        page_request: Pagination request to apply to a select statement.
     """
 
-    page: BoundPage
+    page_request: PageRequest
 
     def apply(
         self,
@@ -45,4 +45,6 @@ class SQLAlchemyCompiledPageRequest(
         """
         del model
         statement = require_sqlalchemy_select(target)
-        return statement.limit(self.page.limit).offset(self.page.offset)
+        return statement.limit(self.page_request.limit).offset(
+            self.page_request.offset,
+        )

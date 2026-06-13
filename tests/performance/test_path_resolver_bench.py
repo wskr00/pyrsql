@@ -51,7 +51,6 @@ def test_field_mapping_expansion_remains_fast(
 ) -> None:
     """Keeps field mapping expansion within budget."""
     policy = FieldPolicySet(
-        field_mapping={"companyName": "company.name"},
         field_whitelist=frozenset(),
         field_blacklist=frozenset(),
         model_field_mapping={Company: {"companyName": "name"}},

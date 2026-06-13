@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 import sqlalchemy as sa
 
 from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS, JSONSortScalarType
-from pyrsql.ir.query import (
-    BoundField,
-    BoundFunction,
-    BoundLiteral,
-)
 from pyrsql.orms.sqlalchemy.json_path import (
     SQLAlchemyJSONPathExpressionBuilder,
 )
@@ -20,24 +16,38 @@ from pyrsql.orms.sqlalchemy.type_inference import (
     infer_sql_function_python_type,
     is_string_python_type,
 )
+from pyrsql.selector.ast import (
+    FieldSelector,
+    FunctionSelector,
+    LiteralSelector,
+)
 from pyrsql.sorting.ast import SortDirection
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ColumnElement
 
     from pyrsql.core.options import SortOptions
-    from pyrsql.ir.query import (
-        BoundSelectorNode,
-    )
-    from pyrsql.ir.sort import BoundSort, BoundSortField
     from pyrsql.orms.sqlalchemy.types import (
         SQLAlchemyJoinPlan,
         SQLAlchemyResolvedPath,
     )
+    from pyrsql.selector.ast import SelectorNode
+    from pyrsql.sorting.ast import SortField
+
+
+_JSON_SORT_PYTHON_TYPES = MappingProxyType(
+    {
+        JSONSortScalarType.TEXT: str,
+        JSONSortScalarType.INTEGER: int,
+        JSONSortScalarType.FLOAT: float,
+        JSONSortScalarType.NUMERIC: float,
+        JSONSortScalarType.BOOLEAN: bool,
+    },
+)
 
 
 class SQLAlchemySortTranslator:
-    """Lowers bound sort IR to SQLAlchemy order clauses."""
+    """Lowers semantically validated sort fields to SQLAlchemy order clauses."""
 
     __slots__ = ("_json_path_builder", "_path_resolver")
 
@@ -48,15 +58,21 @@ class SQLAlchemySortTranslator:
         json_path_builder: SQLAlchemyJSONPathExpressionBuilder | None = None,
     ) -> None:
         """Initializes the translator with reusable helper collaborators."""
-        self._path_resolver = path_resolver or SQLAlchemyPathResolver()
+        self._path_resolver = (
+            SQLAlchemyPathResolver()
+            if path_resolver is None
+            else path_resolver
+        )
         self._json_path_builder = (
-            json_path_builder or SQLAlchemyJSONPathExpressionBuilder()
+            SQLAlchemyJSONPathExpressionBuilder()
+            if json_path_builder is None
+            else json_path_builder
         )
 
     def translate(
         self,
         model: type[Any],
-        sort_plan: BoundSort,
+        sort_fields: tuple[SortField, ...],
         *,
         options: SortOptions | None = None,
     ) -> tuple[
@@ -70,7 +86,7 @@ class SQLAlchemySortTranslator:
         """
         joins: list[SQLAlchemyJoinPlan] = []
         order_clauses: list[ColumnElement[Any]] = []
-        for field in sort_plan.fields:
+        for field in sort_fields:
             selector_joins, expression, python_type = self._translate_selector(
                 model,
                 field.selector,
@@ -89,7 +105,7 @@ class SQLAlchemySortTranslator:
     def _translate_selector(
         self,
         model: type[Any],
-        selector: BoundSelectorNode,
+        selector: SelectorNode,
         *,
         options: SortOptions | None = None,
     ) -> tuple[
@@ -105,10 +121,10 @@ class SQLAlchemySortTranslator:
         Raises:
             TypeError: If the selector is not a supported selector node.
         """
-        if isinstance(selector, BoundField):
+        if isinstance(selector, FieldSelector):
             resolved_path = self._path_resolver.resolve(
                 model,
-                selector.field_path,
+                selector.raw_path,
                 field_policy=options.field_policy if options else None,
             )
             return (
@@ -126,14 +142,14 @@ class SQLAlchemySortTranslator:
                     else resolved_path.python_type
                 ),
             )
-        if isinstance(selector, BoundLiteral):
+        if isinstance(selector, LiteralSelector):
             python_type = (
                 type(selector.value) if selector.value is not None else None
             )
             return (), sa.literal(selector.value), python_type
 
-        if not isinstance(selector, BoundFunction):
-            raise TypeError("Expected BoundFunction")
+        if not isinstance(selector, FunctionSelector):
+            raise TypeError("Expected FunctionSelector")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []
@@ -152,13 +168,19 @@ class SQLAlchemySortTranslator:
             sa.func,
             selector.function_name,
         )(*argument_expressions)
+        function_expression = cast(
+            "ColumnElement[Any]",
+            function_expression,
+        )
+        python_type = infer_sql_function_python_type(
+            selector.function_name,
+            tuple(argument_types),
+            function_expression=function_expression,
+        )
         return (
             tuple(joins),
-            cast("ColumnElement[Any]", function_expression),
-            infer_sql_function_python_type(
-                selector.function_name,
-                tuple(argument_types),
-            ),
+            function_expression,
+            python_type,
         )
 
     def _resolve_column_expression(
@@ -198,23 +220,13 @@ class SQLAlchemySortTranslator:
             field_path,
             JSONSortScalarType.TEXT,
         )
-        match sort_type:
-            case JSONSortScalarType.TEXT:
-                return str
-            case JSONSortScalarType.INTEGER:
-                return int
-            case JSONSortScalarType.FLOAT | JSONSortScalarType.NUMERIC:
-                return float
-            case JSONSortScalarType.BOOLEAN:
-                return bool
-            case _:
-                return None
+        return _JSON_SORT_PYTHON_TYPES.get(sort_type)
 
     @staticmethod
     def _build_order_clause(
         expression: ColumnElement[Any],
         python_type: type[Any] | None,
-        field: BoundSortField,
+        field: SortField,
     ) -> ColumnElement[Any]:
         """Builds an ORDER BY clause for a resolved sort field.
 

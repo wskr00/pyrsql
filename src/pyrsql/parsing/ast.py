@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 import msgspec
 
@@ -14,8 +14,6 @@ if TYPE_CHECKING:
     from pyrsql.parsing.source import SourceSpan
     from pyrsql.selector.ast import SelectorNode
 
-_MIN_LOGICAL_CHILDREN: Final = 2
-
 
 class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a comparison argument."""
@@ -23,15 +21,6 @@ class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     text: str
     quoted: bool
     span: SourceSpan
-
-    def __post_init__(self) -> None:
-        """Validates argument invariants.
-
-        Raises:
-            TypeError: If the argument text is not a string.
-        """
-        if not isinstance(self.text, str):
-            raise TypeError("Argument text must be a string.")
 
 
 class Node(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -50,18 +39,6 @@ class ComparisonNode(Node, frozen=True, gc=False, kw_only=True):
     selector: SelectorNode
     operator: ComparisonOperator
     arguments: tuple[Argument, ...]
-
-    def __post_init__(self) -> None:
-        """Validates comparison node invariants.
-
-        Raises:
-            ValueError: If the operator requires arguments but none are
-                provided.
-        """
-        if not self.arguments and self.operator.minimum_arguments > 0:
-            raise ValueError(
-                "Comparison node is missing required operator arguments.",
-            )
 
     def with_span(self, span: SourceSpan) -> ComparisonNode:
         """Returns a copy of the comparison with an updated span.
@@ -89,17 +66,6 @@ class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
 
     operator: LogicalOperator
     children: tuple[Expression, ...]
-
-    def __post_init__(self) -> None:
-        """Validates logical node invariants.
-
-        Raises:
-            ValueError: If the logical node has fewer than two children.
-        """
-        if len(self.children) < _MIN_LOGICAL_CHILDREN:
-            raise ValueError(
-                "Logical nodes must contain at least two child expressions.",
-            )
 
     def walk(self) -> Iterator[Node]:
         """Yields this node and all descendant syntax nodes depth-first."""

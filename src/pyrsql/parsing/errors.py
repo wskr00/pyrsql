@@ -2,43 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
+from pyrsql.core.source_issues import SourceError
 from pyrsql.parsing.diagnostics import ParseDiagnostic
 
-if TYPE_CHECKING:
-    from pyrsql.parsing.source import SourceSpan
 
-
-@dataclass(frozen=True, slots=True)
-class ParseError(ValueError):
+class ParseError(SourceError):
     """Base exception for parsing failures."""
 
-    message: str
-    span: SourceSpan
     code: ClassVar[str] = "parse_error"
-
-    @property
-    def diagnostic(self) -> ParseDiagnostic:
-        """Returns the structured diagnostic for this error.
-
-        Returns:
-            The structured parse diagnostic.
-        """
-        return ParseDiagnostic(
-            code=self.code,
-            message=self.message,
-            span=self.span,
-        )
-
-    def __str__(self) -> str:
-        """Formats the parse error with source location data.
-
-        Returns:
-            The formatted parse error string.
-        """
-        return str(self.diagnostic)
+    diagnostic_type: ClassVar[type[ParseDiagnostic]] = ParseDiagnostic
 
 
 class LexError(ParseError):

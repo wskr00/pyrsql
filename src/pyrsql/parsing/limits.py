@@ -1,6 +1,10 @@
 """Safety limits for lexing and parsing."""
 
+from __future__ import annotations
+
 import msgspec
+
+from pyrsql.core.validation import validate_positive_int
 
 
 class ParseLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
@@ -14,23 +18,31 @@ class ParseLimits(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     max_node_count: int = 1024
 
     def __post_init__(self) -> None:
-        """Validates parser limit invariants.
-
-        Raises:
-            ValueError: If any parser limit is non-positive.
-        """
-        if self.max_query_length <= 0:
-            raise ValueError("max_query_length must be greater than 0.")
-        if self.max_selector_length <= 0:
-            raise ValueError("max_selector_length must be greater than 0.")
-        if self.max_argument_length <= 0:
-            raise ValueError("max_argument_length must be greater than 0.")
-        if self.max_arguments_per_list <= 0:
-            raise ValueError("max_arguments_per_list must be greater than 0.")
-        if self.max_expression_depth <= 0:
-            raise ValueError("max_expression_depth must be greater than 0.")
-        if self.max_node_count <= 0:
-            raise ValueError("max_node_count must be greater than 0.")
+        """Validates parser limit invariants."""
+        validate_positive_int(
+            self.max_query_length,
+            field_name="max_query_length",
+        )
+        validate_positive_int(
+            self.max_selector_length,
+            field_name="max_selector_length",
+        )
+        validate_positive_int(
+            self.max_argument_length,
+            field_name="max_argument_length",
+        )
+        validate_positive_int(
+            self.max_arguments_per_list,
+            field_name="max_arguments_per_list",
+        )
+        validate_positive_int(
+            self.max_expression_depth,
+            field_name="max_expression_depth",
+        )
+        validate_positive_int(
+            self.max_node_count,
+            field_name="max_node_count",
+        )
 
 
 DEFAULT_PARSE_LIMITS = ParseLimits()

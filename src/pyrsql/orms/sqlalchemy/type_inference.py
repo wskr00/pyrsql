@@ -1,22 +1,46 @@
 """Shared Python-type inference helpers for SQLAlchemy ORM translation."""
 
-from typing import Any
+from __future__ import annotations
 
-_STRING_SQL_FUNCTIONS = frozenset({"lower", "upper", "concat"})
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from sqlalchemy.sql.elements import ColumnElement
+
+_KNOWN_FUNCTION_RETURN_TYPES = MappingProxyType(
+    {
+        "lower": str,
+        "upper": str,
+        "concat": str,
+    },
+)
 
 
 def infer_sql_function_python_type(
     function_name: str,
     argument_types: tuple[type[Any] | None, ...],
+    *,
+    function_expression: ColumnElement[Any] | None = None,
 ) -> type[Any] | None:
-    """Infers the Python type for common SQL functions.
+    """Infers the Python type for one SQL function expression.
+
+    This helper first asks SQLAlchemy for the concrete expression type when an
+    expression is available, then falls back to cheap, explicit heuristics for
+    a small set of well-known functions.
 
     Returns:
         The inferred Python type, or ``None`` when unknown.
     """
+    if function_expression is not None:
+        try:
+            return function_expression.type.python_type
+        except (AttributeError, NotImplementedError):
+            pass
     normalized_name = function_name.lower()
-    if normalized_name in _STRING_SQL_FUNCTIONS:
-        return str
+    known_return_type = _KNOWN_FUNCTION_RETURN_TYPES.get(normalized_name)
+    if known_return_type is not None:
+        return known_return_type
     if normalized_name == "coalesce":
         for argument_type in argument_types:
             if argument_type is not None:

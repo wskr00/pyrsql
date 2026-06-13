@@ -7,14 +7,9 @@ from pyrsql.selector.ast import (
     SelectorLiteral,
     SelectorNode,
 )
-from pyrsql.selector.parser import (
-    DEFAULT_SELECTOR_PARSER,
-    SelectorParseError,
-    SelectorParser,
-)
+from pyrsql.selector.parser import SelectorParseError, SelectorParser
 
 __all__ = [
-    "DEFAULT_SELECTOR_PARSER",
     "FieldSelector",
     "FunctionSelector",
     "LiteralSelector",

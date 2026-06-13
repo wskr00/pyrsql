@@ -8,9 +8,9 @@ technology alone. The structure should make it obvious:
 - what is being tested
 - at which isolation level it is being tested
 - which tests are safe to run by default
-- which tests are intended for regression detection or benchmarking
+- which tests are intended for regression detection, hardening, or benchmarking
 
-## Test Layers
+## Test layers
 
 ### `unit`
 
@@ -23,14 +23,6 @@ Rules:
 - avoid real database or end-to-end ORM flows
 - prefer direct construction of objects over full public API orchestration
 
-Examples:
-
-- `src/pyrsql/parsing/lexer.py`
-- `tests/unit/parsing/test_lexer.py`
-
-- `src/pyrsql/core/json/path.py`
-- `tests/unit/core/json/test_path.py`
-
 ### `integration`
 
 Integration tests validate interaction between components.
@@ -39,14 +31,7 @@ Rules:
 
 - organize by pipeline or subsystem, not by source file
 - allow multiple project layers to participate in one test
-- ORM-specific integration tests may use real SQLAlchemy models or
-  in-memory database setup
-
-Examples:
-
-- parser -> semantic analyzer -> ORM compiler
-- query object -> SQLAlchemy ORM -> `Select`
-- JSON path resolution -> SQLAlchemy translation
+- ORM-specific integration tests may use real SQLAlchemy models
 
 ### `functional`
 
@@ -58,95 +43,143 @@ Rules:
 - use public API where possible
 - focus on behavior and regressions, not internals
 
-Examples:
-
-- filtering behavior
-- sorting behavior
-- pagination behavior
-- JSON behavior
-- error message behavior
-
 ### `performance`
 
 Performance tests validate that hot paths do not regress.
 
 Rules:
 
-- never rely on them as correctness tests
+- do not treat them as correctness tests
 - mark them explicitly
 - keep them out of the default fast feedback loop
-- measure representative workloads rather than micro-optimizing blindly
 
-Examples:
+### `security`
 
-- lexer throughput
-- parser throughput
-- selector parsing throughput
-- semantic normalization throughput
-- SQLAlchemy translation throughput
+Security tests validate that hostile or malformed input is handled safely.
 
-## Mapping Rules
+Rules:
 
-Unit tests mirror the production tree. Integration tests group by pipeline.
-Functional tests group by capability. Performance tests group by hotspot.
+- use offensive payloads deliberately
+- assert stable failure modes, not only success paths
+- validate both SQL/statement shape and HTTP error shape where relevant
+- keep one attack contract per test
 
-Examples:
+Current `security` coverage includes:
 
-- `src/pyrsql/core/options.py` → `tests/unit/core/test_options.py`
-- `src/pyrsql/parsing/parser.py` → `tests/unit/parsing/test_parser.py`
-- `src/pyrsql/orms/sqlalchemy/resolver.py` → `tests/unit/orms/sqlalchemy/test_resolver.py`
+- scalar SQL injection payloads treated as bound values
+- structural field/function abuse rejected by allowlists and blocklists
+- parser and sort complexity limits
+- JSONPATH and `like_regex` escaping
+- duplicate query parameter handling at the FastAPI boundary
+- non-verbose error payloads
 
-## Fixtures and Test Helpers
+## Fixtures and helpers
 
 ### `conftest.py` hierarchy
 
-pyrsql uses per-folder `conftest.py` files for scoped fixtures:
+`pyrsql` uses per-folder `conftest.py` files for scoped fixtures:
 
 | Level | Purpose |
 |-------|---------|
-| `tests/conftest.py` | Shared between all tests packages |
-| `tests/unit/conftest.py` | Auto-marks `@pytest.mark.unit` on all unit tests |
-| `tests/unit/core/conftest.py` | `FakeORM`, `FakeCompiledResult`, `fake_orm_factory` |
-| `tests/unit/orms/sqlalchemy/conftest.py` | SQLAlchemy test models, `model_inspector`, `path_resolver`, `json_path_builder`, `postgresql_dialect` |
-| `tests/unit/adapters/fastapi_adapter/conftest.py` | `query_stub`, `sort_stub`, `page_request`, `openapi_examples` |
-| `tests/unit/integrations/fastapi_sqlalchemy/conftest.py` | SQLAlchemy models, `sqlalchemy_orm`, `integration`, fixture-based criteria |
-| `tests/integration/sqlalchemy/conftest.py` | Shared SQLAlchemy models, `orm`, `pg_dialect`, `render_sql` helper |
-| `tests/functional/fastapi_sqlalchemy/conftest.py` | Shared `Base`/`User` models |
-| `tests/performance/conftest.py` | Shared test-data constants, SQLAlchemy models, `sqlalchemy_orm`, `pg_dialect` |
+| `tests/conftest.py` | Shared between all test packages |
+| `tests/unit/.../conftest.py` | Unit-scoped fakes and local helpers |
+| `tests/integration/sqlalchemy/conftest.py` | Shared SQLAlchemy models, `orm`, PostgreSQL dialect helpers |
+| `tests/functional/fastapi_sqlalchemy/conftest.py` | Shared SQLAlchemy models for FastAPI integration tests |
+| `tests/security/conftest.py` | Shared FastAPI app factories and response-sanitization helpers |
+| `tests/performance/conftest.py` | Shared benchmark fixtures and models |
 
-### Mocking patterns
+Create a local `conftest.py` when it removes real repetition. Avoid using it
+to hide the main action of the test.
 
-Unit tests that verify **orchestration** (object A delegates to object B) use
-`unittest.mock` and `pytest.monkeypatch`:
+## Pytest markers
 
-```python
-from unittest.mock import Mock, sentinel
+Registered markers:
 
-# Replacing a class method with a controlled return value
-parse_mock = Mock(return_value=sentinel.EXPRESSION)
-monkeypatch.setattr(Query, "parse_expression", staticmethod(parse_mock))
+- `unit`
+- `integration`
+- `functional`
+- `performance`
+- `security`
+- `sqlalchemy`
+- `fastapi`
 
-# Assert the mock was called correctly
-parse_mock.assert_called_once_with("name==demo", options=options)
+Examples:
+
+```bash
+uv run pytest -m security
+uv run pytest -m "functional and fastapi"
+uv run pytest -m "integration and sqlalchemy"
 ```
 
-- **`sentinel`** replaces `object()` for named stub values - stack traces
-  show `sentinel.FIELDS` instead of `<object object at 0x...>`
-- **`Mock(return_value=...)`** replaces `staticmethod(lambda ...)` -
-  supports `assert_called_once_with` for argument verification
-- **`Mock(side_effect=...)`** replaces manual `calls: list` tracking -
-  built-in call recording with `assert_has_calls`
+## Async validation
 
-Tests that are **pure value tests** (create object, pass input, check output)
-do not use mocks - they use real instances directly.
+Async support is validated at three levels:
 
-## Pytest Markers
+- adapter behavior on `async def` routes
+- SQLAlchemy pipeline execution with `AsyncSession`
+- FastAPI + SQLAlchemy end-to-end async integration
 
-Registered markers (in `pyproject.toml`):
+Typical commands:
 
-- `unit` - isolated module/class tests
-- `integration` - cross-component interaction
-- `functional` - user-visible behavior via public API
-- `performance` - hotspot benchmarks
-- `sqlalchemy` - SQLAlchemy-dependent tests
-- `fastapi` - FastAPI-dependent tests
+```bash
+uv run pytest tests/functional/fastapi_adapter/test_async_dependency.py -q
+uv run pytest tests/integration/sqlalchemy/test_async_pipeline.py -q
+uv run pytest tests/functional/fastapi_sqlalchemy/test_async_integration.py -q
+```
+
+## Free-threaded validation
+
+Free-threaded correctness depends primarily on avoiding unsynchronized access to
+shared mutable state.
+
+In `pyrsql`, the main targets are:
+
+- integration dependency caches
+- integration base-statement caches
+- SQLAlchemy model-introspection caches
+- resolver caches
+
+Recommended validation flow:
+
+```bash
+uv run pytest \
+  tests/unit/integrations/fastapi_sqlalchemy/test_integration.py \
+  tests/unit/orms/sqlalchemy/test_resolver.py -q
+```
+
+When a free-threaded CPython build is available locally, rerun with the GIL
+disabled. Example:
+
+```bash
+PYTHON_GIL=0 python -m pytest \
+  tests/unit/integrations/fastapi_sqlalchemy/test_integration.py \
+  tests/unit/orms/sqlalchemy/test_resolver.py -q
+```
+
+## Security validation
+
+Recommended commands:
+
+```bash
+uv run pytest tests/security -q
+uv run pytest -m security
+```
+
+The security suite is intentionally broader than “SQL injection only”. It also
+covers:
+
+- resource-consumption limits
+- invalid structural selectors
+- JSON path escaping
+- duplicate parameter handling
+- sanitized integration errors
+
+## Design notes
+
+Testing follows a few explicit conventions:
+
+- one behavior per test
+- Arrange / Act / Assert should stay obvious
+- use fixtures for shared setup, not for hiding assertions
+- prefer public APIs in functional/security tests
+- keep backend assertions narrow and stable

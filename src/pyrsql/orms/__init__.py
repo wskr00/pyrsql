@@ -5,6 +5,7 @@ from pyrsql.orms.base import (
     CompiledPageRequest,
     CompiledQuery,
     CompiledSort,
+    ORMError,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "CompiledPageRequest",
     "CompiledQuery",
     "CompiledSort",
+    "ORMError",
 ]

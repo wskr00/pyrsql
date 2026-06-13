@@ -131,6 +131,38 @@ def test_lexer_uses_shared_default_limits_instance() -> None:
     assert lexer.limits is DEFAULT_PARSE_LIMITS
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "pattern"),
+    [
+        pytest.param(
+            {"source": 123},
+            r"string or SourceText",
+            id="invalid-source",
+        ),
+        pytest.param(
+            {"source": "name==demo", "limits": object()},
+            r"ParseLimits instance",
+            id="invalid-limits",
+        ),
+        pytest.param(
+            {
+                "source": "name==demo",
+                "operator_registry": object(),
+            },
+            r"OperatorRegistry instance",
+            id="invalid-operator-registry",
+        ),
+    ],
+)
+def test_lexer_rejects_invalid_runtime_dependencies(
+    kwargs: dict[str, object],
+    pattern: str,
+) -> None:
+    """Lexer validates public constructor dependencies eagerly."""
+    with pytest.raises(TypeError, match=pattern):
+        Lexer(**kwargs)  # type: ignore[arg-type]
+
+
 def test_lexer_skips_operator_matching_for_non_prefix_characters() -> None:
     """Avoids scanning every operator when the prefix cannot match any."""
     assert DEFAULT_OPERATOR_REGISTRY.match_candidates("n") == ()
