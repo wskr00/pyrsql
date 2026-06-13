@@ -3,7 +3,7 @@
 A compiler-oriented RSQL query engine for safe, typed, and extensible
 filtering, sorting, and pagination in Python APIs.
 
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?logo=python)](https://pypi.org/project/pyrsql/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.14t-blue?logo=python)](https://pypi.org/project/pyrsql/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 pyrsql compiles RSQL query strings into ORM-specific statement objects
