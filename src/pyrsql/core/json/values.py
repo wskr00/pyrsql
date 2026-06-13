@@ -108,7 +108,7 @@ class JSONScalarNormalizer:
             return None
         if isinstance(parsed, bool) or not isinstance(parsed, int | float):
             return None
-        return cast("int | float", parsed)
+        return parsed
 
 
 DEFAULT_JSON_SCALAR_NORMALIZER = JSONScalarNormalizer()

@@ -191,20 +191,12 @@ markers = [
 
 [tool.mypy]
 python_version = "3.10"
-files = ["src", "tests"]
+files = ["src"]
+exclude = ["^tests/"]
 strict = true
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
-
-[[tool.mypy.overrides]]
-module = [
-    "integration.*",
-    "integration.sqlalchemy.*",
-]
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disallow_untyped_calls = false
 
 [tool.coverage.run]
 source = ["pyrsql"]

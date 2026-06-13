@@ -9,17 +9,12 @@ from pyrsql.core.binding_policy import (
     enforce_field_access_policy,
     enforce_function_access_policy,
 )
-from pyrsql.ir.query import (
-    BoundField,
-    BoundFunction,
-    BoundLiteral,
-)
-from pyrsql.ir.sort import BoundSort, BoundSortField
 from pyrsql.selector.ast import (
     FieldSelector,
     FunctionSelector,
     LiteralSelector,
 )
+from pyrsql.sorting.ast import SortField
 from pyrsql.sorting.errors import (
     SortFieldBlacklistedError,
     SortFieldNotWhitelistedError,
@@ -28,17 +23,13 @@ from pyrsql.sorting.errors import (
 )
 
 if TYPE_CHECKING:
-    from pyrsql.ir.query import (
-        BoundSelectorNode,
-    )
     from pyrsql.selector.ast import (
         SelectorNode,
     )
-    from pyrsql.sorting.ast import SortField
 
 
 class SortBinder:
-    """Binds parsed sort fields into logical sort IR."""
+    """Normalizes parsed sort fields after semantic checks."""
 
     def __init__(self, options: MappedFieldBindingOptions) -> None:
         """Initializes the binder with sort binding options."""
@@ -47,33 +38,31 @@ class SortBinder:
         self._procedure_policy = options.procedure_policy
         self._field_mapping = options.field_mapping
 
-    def bind(self, fields: tuple[SortField, ...]) -> BoundSort:
-        """Binds parsed sort fields into a bound sort request.
+    def bind(self, fields: tuple[SortField, ...]) -> tuple[SortField, ...]:
+        """Normalizes parsed sort fields after semantic validation.
 
         Returns:
-            A bound sort request.
+            Semantically validated sort fields.
         """
-        return BoundSort(
-            fields=tuple(self._bind_field(field) for field in fields),
-        )
+        return tuple(self._bind_field(field) for field in fields)
 
-    def _bind_field(self, field: SortField) -> BoundSortField:
-        """Binds a single parsed sort field.
+    def _bind_field(self, field: SortField) -> SortField:
+        """Normalizes a single parsed sort field.
 
         Returns:
-            The bound sort field.
+            The semantically validated sort field.
         """
-        return BoundSortField(
+        return SortField(
             selector=self._bind_selector(field.selector),
             direction=field.direction,
             ignore_case=field.ignore_case,
         )
 
-    def _bind_selector(self, selector: SelectorNode) -> BoundSelectorNode:
-        """Binds a parsed selector recursively.
+    def _bind_selector(self, selector: SelectorNode) -> SelectorNode:
+        """Normalizes a parsed selector recursively.
 
         Returns:
-            The bound selector node.
+            The semantically validated selector node.
 
         Raises:
             TypeError: If the selector is not a supported selector node.
@@ -84,19 +73,17 @@ class SortBinder:
                 selector.raw_path,
             )
             self._enforce_field_access_policy(field_path)
-            return BoundField(
-                raw_path=selector.raw_path,
-                field_path=field_path,
-                segments=tuple(field_path.split(".")),
+            return FieldSelector(
+                raw_path=field_path,
             )
         if isinstance(selector, LiteralSelector):
-            return BoundLiteral(value=selector.value)
+            return selector
         if not isinstance(selector, FunctionSelector):
             raise TypeError(
                 "Expected FieldSelector, LiteralSelector, or FunctionSelector.",
             )
         self._enforce_function_access_policy(selector.function_name)
-        return BoundFunction(
+        return FunctionSelector(
             function_name=selector.function_name,
             arguments=tuple(
                 self._bind_selector(argument) for argument in selector.arguments

@@ -8,12 +8,6 @@ from typing import TYPE_CHECKING, Any, cast
 import sqlalchemy as sa
 
 from pyrsql.core.json.query import JSONPathComparison
-from pyrsql.ir.query import (
-    BoundComparison,
-    BoundField,
-    BoundFunction,
-    BoundLiteral,
-)
 from pyrsql.orms.sqlalchemy.coercion import SQLAlchemyValueCoercer
 from pyrsql.orms.sqlalchemy.custom import (
     SQLAlchemyCustomPredicateInput,
@@ -27,7 +21,7 @@ from pyrsql.orms.sqlalchemy.type_inference import (
     infer_sql_function_python_type,
     is_string_python_type,
 )
-from pyrsql.parsing.ast import LogicalOperator
+from pyrsql.parsing.ast import ComparisonNode, LogicalNode, LogicalOperator
 from pyrsql.parsing.operators import (
     BETWEEN,
     EQUAL,
@@ -47,6 +41,11 @@ from pyrsql.parsing.operators import (
     NOT_LIKE,
     NOT_NULL,
 )
+from pyrsql.selector.ast import (
+    FieldSelector,
+    FunctionSelector,
+    LiteralSelector,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -54,10 +53,6 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ColumnElement
 
     from pyrsql.core.options import QueryOptions
-    from pyrsql.ir.query import (
-        BoundLogical,
-        BoundSelectorNode,
-    )
     from pyrsql.orms.sqlalchemy.custom import (
         SQLAlchemyCustomPredicate,
     )
@@ -65,6 +60,8 @@ if TYPE_CHECKING:
         SQLAlchemyJoinPlan,
         SQLAlchemyResolvedPath,
     )
+    from pyrsql.parsing.ast import Expression
+    from pyrsql.selector.ast import SelectorNode
 
 _IGNORE_CASE_LIKE_OPERATORS = frozenset(
     {
@@ -81,10 +78,10 @@ _NEGATED_LIKE_OPERATORS = frozenset(
 
 
 class SQLAlchemyExpressionTranslator:
-    """Lowers bound query IR to SQLAlchemy predicates.
+    """Lowers semantically validated query AST to SQLAlchemy predicates.
 
     The translator resolves ORM paths, coerces values, and produces SQLAlchemy
-    join plans and predicates from bound query IR.
+    join plans and predicates from semantically validated query expressions.
     """
 
     __slots__ = (
@@ -127,7 +124,7 @@ class SQLAlchemyExpressionTranslator:
     def translate(
         self,
         model: type[Any],
-        expression: BoundComparison | BoundLogical,
+        expression: Expression,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
@@ -135,13 +132,13 @@ class SQLAlchemyExpressionTranslator:
 
         Args:
             model: SQLAlchemy mapped class used to resolve fields.
-            expression: Bound query IR to lower.
+            expression: Semantically validated query expression to lower.
             options: Query configuration used during translation.
 
         Returns:
             A tuple containing join plans and the SQLAlchemy predicate.
         """
-        if isinstance(expression, BoundComparison):
+        if isinstance(expression, ComparisonNode):
             return self._translate_comparison(
                 model,
                 expression,
@@ -152,7 +149,7 @@ class SQLAlchemyExpressionTranslator:
     def _translate_logical(
         self,
         model: type[Any],
-        expression: BoundLogical,
+        expression: LogicalNode,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
@@ -169,7 +166,7 @@ class SQLAlchemyExpressionTranslator:
         for child in expression.children:
             child_joins, child_predicate = self.translate(
                 model,
-                cast("BoundComparison | BoundLogical", child),
+                child,
                 options=options,
             )
             joins.extend(child_joins)
@@ -187,7 +184,7 @@ class SQLAlchemyExpressionTranslator:
     def _translate_comparison(
         self,
         model: type[Any],
-        expression: BoundComparison,
+        expression: ComparisonNode,
         *,
         options: QueryOptions,
     ) -> tuple[tuple[SQLAlchemyJoinPlan, ...], ColumnElement[bool]]:
@@ -199,10 +196,10 @@ class SQLAlchemyExpressionTranslator:
         field_model = None
         field_name = None
         field_path = None
-        if isinstance(expression.selector, BoundField):
+        if isinstance(expression.selector, FieldSelector):
             resolved_path = self._path_resolver.resolve(
                 model,
-                expression.selector.field_path,
+                expression.selector.raw_path,
                 field_policy=options.field_policy,
             )
             selector_joins = resolved_path.joins
@@ -282,7 +279,7 @@ class SQLAlchemyExpressionTranslator:
     def _translate_selector(
         self,
         model: type[Any],
-        selector: BoundSelectorNode,
+        selector: SelectorNode,
         *,
         options: QueryOptions,
     ) -> tuple[
@@ -298,10 +295,10 @@ class SQLAlchemyExpressionTranslator:
         Raises:
             TypeError: If the selector is not a supported selector node.
         """
-        if isinstance(selector, BoundField):
+        if isinstance(selector, FieldSelector):
             resolved_path = self._path_resolver.resolve(
                 model,
-                selector.field_path,
+                selector.raw_path,
                 field_policy=options.field_policy,
             )
             return (
@@ -312,14 +309,14 @@ class SQLAlchemyExpressionTranslator:
                 ),
                 str if resolved_path.is_json else resolved_path.python_type,
             )
-        if isinstance(selector, BoundLiteral):
+        if isinstance(selector, LiteralSelector):
             python_type = (
                 type(selector.value) if selector.value is not None else None
             )
             return (), sa.literal(selector.value), python_type
 
-        if not isinstance(selector, BoundFunction):
-            raise TypeError("Expected BoundFunction")
+        if not isinstance(selector, FunctionSelector):
+            raise TypeError("Expected FunctionSelector")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []

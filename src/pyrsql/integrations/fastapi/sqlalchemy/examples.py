@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, cast
 from uuid import UUID
 
 from pyrsql.core.field_policy import FieldPolicySet
@@ -101,8 +101,9 @@ def _enum_filter_example_value(enum_type: type[Any]) -> str:
     Returns:
         A filter-compatible enum literal.
     """
+    typed_enum = cast("type[Enum]", enum_type)
     try:
-        first_member = next(iter(enum_type))
+        first_member = next(iter(typed_enum))
     except StopIteration:
         return _DEFAULT_STRING_EXAMPLE
     enum_value = first_member.value

@@ -101,7 +101,7 @@ class SQLAlchemyORM(base.ORM):
             A SQLAlchemy-specific compiled sort object.
         """
         return SQLAlchemyCompiledSort(
-            sort_plan=sort.bound_sort,
+            sort_fields=sort.bound_sort,
             options=sort.options,
             translator=self._sort_translator,
         )
@@ -116,4 +116,4 @@ class SQLAlchemyORM(base.ORM):
         Returns:
             A SQLAlchemy-specific compiled page request object.
         """
-        return SQLAlchemyCompiledPageRequest(page=page_request.bound_page)
+        return SQLAlchemyCompiledPageRequest(page_request=page_request)

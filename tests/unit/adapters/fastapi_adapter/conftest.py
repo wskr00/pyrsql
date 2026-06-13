@@ -15,7 +15,6 @@ from pyrsql.core.sort import Sort
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from pyrsql.ir.query import BoundComparison
     from pyrsql.parsing.ast import Expression
 
 
@@ -26,7 +25,7 @@ def query_stub() -> Query:
         text="stub",
         options=QueryOptions(),
         expression=cast("Expression", object()),
-        bound_expression=cast("BoundComparison", object()),
+        bound_expression=cast("Expression", object()),
     )
 
 
@@ -37,7 +36,7 @@ def sort_stub() -> Sort:
         text="name,asc",
         options=SortOptions(),
         fields=(),
-        bound_sort=None,
+        bound_sort=(),
     )
 
 

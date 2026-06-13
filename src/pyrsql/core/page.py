@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, TypeVar
 import msgspec
 
 from pyrsql.core.compiler import PageCompilationResult
-from pyrsql.ir.page import BoundPage
 
 if TYPE_CHECKING:
     from pyrsql.orms.base import ORM
@@ -115,18 +114,6 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             The maximum number of rows to fetch.
         """
         return self.page_size
-
-    @property
-    def bound_page(self) -> BoundPage:
-        """The logical pagination IR for this request.
-
-        Returns:
-            The bound pagination IR for this request.
-        """
-        return BoundPage(
-            page_number=self.page_number,
-            page_size=self.page_size,
-        )
 
     def compile(self, *, orm: ORM) -> PageCompilationResult:
         """Compiles the page request using the provided ORM.

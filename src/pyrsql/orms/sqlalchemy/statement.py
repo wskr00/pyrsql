@@ -18,7 +18,7 @@ if TYPE_CHECKING:
         SQLAlchemySelect,
     )
 
-_EMPTY_JOIN_HINTS = MappingProxyType({})
+_EMPTY_JOIN_HINTS: Mapping[str, JoinHint] = MappingProxyType({})
 
 
 def require_sqlalchemy_select(target: object) -> SQLAlchemySelect:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Final, Protocol, TypeVar, cast
 
 import msgspec
 
@@ -109,48 +109,49 @@ def _normalize_shared_policy_options(
     options: _SharedPolicyOptionsProtocol,
 ) -> None:
     """Normalizes option fields shared by query and sort configuration."""
+    struct_options = cast("msgspec.Struct", options)
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "field_mapping",
         _normalize_mapping(options.field_mapping),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "model_field_mapping",
         _normalize_nested_mapping(options.model_field_mapping),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "join_hints",
         _normalize_mapping(options.join_hints),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "field_whitelist",
         _normalize_frozenset(options.field_whitelist),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "field_blacklist",
         _normalize_frozenset(options.field_blacklist),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "model_field_whitelist",
         _normalize_nested_sets(options.model_field_whitelist),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "model_field_blacklist",
         _normalize_nested_sets(options.model_field_blacklist),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "procedure_whitelist",
         _normalize_tuple(options.procedure_whitelist),
     )
     msgspec.structs.force_setattr(
-        options,
+        struct_options,
         "procedure_blacklist",
         _normalize_tuple(options.procedure_blacklist),
     )

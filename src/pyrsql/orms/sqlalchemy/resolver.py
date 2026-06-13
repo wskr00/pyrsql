@@ -67,15 +67,15 @@ class SQLAlchemyPathResolver:
             cached_path = self._default_resolution_cache.get(cache_key)
             if cached_path is not None:
                 return cached_path
+            resolved_path = self._resolve_with_field_policy(
+                model,
+                field_path,
+                field_policy=None,
+            )
             with self._cache_lock:
                 cached_path = self._default_resolution_cache.get(cache_key)
                 if cached_path is not None:
                     return cached_path
-                resolved_path = self._resolve_with_field_policy(
-                    model,
-                    field_path,
-                    field_policy=None,
-                )
                 self._default_resolution_cache[cache_key] = resolved_path
                 return resolved_path
         return self._resolve_with_field_policy(

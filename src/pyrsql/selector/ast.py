@@ -24,7 +24,6 @@ class FieldSelector(SelectorNode, frozen=True, gc=False, kw_only=True):
     """Field-path selector as written in the source text."""
 
     raw_path: str
-    segments: tuple[str, ...]
 
 
 class LiteralSelector(SelectorNode, frozen=True, gc=False, kw_only=True):

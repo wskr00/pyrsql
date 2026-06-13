@@ -22,8 +22,6 @@ def test_page_request_of_builds_offset_and_limit() -> None:
     assert page_request.page_size == 25
     assert page_request.offset == 50
     assert page_request.limit == 25
-    assert page_request.bound_page.offset == 50
-    assert page_request.bound_page.limit == 25
 
 
 def test_page_request_from_offset_builds_page_request() -> None:

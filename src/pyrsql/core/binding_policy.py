@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Protocol, TypeAlias
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+ErrorFactory: TypeAlias = Callable[[str], Exception]
 
 
 class ProcedurePolicyProtocol(Protocol):
@@ -43,8 +46,8 @@ def enforce_field_access_policy(
     *,
     field_whitelist: frozenset[str] | set[str],
     field_blacklist: frozenset[str] | set[str],
-    not_whitelisted_error_factory: callable,
-    blacklisted_error_factory: callable,
+    not_whitelisted_error_factory: ErrorFactory,
+    blacklisted_error_factory: ErrorFactory,
 ) -> None:
     """Enforces whitelist/blacklist field access rules."""
     if field_path in field_blacklist:
@@ -61,8 +64,8 @@ def enforce_function_access_policy(
     function_name: str,
     *,
     procedure_policy: ProcedurePolicyProtocol,
-    not_whitelisted_error_factory: callable,
-    blacklisted_error_factory: callable,
+    not_whitelisted_error_factory: ErrorFactory,
+    blacklisted_error_factory: ErrorFactory,
 ) -> None:
     """Enforces whitelist/blacklist procedure access rules."""
     if procedure_policy.is_blacklisted(function_name):

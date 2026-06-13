@@ -35,8 +35,9 @@ class ValueConversionError(ValueError):
         cause: Exception | None = None,
     ) -> None:
         """Builds one normalized conversion error instance."""
+        target_type_name = getattr(target_type, "__name__", repr(target_type))
         super().__init__(
-            f"Failed to convert {raw_value!r} to {target_type.__name__}.",
+            f"Failed to convert {raw_value!r} to {target_type_name}.",
         )
         if cause is not None:
             self.__cause__ = cause
@@ -57,9 +58,7 @@ def _convert_bool(raw_value: RawValue) -> bool:
         case "false":
             return False
         case _:
-            raise ValueConversionError(
-                f"Cannot convert {raw_value!r} to bool.",
-            )
+            raise ValueConversionError(raw_value, bool)
 
 
 def _convert_datetime(raw_value: RawValue) -> dt.datetime:
@@ -237,7 +236,9 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
                 return self._convert_json_container(raw_value, target_type)
         except TypeError as error:  # pragma: no cover - invalid type object
             raise ValueConversionError(
-                f"Unsupported target type {target_type!r}.",
+                raw_value,
+                target_type,
+                cause=error,
             ) from error
         return self._construct_from_string(raw_value, target_type)
 
@@ -303,6 +304,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
                 container type fails.
         """
         expected_type: TargetType
+        decoder: msgspec.json.Decoder[Any]
         if issubclass(target_type, dict):
             expected_type = dict
             decoder = _JSON_DICT_DECODER
@@ -310,9 +312,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
             expected_type = list
             decoder = _JSON_LIST_DECODER
         else:  # pragma: no cover - guarded by convert()
-            raise ValueConversionError(
-                f"Unsupported target type {target_type!r}.",
-            )
+            raise ValueConversionError(raw_value, target_type)
 
         try:
             decoded = decoder.decode(raw_value)

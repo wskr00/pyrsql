@@ -40,6 +40,24 @@ def _normalize_parameter_name(name: object, *, field_name: str) -> str:
     return normalized_name
 
 
+def _normalize_openapi_examples_mapping(
+    value: object,
+    *,
+    field_name: str,
+) -> Mapping[str, Any]:
+    """Validates and freezes one OpenAPI examples mapping.
+
+    Returns:
+        An immutable copy of the provided examples mapping.
+
+    Raises:
+        TypeError: If the provided value is not a mapping.
+    """
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{field_name} must be a mapping instance.")
+    return MappingProxyType(dict(value))
+
+
 class FastAPICriteriaConfig(
     msgspec.Struct,
     frozen=True,
@@ -123,36 +141,20 @@ class FastAPICriteriaConfig(
             raise TypeError("query_options must be a QueryOptions instance.")
         if not isinstance(self.sort_options, SortOptions):
             raise TypeError("sort_options must be a SortOptions instance.")
-        if not isinstance(self.filter_openapi_examples, Mapping):
-            raise TypeError(
-                "filter_openapi_examples must be a mapping instance.",
-            )
-        if not isinstance(self.sort_openapi_examples, Mapping):
-            raise TypeError("sort_openapi_examples must be a mapping instance.")
-        if not isinstance(self.page_openapi_examples, Mapping):
-            raise TypeError("page_openapi_examples must be a mapping instance.")
-        if not isinstance(self.size_openapi_examples, Mapping):
-            raise TypeError("size_openapi_examples must be a mapping instance.")
-        msgspec.structs.force_setattr(
-            self,
+        for field_name in (
             "filter_openapi_examples",
-            MappingProxyType(dict(self.filter_openapi_examples)),
-        )
-        msgspec.structs.force_setattr(
-            self,
             "sort_openapi_examples",
-            MappingProxyType(dict(self.sort_openapi_examples)),
-        )
-        msgspec.structs.force_setattr(
-            self,
             "page_openapi_examples",
-            MappingProxyType(dict(self.page_openapi_examples)),
-        )
-        msgspec.structs.force_setattr(
-            self,
             "size_openapi_examples",
-            MappingProxyType(dict(self.size_openapi_examples)),
-        )
+        ):
+            msgspec.structs.force_setattr(
+                self,
+                field_name,
+                _normalize_openapi_examples_mapping(
+                    getattr(self, field_name),
+                    field_name=field_name,
+                ),
+            )
 
     @property
     def minimum_page_number(self) -> int:

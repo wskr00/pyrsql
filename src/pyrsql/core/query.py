@@ -12,7 +12,6 @@ from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder
 
 if TYPE_CHECKING:
-    from pyrsql.ir.query import BoundComparison, BoundLogical
     from pyrsql.orms.base import ORM
     from pyrsql.parsing.ast import Expression
 
@@ -38,7 +37,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
     text: str
     options: QueryOptions
     expression: Expression
-    bound_expression: BoundComparison | BoundLogical
+    bound_expression: Expression
 
     @classmethod
     def parse(
@@ -97,7 +96,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         expression: Expression,
         *,
         options: QueryOptions,
-    ) -> BoundComparison | BoundLogical:
+    ) -> Expression:
         """Binds a syntax tree into logical query IR.
 
         Args:
@@ -105,7 +104,7 @@ class Query(msgspec.Struct, frozen=True, gc=False):
             options: Query configuration used by semantic binding.
 
         Returns:
-            The bound logical query IR.
+            The semantically validated expression tree.
         """
         return SemanticBinder(options).bind(expression)
 

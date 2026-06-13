@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyrsql.ir.query import BoundField, BoundFunction
+from pyrsql.selector.ast import FieldSelector, FunctionSelector
 from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.errors import (
     SortFieldBlacklistedError,
@@ -76,11 +76,10 @@ def test_sort_binder_applies_field_mapping() -> None:
     fields = SortParser("companyName,desc").parse()
     options = _SortOptions(field_mapping={"companyName": "company.name"})
     bound_sort = SortBinder(options).bind(fields)
-    selector = bound_sort.fields[0].selector
+    selector = bound_sort[0].selector
 
-    assert isinstance(selector, BoundField)
-    assert selector.raw_path == "companyName"
-    assert selector.field_path == "company.name"
+    assert isinstance(selector, FieldSelector)
+    assert selector.raw_path == "company.name"
 
 
 @pytest.mark.parametrize(
@@ -118,11 +117,11 @@ def test_sort_binder_maps_field_selectors_inside_functions() -> None:
             procedure_whitelist=("upper",),
         ),
     ).bind(fields)
-    selector = bound_sort.fields[0].selector
+    selector = bound_sort[0].selector
 
-    assert isinstance(selector, BoundFunction)
-    assert isinstance(selector.arguments[0], BoundField)
-    assert selector.arguments[0].field_path == "company.name"
+    assert isinstance(selector, FunctionSelector)
+    assert isinstance(selector.arguments[0], FieldSelector)
+    assert selector.arguments[0].raw_path == "company.name"
 
 
 @pytest.mark.parametrize(

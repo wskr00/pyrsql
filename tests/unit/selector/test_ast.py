@@ -12,7 +12,6 @@ def test_function_selector_walk_traverses_nested_arguments() -> None:
         arguments=(
             FieldSelector(
                 raw_path="user.name",
-                segments=("user", "name"),
             ),
         ),
     )

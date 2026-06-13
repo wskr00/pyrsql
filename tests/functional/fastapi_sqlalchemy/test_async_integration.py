@@ -59,7 +59,7 @@ def _build_app(
 
     async def get_session():
         async with session_factory() as session:
-            yield session
+            yield session  # noqa: ASYNC119
 
     @app.get("/users")
     async def list_users(

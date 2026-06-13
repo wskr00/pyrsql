@@ -105,7 +105,6 @@ def test_parse_supports_field_and_literal_selectors(
     assert isinstance(selector, expected_type)
     if isinstance(selector, FieldSelector):
         assert selector.raw_path == expected_value
-        assert selector.segments == ("company", "name")
     else:
         assert selector.value is expected_value
 

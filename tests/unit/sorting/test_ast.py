@@ -14,7 +14,7 @@ def test_sort_direction_from_raw_matches_supported_values() -> None:
 
 def test_sort_field_retains_constructor_values() -> None:
     """Sort fields retain the parsed sort metadata."""
-    selector = FieldSelector(raw_path="name", segments=("name",))
+    selector = FieldSelector(raw_path="name")
     field = SortField(
         selector=selector,
         direction=SortDirection.ASCENDING,

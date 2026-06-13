@@ -12,7 +12,6 @@ from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.parser import SortParser
 
 if TYPE_CHECKING:
-    from pyrsql.ir.sort import BoundSort
     from pyrsql.orms.base import ORM
     from pyrsql.sorting.ast import SortField
 
@@ -35,7 +34,7 @@ class Sort(msgspec.Struct, frozen=True, gc=False):
     text: str | None
     options: SortOptions
     fields: tuple[SortField, ...] = ()
-    bound_sort: BoundSort | None = None
+    bound_sort: tuple[SortField, ...] = ()
 
     @classmethod
     def parse(
@@ -88,7 +87,7 @@ class Sort(msgspec.Struct, frozen=True, gc=False):
         fields: tuple[SortField, ...],
         *,
         options: SortOptions,
-    ) -> BoundSort | None:
+    ) -> tuple[SortField, ...]:
         """Binds parsed sort fields into logical sort IR.
 
         Args:
@@ -96,10 +95,10 @@ class Sort(msgspec.Struct, frozen=True, gc=False):
             options: Sort configuration used by semantic binding.
 
         Returns:
-            The bound logical sort IR, or None when no fields were parsed.
+            The semantically validated sort fields.
         """
         if not fields:
-            return None
+            return ()
         return SortBinder(options).bind(fields)
 
     def compile(self, *, orm: ORM) -> SortCompilationResult:

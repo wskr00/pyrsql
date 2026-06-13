@@ -10,6 +10,9 @@ from sqlalchemy import func, select
 
 from pyrsql.adapters.fastapi import RequestCriteria
 from pyrsql.adapters.fastapi.errors import FastAPIAdapterErrorPayload
+from pyrsql.integrations.fastapi.sqlalchemy.payloads import (
+    SQLAlchemyPaginatedSelect,
+)
 from pyrsql.orms.sqlalchemy.errors import SQLAlchemyORMError
 
 if TYPE_CHECKING:
@@ -140,4 +143,20 @@ def count_from_filtered_select(
     """
     return select(func.count()).select_from(
         filtered_statement.order_by(None).subquery(),
+    )
+
+
+def build_paginated_select(
+    *,
+    statement: SQLAlchemySelect,
+    filtered_statement: SQLAlchemySelect,
+) -> SQLAlchemyPaginatedSelect:
+    """Builds the shared list/count payload for paginated query flows.
+
+    Returns:
+        The paired list and count SQLAlchemy statements.
+    """
+    return SQLAlchemyPaginatedSelect(
+        statement=statement,
+        count_statement=count_from_filtered_select(filtered_statement),
     )

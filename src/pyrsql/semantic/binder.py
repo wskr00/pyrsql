@@ -9,14 +9,6 @@ from pyrsql.core.binding_policy import (
     enforce_field_access_policy,
     enforce_function_access_policy,
 )
-from pyrsql.ir.query import (
-    BoundArgument,
-    BoundComparison,
-    BoundField,
-    BoundFunction,
-    BoundLiteral,
-    BoundLogical,
-)
 from pyrsql.parsing.ast import ComparisonNode, LogicalNode
 from pyrsql.selector.ast import (
     FieldSelector,
@@ -31,9 +23,6 @@ from pyrsql.semantic.errors import (
 )
 
 if TYPE_CHECKING:
-    from pyrsql.ir.query import (
-        BoundSelectorNode,
-    )
     from pyrsql.parsing.ast import Expression
     from pyrsql.parsing.source import SourceSpan
     from pyrsql.selector.ast import (
@@ -42,7 +31,7 @@ if TYPE_CHECKING:
 
 
 class SemanticBinder:
-    """Binds parsed query AST nodes into logical IR."""
+    """Normalizes parsed query AST nodes after semantic checks."""
 
     def __init__(self, options: MappedFieldBindingOptions) -> None:
         """Initializes the binder with semantic binding options."""
@@ -51,11 +40,11 @@ class SemanticBinder:
         self._procedure_policy = options.procedure_policy
         self._field_mapping = options.field_mapping
 
-    def bind(self, expression: Expression) -> BoundComparison | BoundLogical:
-        """Binds a parsed AST into a bound logical expression tree.
+    def bind(self, expression: Expression) -> Expression:
+        """Normalizes a parsed AST after semantic validation.
 
         Returns:
-            The bound logical expression tree.
+            A semantically validated expression tree.
 
         Raises:
             TypeError: If the expression is not a supported AST node.
@@ -66,7 +55,7 @@ class SemanticBinder:
             raise TypeError(
                 "Expected ComparisonNode or LogicalNode expression.",
             )
-        return BoundLogical(
+        return LogicalNode(
             span=expression.span,
             operator=expression.operator,
             children=tuple(self.bind(child) for child in expression.children),
@@ -75,27 +64,20 @@ class SemanticBinder:
     def _bind_comparison(
         self,
         expression: ComparisonNode,
-    ) -> BoundComparison:
-        """Binds a parsed comparison node.
+    ) -> ComparisonNode:
+        """Normalizes a parsed comparison node.
 
         Returns:
-            The bound comparison node.
+            The semantically validated comparison node.
         """
-        return BoundComparison(
+        return ComparisonNode(
             span=expression.span,
             selector=self._bind_selector(
                 expression.selector,
                 span=expression.span,
             ),
             operator=expression.operator,
-            arguments=tuple(
-                BoundArgument(
-                    text=argument.text,
-                    quoted=argument.quoted,
-                    span=argument.span,
-                )
-                for argument in expression.arguments
-            ),
+            arguments=expression.arguments,
         )
 
     def _bind_selector(
@@ -103,11 +85,11 @@ class SemanticBinder:
         selector: SelectorNode,
         *,
         span: SourceSpan,
-    ) -> BoundSelectorNode:
-        """Binds a parsed selector recursively.
+    ) -> SelectorNode:
+        """Normalizes a parsed selector recursively.
 
         Returns:
-            The bound selector node.
+            The semantically validated selector node.
 
         Raises:
             TypeError: If the selector is not a supported selector node.
@@ -118,19 +100,17 @@ class SemanticBinder:
                 selector.raw_path,
             )
             self._enforce_field_access_policy(field_path, span)
-            return BoundField(
-                raw_path=selector.raw_path,
-                field_path=field_path,
-                segments=tuple(field_path.split(".")),
+            return FieldSelector(
+                raw_path=field_path,
             )
         if isinstance(selector, LiteralSelector):
-            return BoundLiteral(value=selector.value)
+            return selector
         if not isinstance(selector, FunctionSelector):
             raise TypeError(
                 "Expected FieldSelector, LiteralSelector, or FunctionSelector.",
             )
         self._enforce_function_access_policy(selector.function_name, span=span)
-        return BoundFunction(
+        return FunctionSelector(
             function_name=selector.function_name,
             arguments=tuple(
                 self._bind_selector(argument, span=span)

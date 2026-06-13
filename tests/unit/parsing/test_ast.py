@@ -24,7 +24,7 @@ def test_comparison_node_with_span_reuses_existing_payload() -> None:
     """Comparison nodes can be copied with a replacement span."""
     original = ComparisonNode(
         span=_span(),
-        selector=FieldSelector(raw_path="name", segments=("name",)),
+        selector=FieldSelector(raw_path="name"),
         operator=EQUAL,
         arguments=(),
     )
@@ -45,7 +45,7 @@ def test_logical_node_with_span_reuses_existing_children() -> None:
     """Logical nodes can be copied with a replacement span."""
     child = ComparisonNode(
         span=_span(),
-        selector=FieldSelector(raw_path="name", segments=("name",)),
+        selector=FieldSelector(raw_path="name"),
         operator=EQUAL,
         arguments=(),
     )

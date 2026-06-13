@@ -1,5 +1,6 @@
 """Public package interface for pyrsql."""
 
+from pyrsql import orms
 from pyrsql.api import apply, compile, parse  # noqa: A004
 from pyrsql.core import (
     DEFAULT_JSON_OPTIONS,
@@ -51,5 +52,6 @@ __all__ = (
     "ValueConverterRegistry",
     "apply",
     "compile",
+    "orms",
     "parse",
 )

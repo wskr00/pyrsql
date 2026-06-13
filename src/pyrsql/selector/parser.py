@@ -54,15 +54,13 @@ class SelectorParser:
             return LiteralSelector(
                 value=self._parse_literal_value(normalized_selector[1:]),
             )
-        segments = tuple(normalized_selector.split("."))
-        if any(not segment for segment in segments):
+        if any(not segment for segment in normalized_selector.split(".")):
             raise SelectorParseError(
                 f"{context} has invalid field selector "
                 f"{normalized_selector!r}: empty path segments.",
             )
         return FieldSelector(
             raw_path=normalized_selector,
-            segments=segments,
         )
 
     @staticmethod
