@@ -100,11 +100,20 @@ jobs:
     needs: [quality, test, docs]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
     steps:
       - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: build
+
+      - name: Install Python
+        run: uv python install
 
       - name: Build distribution
         run: uv build --out-dir dist
@@ -133,6 +142,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: false
 
       - name: Publish distribution
         run: uv publish dist/*
