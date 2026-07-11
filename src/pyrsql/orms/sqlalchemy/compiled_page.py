@@ -30,18 +30,19 @@ class SQLAlchemyCompiledPageRequest(
     def apply(
         self,
         target: SQLAlchemySelect,
-        _model: SQLAlchemyModel,
+        model: SQLAlchemyModel,
     ) -> SQLAlchemySelect:
         """Applies the compiled page request to a SQLAlchemy Select.
 
         Args:
             target: SQLAlchemy select statement to mutate.
-            _model: SQLAlchemy mapped class. It is unused, but the signature
+            model: SQLAlchemy mapped class. It is unused, but the signature
                 matches the other compiled plans.
 
         Returns:
             A SQLAlchemy select with limit and offset applied.
         """
+        del model
         statement = require_sqlalchemy_select(target)
         return statement.limit(self.page_request.limit).offset(
             self.page_request.offset,

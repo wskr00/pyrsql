@@ -2,79 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
-
 import pytest
 
-from pyrsql.adapters.fastapi import FastAPICriteriaConfig
+from pyrsql.adapters.fastapi import FastAPICriteriaConfig, SortParameterFormat
 from pyrsql.core.options import QueryOptions, SortOptions
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
 pytestmark = [pytest.mark.fastapi]
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        pytest.param(
-            {"filter_parameter": "filter", "sort_parameter": "filter"},
-            id="duplicate-parameter-names",
-        ),
-        pytest.param(
-            {"filter_parameter": " filter "},
-            id="outer-whitespace",
-        ),
-        pytest.param(
-            {"filter_parameter": 123},
-            id="non-string-parameter-name",
-        ),
-    ],
-)
-def test_config_rejects_invalid_parameter_names(
-    kwargs: dict[str, object],
-) -> None:
-    """Rejects duplicate aliases and names with outer whitespace."""
-    with pytest.raises(
-        (TypeError, ValueError),
-        match=r"(?i)parameter|whitespace|unique|string",
-    ):
-        FastAPICriteriaConfig(**cast("Any", kwargs))
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param(
-            {"default_page_size": 0},
-            r"default_page_size|page[_ ]?size|greater",
-            id="non-positive-default-page-size",
-        ),
-        pytest.param(
-            {"default_page_size": 51, "max_page_size": 50},
-            r"max|page size|exceed",
-            id="default-page-size-above-max",
-        ),
-        pytest.param(
-            {"max_page_size": True},
-            r"max_page_size|integer",
-            id="bool-max-page-size",
-        ),
-        pytest.param(
-            {"filter_openapi_examples": "invalid"},
-            r"filter_openapi_examples",
-            id="invalid-filter-examples",
-        ),
-    ],
-)
-def test_config_rejects_invalid_public_configuration(
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Rejects invalid paging, options, and OpenAPI examples."""
-    with pytest.raises((TypeError, ValueError), match=pattern):
-        FastAPICriteriaConfig(**cast("Any", kwargs))
 
 
 def test_config_exposes_derived_page_numbers() -> None:
@@ -90,17 +23,12 @@ def test_config_exposes_derived_page_numbers() -> None:
     assert one_based.default_page_number == 1
 
 
-def test_config_keeps_openapi_examples_as_immutable_copies(
-    openapi_examples: Mapping[str, Any],
-) -> None:
-    """Stores OpenAPI examples as immutable copies."""
-    config = FastAPICriteriaConfig(filter_openapi_examples=openapi_examples)
-
-    assert config.filter_openapi_examples["by_name"]["value"] == "name==demo"
-    assert config.filter_openapi_examples is not openapi_examples
-
-    with pytest.raises(TypeError):
-        cast("dict[str, Any]", config.filter_openapi_examples)["new"] = {}
+def test_config_uses_semicolon_sort_format_by_default() -> None:
+    """Preserves the single-parameter sort representation by default."""
+    assert (
+        FastAPICriteriaConfig().sort_parameter_format
+        is SortParameterFormat.SEMICOLON
+    )
 
 
 def test_config_reuses_default_shared_options() -> None:

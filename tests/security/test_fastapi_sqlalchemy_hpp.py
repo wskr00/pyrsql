@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pyrsql.adapters.fastapi import FastAPICriteriaConfig
+from pyrsql.adapters.fastapi import FastAPICriteriaConfig, SortParameterFormat
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -43,6 +43,26 @@ def test_duplicate_sort_parameters_use_last_value_and_still_validate(
 ) -> None:
     """Rejects a malicious last sort value instead of merging both clauses."""
     response = integration_app_factory().get(
+        "/users",
+        params=[("sort", "name,asc"), ("sort", "DROP TABLE users")],
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["type"] == SORT_BACKEND_TYPE
+    assert response.json()["detail"]["errors"][0]["field"] == (
+        "DROP TABLE users"
+    )
+
+
+def test_repeated_sort_parameters_validate_every_value(
+    integration_app_factory: Callable[..., TestClient],
+) -> None:
+    """Rejects an invalid repeated sort field instead of ignoring it."""
+    response = integration_app_factory(
+        criteria_config=FastAPICriteriaConfig(
+            sort_parameter_format=SortParameterFormat.REPEATED,
+        ),
+    ).get(
         "/users",
         params=[("sort", "name,asc"), ("sort", "DROP TABLE users")],
     )

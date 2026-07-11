@@ -12,6 +12,7 @@ from pyrsql.adapters.fastapi import (
     CriteriaDependency,
     FastAPICriteriaConfig,
     RequestCriteria,
+    SortParameterFormat,
     criteria_dependency,
 )
 from pyrsql.core.options import QueryOptions
@@ -92,6 +93,32 @@ def test_dependency_parses_filter_sort_and_page_params() -> None:
         "page": 0,
         "size": 25,
     }
+
+
+def test_dependency_supports_repeated_sort_parameters() -> None:
+    """Collects repeated sort parameters through FastAPI's list support."""
+    app = FastAPI()
+    dependency = criteria_dependency(
+        FastAPICriteriaConfig(
+            sort_parameter_format=SortParameterFormat.REPEATED,
+        ),
+    )
+
+    @app.get("/items")
+    def list_items(
+        criteria: Annotated[RequestCriteria, Depends(dependency)],
+    ) -> dict[str, str | None]:
+        return {
+            "sort": criteria.sort.text if criteria.sort is not None else None,
+        }
+
+    response = TestClient(app).get(
+        "/items",
+        params=[("sort", "name,asc"), ("sort", "created_at,desc")],
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"sort": "name,asc;created_at,desc"}
 
 
 def test_dependency_translates_query_parse_errors_to_http_400() -> None:

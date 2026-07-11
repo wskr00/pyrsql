@@ -53,8 +53,6 @@ class RequestCriteria(
         Returns:
             The transformed ORM-specific target after applying all criteria.
         """
-        if self.is_empty:
-            return target
         current_target = target
         if self.query is not None:
             current_target = self.query.apply(

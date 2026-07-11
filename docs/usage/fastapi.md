@@ -40,6 +40,29 @@ config = FastAPICriteriaConfig(
 dependency = criteria_dependency(config)
 ```
 
+## Repeated sort parameters
+
+The default sort representation uses one semicolon-delimited parameter:
+
+```text
+?sort=name,asc;created_at,desc
+```
+
+To accept one sort field per repeated query parameter, configure the adapter
+with `SortParameterFormat.REPEATED`:
+
+```python
+from pyrsql.adapters.fastapi import SortParameterFormat
+
+config = FastAPICriteriaConfig(
+    sort_parameter_format=SortParameterFormat.REPEATED,
+)
+```
+
+```text
+?sort=name,asc&sort=created_at,desc
+```
+
 ## Class-based dependency
 
 ```python

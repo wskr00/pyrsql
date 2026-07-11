@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from fastapi import HTTPException
 from sqlalchemy import func, select
 
-from pyrsql.adapters.fastapi import RequestCriteria
 from pyrsql.adapters.fastapi.errors import FastAPIAdapterErrorPayload
 from pyrsql.integrations.fastapi.sqlalchemy.payloads import (
     SQLAlchemyPaginatedSelect,
@@ -19,7 +18,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import NoReturn
 
-    from pyrsql.adapters.fastapi import FastAPICriteriaConfig
+    from pyrsql.adapters.fastapi import (
+        FastAPICriteriaConfig,
+        RequestCriteria,
+    )
     from pyrsql.orms.sqlalchemy import SQLAlchemyORM
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
@@ -74,20 +76,6 @@ def sort_backend_http_errors(
             error_type="sort_backend_error",
             error=error,
         )
-
-
-def require_request_criteria(criteria: RequestCriteria) -> RequestCriteria:
-    """Validates and returns request criteria objects.
-
-    Returns:
-        The validated request criteria instance.
-
-    Raises:
-        TypeError: If the provided value is not a ``RequestCriteria``.
-    """
-    if not isinstance(criteria, RequestCriteria):
-        raise TypeError("criteria must be a RequestCriteria.")
-    return criteria
 
 
 def apply_query_with_orm(
