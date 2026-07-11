@@ -2,94 +2,192 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main ]
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: quality
+
+      - name: Install Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-extras --group dev
+
+      - name: Check formatting
+        run: uv run ruff format --check src tests
+
+      - name: Lint
+        run: uv run ruff check src tests
+
+      - name: Type check
+        run: uv run mypy src
+
   test:
-    name: ${{ matrix.os }} / Py ${{ matrix.python-version }}
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
-
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
-          cache-dependency-glob: "**/uv.lock"
+          cache-dependency-glob: uv.lock
+          cache-suffix: test-${{ matrix.python-version }}
 
-      - name: Set up Python
-        run: uv python install ${{ matrix.python-version }}
+      - name: Install Python
+        run: uv python install
 
       - name: Install dependencies
         run: uv sync --frozen --all-extras --group dev
 
-      - name: Lint with Ruff
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: uv run ruff check src tests
-
       - name: Run tests
         run: uv run pytest -q
 
-      - name: Build docs
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: docs
+
+      - name: Install Python
+        run: uv python install
+
+      - name: Install documentation dependencies
+        run: uv sync --frozen --group docs
+
+      - name: Build documentation
         run: uv run mkdocs build --strict
+
+  build:
+    name: Build distribution
+    needs: [quality, test, docs]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Build distribution
+        run: uv build --out-dir dist
+
+      - name: Upload distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-distribution
+          path: dist/
+          if-no-files-found: error
 
   publish:
     name: Publish to PyPI
-    needs: [test]
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       id-token: write
       contents: read
-
     steps:
-      - uses: actions/checkout@v6
+      - name: Download distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: python-distribution
+          path: dist/
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Publish distribution
+        run: uv publish dist/*
+
+  build-docs-deployment:
+    name: Build documentation deployment
+    needs: [quality, test, docs]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: docs-deployment
 
-      - name: Set up Python
-        run: uv python install 3.12
+      - name: Install Python
+        run: uv python install
 
-      - name: Build and Publish
-        run: |
-          uv build
-          uv publish
+      - name: Install documentation dependencies
+        run: uv sync --frozen --group docs
+
+      - name: Build documentation
+        run: uv run mkdocs build --strict --site-dir _site
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
 
   deploy-docs:
-    name: Deploy docs to GitHub Pages
-    needs: [publish]
+    name: Deploy documentation
+    needs: [publish, build-docs-deployment]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
-      contents: write
-
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
-        with:
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install dependencies
-        run: uv sync --group docs
-
-      - name: Deploy
-        run: uv run mkdocs gh-deploy --force
+      - name: Deploy GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v5
