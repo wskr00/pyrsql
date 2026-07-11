@@ -46,15 +46,9 @@ class SemanticBinder:
         Returns:
             A semantically validated expression tree.
 
-        Raises:
-            TypeError: If the expression is not a supported AST node.
         """
         if isinstance(expression, ComparisonNode):
             return self._bind_comparison(expression)
-        if not isinstance(expression, LogicalNode):
-            raise TypeError(
-                "Expected ComparisonNode or LogicalNode expression.",
-            )
         return LogicalNode(
             span=expression.span,
             operator=expression.operator,
@@ -91,8 +85,6 @@ class SemanticBinder:
         Returns:
             The semantically validated selector node.
 
-        Raises:
-            TypeError: If the selector is not a supported selector node.
         """
         if isinstance(selector, FieldSelector):
             field_path = self._field_mapping.get(
@@ -105,10 +97,6 @@ class SemanticBinder:
             )
         if isinstance(selector, LiteralSelector):
             return selector
-        if not isinstance(selector, FunctionSelector):
-            raise TypeError(
-                "Expected FieldSelector, LiteralSelector, or FunctionSelector.",
-            )
         self._enforce_function_access_policy(selector.function_name, span=span)
         return FunctionSelector(
             function_name=selector.function_name,

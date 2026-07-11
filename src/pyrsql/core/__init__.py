@@ -1,10 +1,5 @@
 """Core ORM-agnostic pyrsql types."""
 
-from pyrsql.core.compiler import (
-    CompilationResult,
-    PageCompilationResult,
-    SortCompilationResult,
-)
 from pyrsql.core.conversion import (
     FieldValueConverterSet,
     ValueConverter,
@@ -28,7 +23,6 @@ from pyrsql.core.sort import Sort
 
 __all__ = [
     "DEFAULT_JSON_OPTIONS",
-    "CompilationResult",
     "CustomPredicateDefinition",
     "FieldPolicySet",
     "FieldValueConverterSet",
@@ -38,13 +32,11 @@ __all__ = [
     "JSONScalarNormalizer",
     "JSONScalarValue",
     "JSONSortScalarType",
-    "PageCompilationResult",
     "PageRequest",
     "ProcedureAccessPolicy",
     "Query",
     "QueryOptions",
     "Sort",
-    "SortCompilationResult",
     "SortOptions",
     "ValueConverter",
     "ValueConverterRegistry",

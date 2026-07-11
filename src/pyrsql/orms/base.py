@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, ClassVar, TypeAlias
-
-from pyrsql.core.compiler import CompiledArtifact
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompiledArtifact
     from pyrsql.core.page import PageRequest
     from pyrsql.core.query import Query
     from pyrsql.core.sort import Sort
-
-CompiledQuery: TypeAlias = CompiledArtifact
-CompiledSort: TypeAlias = CompiledArtifact
-CompiledPageRequest: TypeAlias = CompiledArtifact
 
 
 class ORMError(ValueError):
@@ -26,17 +21,8 @@ class ORMError(ValueError):
 class ORM(ABC):
     """Abstract ORM contract used by the pyrsql public API."""
 
-    @property
     @abstractmethod
-    def name(self) -> str:
-        """The stable ORM name.
-
-        Returns:
-            The ORM's stable identifier.
-        """
-
-    @abstractmethod
-    def compile_query(self, query: Query) -> CompiledQuery:
+    def compile_query(self, query: Query) -> CompiledArtifact:
         """Compiles a high-level query into an ORM-specific form.
 
         Args:
@@ -47,7 +33,7 @@ class ORM(ABC):
         """
 
     @abstractmethod
-    def compile_sort(self, sort: Sort) -> CompiledSort:
+    def compile_sort(self, sort: Sort) -> CompiledArtifact:
         """Compiles a high-level sort into an ORM-specific form.
 
         Args:
@@ -61,7 +47,7 @@ class ORM(ABC):
     def compile_page_request(
         self,
         page_request: PageRequest,
-    ) -> CompiledPageRequest:
+    ) -> CompiledArtifact:
         """Compiles a pagination request into an ORM-specific form.
 
         Args:

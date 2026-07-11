@@ -38,7 +38,7 @@ class SQLAlchemyCompiledSort(
 
     def apply(
         self,
-        target: SQLAlchemySelect | object,
+        target: SQLAlchemySelect,
         model: SQLAlchemyModel,
     ) -> SQLAlchemySelect:
         """Applies the compiled sort to a SQLAlchemy Select.

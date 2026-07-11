@@ -17,7 +17,7 @@ class SortError(ValueError):
 
     @property
     def diagnostic(self) -> SortDiagnostic:
-        """Returns the structured diagnostic for this error.
+        """Structured diagnostic for this error.
 
         Returns:
             The structured sorting diagnostic.

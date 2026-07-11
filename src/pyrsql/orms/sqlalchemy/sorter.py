@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 import sqlalchemy as sa
@@ -18,7 +17,6 @@ from pyrsql.orms.sqlalchemy.type_inference import (
 )
 from pyrsql.selector.ast import (
     FieldSelector,
-    FunctionSelector,
     LiteralSelector,
 )
 from pyrsql.sorting.ast import SortDirection
@@ -35,15 +33,13 @@ if TYPE_CHECKING:
     from pyrsql.sorting.ast import SortField
 
 
-_JSON_SORT_PYTHON_TYPES = MappingProxyType(
-    {
-        JSONSortScalarType.TEXT: str,
-        JSONSortScalarType.INTEGER: int,
-        JSONSortScalarType.FLOAT: float,
-        JSONSortScalarType.NUMERIC: float,
-        JSONSortScalarType.BOOLEAN: bool,
-    },
-)
+_JSON_SORT_PYTHON_TYPES = {
+    JSONSortScalarType.TEXT: str,
+    JSONSortScalarType.INTEGER: int,
+    JSONSortScalarType.FLOAT: float,
+    JSONSortScalarType.NUMERIC: float,
+    JSONSortScalarType.BOOLEAN: bool,
+}
 
 
 class SQLAlchemySortTranslator:
@@ -116,8 +112,6 @@ class SQLAlchemySortTranslator:
         Returns:
             Join plans, an SQL expression, and an inferred Python type.
 
-        Raises:
-            TypeError: If the selector is not a supported selector node.
         """
         if isinstance(selector, FieldSelector):
             resolved_path = self._path_resolver.resolve(
@@ -146,8 +140,6 @@ class SQLAlchemySortTranslator:
             )
             return (), sa.literal(selector.value), python_type
 
-        if not isinstance(selector, FunctionSelector):
-            raise TypeError("Expected FunctionSelector")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []

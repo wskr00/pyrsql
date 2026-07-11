@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 import msgspec
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from pyrsql.parsing.operators import ComparisonOperator
     from pyrsql.parsing.source import SourceSpan
     from pyrsql.selector.ast import SelectorNode
@@ -23,19 +21,10 @@ class Argument(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     span: SourceSpan
 
 
-class Node(msgspec.Struct, frozen=True, gc=False, kw_only=True):
-    """Base AST node."""
-
-    span: SourceSpan
-
-    def walk(self) -> Iterator[Node]:
-        """Yields this node and all nested syntax nodes depth-first."""
-        yield self
-
-
-class ComparisonNode(Node, frozen=True, gc=False, kw_only=True):
+class ComparisonNode(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Leaf node for selector/operator/arguments expressions."""
 
+    span: SourceSpan
     selector: SelectorNode
     operator: ComparisonOperator
     arguments: tuple[Argument, ...]
@@ -61,17 +50,12 @@ class LogicalOperator(Enum):
     OR = auto()
 
 
-class LogicalNode(Node, frozen=True, gc=False, kw_only=True):
+class LogicalNode(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Logical expression with two or more child nodes."""
 
+    span: SourceSpan
     operator: LogicalOperator
     children: tuple[Expression, ...]
-
-    def walk(self) -> Iterator[Node]:
-        """Yields this node and all descendant syntax nodes depth-first."""
-        yield self
-        for child in self.children:
-            yield from child.walk()
 
     def with_span(self, span: SourceSpan) -> LogicalNode:
         """Returns a copy of the logical node with an updated span.

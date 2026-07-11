@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
-from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.options import QueryOptions
 from pyrsql.parsing.parser import Parser
 from pyrsql.semantic.binder import SemanticBinder
 
 if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompiledArtifact
     from pyrsql.orms.base import ORM
     from pyrsql.parsing.ast import Expression
 
@@ -108,20 +108,16 @@ class Query(msgspec.Struct, frozen=True, gc=False):
         """
         return SemanticBinder(options).bind(expression)
 
-    def compile(self, *, orm: ORM) -> CompilationResult:
+    def compile(self, *, orm: ORM) -> CompiledArtifact:
         """Compiles the query using the provided ORM.
 
         Args:
             orm: ORM adapter used to compile the query.
 
         Returns:
-            The ORM-specific compilation result.
+            The ORM-specific compiled query.
         """
-        compiled_query = orm.compile_query(self)
-        return CompilationResult(
-            orm_name=orm.name,
-            compiled=compiled_query,
-        )
+        return orm.compile_query(self)
 
     def apply(
         self,

@@ -18,7 +18,6 @@ from pyrsql.orms.sqlalchemy.types import (
 
 if TYPE_CHECKING:
     from sqlalchemy.orm.properties import ColumnProperty
-    from sqlalchemy.sql.elements import NamedColumn
 
 
 class SQLAlchemyModelInspector:
@@ -122,7 +121,6 @@ class SQLAlchemyModelInspector:
             return SQLAlchemyMappedAttribute(
                 name=attribute_name,
                 kind=SQLAlchemyAttributeKind.RELATIONSHIP,
-                owner_model=model,
                 attribute=getattr(model, attribute_name),
                 mapper=relationship.mapper,
                 python_type=relationship.mapper.class_,
@@ -133,7 +131,6 @@ class SQLAlchemyModelInspector:
             return SQLAlchemyMappedAttribute(
                 name=attribute_name,
                 kind=SQLAlchemyAttributeKind.COLUMN,
-                owner_model=model,
                 attribute=getattr(model, attribute_name),
                 mapper=None,
                 python_type=self._resolve_column_python_type(column_property),
@@ -143,15 +140,6 @@ class SQLAlchemyModelInspector:
             f"Attribute {attribute_name!r} is not mapped on model "
             f"{model.__name__!r}.",
         )
-
-    @staticmethod
-    def _first_column(
-        column_property: ColumnProperty[Any],
-    ) -> NamedColumn[Any] | None:
-        """Returns the first mapped column for a column property, if any."""
-        if not column_property.columns:
-            return None
-        return column_property.columns[0]
 
     @classmethod
     def _resolve_column_python_type(
@@ -163,9 +151,9 @@ class SQLAlchemyModelInspector:
         Returns:
             The column Python type, or ``None`` when unavailable.
         """
-        column = cls._first_column(column_property)
-        if column is None:
+        if not column_property.columns:
             return None
+        column = column_property.columns[0]
         try:
             return column.type.python_type
         except (AttributeError, NotImplementedError):
@@ -181,7 +169,7 @@ class SQLAlchemyModelInspector:
         Returns:
             ``True`` when the column property stores JSON-like data.
         """
-        column = cls._first_column(column_property)
-        if column is None:
+        if not column_property.columns:
             return False
+        column = column_property.columns[0]
         return isinstance(column.type, JSON)

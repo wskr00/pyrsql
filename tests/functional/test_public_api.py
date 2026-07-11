@@ -9,7 +9,6 @@ import pytest
 from typing_extensions import override
 
 import pyrsql
-from pyrsql.core.compiler import CompilationResult
 from pyrsql.core.custom import CustomPredicateDefinition
 from pyrsql.core.json.options import DEFAULT_JSON_OPTIONS
 from pyrsql.core.options import QueryOptions
@@ -42,8 +41,6 @@ class _CompiledQuery:
 
 class _ORM(ORM):
     """Minimal ORM fake for public API tests."""
-
-    name = "fake-orm"
 
     def __init__(self) -> None:
         self.last_query: Query | None = None
@@ -147,12 +144,11 @@ def test_query_options_reject_mismatched_custom_predicate_key() -> None:
         )
 
 
-def test_compile_uses_orm_and_returns_compilation_result() -> None:
-    """Builds a compilation result through the high-level API."""
+def test_compile_uses_orm_and_returns_compiled_query() -> None:
+    """Returns the ORM-specific compiled query through the high-level API."""
     orm = _ORM()
     result = pyrsql.compile("name==demo", orm=orm)
-    assert isinstance(result, CompilationResult)
-    assert result.orm_name == "fake-orm"
+    assert isinstance(result, _CompiledQuery)
     assert orm.last_query is not None
     assert orm.last_query.text == "name==demo"
     assert orm.last_query.bound_expression is not None

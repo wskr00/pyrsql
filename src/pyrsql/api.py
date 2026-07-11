@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, TypeVar
 from pyrsql.core.query import Query
 
 if TYPE_CHECKING:
-    from pyrsql.core.compiler import CompilationResult
+    from pyrsql.core.compiler import CompiledArtifact
     from pyrsql.core.options import QueryOptions
     from pyrsql.orms.base import ORM
 
@@ -33,7 +33,7 @@ def compile(  # noqa: A001
     *,
     orm: ORM,
     options: QueryOptions | None = None,
-) -> CompilationResult:
+) -> CompiledArtifact:
     """Compiles raw RSQL text using the provided ORM.
 
     Args:
@@ -42,7 +42,7 @@ def compile(  # noqa: A001
         options: Optional query configuration.
 
     Returns:
-        The ORM-specific compilation result.
+        The ORM-specific compiled query.
     """
     return parse(query_text, options=options).compile(orm=orm)
 

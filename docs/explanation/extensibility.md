@@ -9,20 +9,17 @@ The core (`pyrsql.core`, `pyrsql.parsing`, `pyrsql.semantic`,
 Implement the `ORM` abstract base class:
 
 ```python
-from pyrsql.orms.base import ORM, CompiledPageRequest, CompiledQuery, CompiledSort
+from pyrsql.core.compiler import CompiledArtifact
+from pyrsql.orms.base import ORM
 
 class MyORM(ORM):
-    @property
-    def name(self) -> str:
-        return "my-orm"
-
-    def compile_query(self, query: Query) -> CompiledQuery:
+    def compile_query(self, query: Query) -> CompiledArtifact:
         ...
 
-    def compile_sort(self, sort: Sort) -> CompiledSort:
+    def compile_sort(self, sort: Sort) -> CompiledArtifact:
         ...
 
-    def compile_page_request(self, page_request: PageRequest) -> CompiledPageRequest:
+    def compile_page_request(self, page_request: PageRequest) -> CompiledArtifact:
         ...
 ```
 
@@ -49,23 +46,18 @@ The FastAPI adapter (`pyrsql.adapters.fastapi`) is the reference:
 
 ## Backend contract in detail
 
-### `CompiledQuery`
+### `CompiledArtifact`
 
 ```python
-class CompiledQuery(Protocol):
+class CompiledArtifact(Protocol):
     def apply(self, target: _TargetT, model: type[_ModelT]) -> _TargetT: ...
 ```
 
 Receives an ORM-specific target and model class, then returns the modified
 target with query conditions applied.
 
-### `CompiledSort`
-
-Same contract as `CompiledQuery`, but applies sort ordering.
-
-### `CompiledPageRequest`
-
-Same contract, but applies pagination semantics such as `LIMIT` and `OFFSET`.
+The same contract applies to query, sort, and pagination artifacts such as
+`LIMIT` and `OFFSET`.
 
 ## Integration layer
 

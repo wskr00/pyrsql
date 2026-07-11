@@ -27,7 +27,6 @@
         - ValueConverterRegistry
         - JoinHint
         - ORM
-        - CompilationResult
         - DEFAULT_JSON_OPTIONS
 
 ## Subpackages

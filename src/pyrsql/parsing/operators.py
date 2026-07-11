@@ -11,36 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-def _validate_non_empty_string(value: str, *, field_name: str) -> None:
-    """Validates one required non-empty string field.
-
-    Raises:
-        TypeError: If the field is not a string.
-        ValueError: If the field is empty or padded with outer whitespace.
-    """
-    if not isinstance(value, str):
-        raise TypeError(f"{field_name} must be a string.")
-    if not value:
-        raise ValueError(f"{field_name} cannot be empty.")
-    if value != value.strip():
-        raise ValueError(
-            f"{field_name} must not contain outer whitespace.",
-        )
-
-
-def _validate_non_negative_int(value: int, *, field_name: str) -> None:
-    """Validates one non-negative integer field.
-
-    Raises:
-        TypeError: If the field is not an integer.
-        ValueError: If the field is negative.
-    """
-    if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError(f"{field_name} must be an integer.")
-    if value < 0:
-        raise ValueError(f"{field_name} cannot be negative.")
-
-
 class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     """Represents a supported comparison operator."""
 
@@ -48,45 +18,6 @@ class ComparisonOperator(msgspec.Struct, frozen=True, gc=False, kw_only=True):
     spellings: tuple[str, ...]
     minimum_arguments: int
     maximum_arguments: int | None
-
-    def __post_init__(self) -> None:
-        """Validates operator invariants.
-
-        Raises:
-            TypeError: If the operator definition uses invalid runtime types.
-            ValueError: If the operator definition is invalid.
-        """
-        _validate_non_empty_string(self.name, field_name="name")
-        if isinstance(self.spellings, str) or not isinstance(
-            self.spellings,
-            tuple,
-        ):
-            raise TypeError("spellings must be a tuple of strings.")
-        if not self.spellings:
-            raise ValueError("Operator must define at least one spelling.")
-        for spelling in self.spellings:
-            _validate_non_empty_string(
-                spelling,
-                field_name="operator spelling",
-            )
-        if len(set(self.spellings)) != len(self.spellings):
-            raise ValueError("Operator spellings must be unique.")
-        _validate_non_negative_int(
-            self.minimum_arguments,
-            field_name="minimum_arguments",
-        )
-        if self.maximum_arguments is not None:
-            _validate_non_negative_int(
-                self.maximum_arguments,
-                field_name="maximum_arguments",
-            )
-        if (
-            self.maximum_arguments is not None
-            and self.maximum_arguments < self.minimum_arguments
-        ):
-            raise ValueError(
-                "maximum_arguments cannot be less than minimum_arguments.",
-            )
 
 
 class OperatorRegistry(msgspec.Struct, frozen=True, gc=False):
@@ -101,33 +32,11 @@ class OperatorRegistry(msgspec.Struct, frozen=True, gc=False):
     )
 
     def __post_init__(self) -> None:
-        """Builds lookup structures and validates uniqueness.
-
-        Raises:
-            TypeError: If the registered operators do not match the runtime
-                contract.
-            ValueError: If no operators are registered or spellings collide.
-        """
-        if isinstance(self.operators, str) or not isinstance(
-            self.operators,
-            tuple,
-        ):
-            raise TypeError("operators must be a tuple of ComparisonOperator.")
-        if not self.operators:
-            raise ValueError("Operator registry must contain operators.")
-        for operator in self.operators:
-            if not isinstance(operator, ComparisonOperator):
-                raise TypeError(
-                    "operators must contain only ComparisonOperator instances.",
-                )
+        """Builds lookup structures for registered operators."""
         operators_by_spelling: dict[str, ComparisonOperator] = {}
         spellings_by_prefix: dict[str, list[str]] = {}
         for operator in self.operators:
             for spelling in operator.spellings:
-                if spelling in operators_by_spelling:
-                    raise ValueError(
-                        f"Duplicate operator spelling registered: {spelling!r}.",  # noqa: E501
-                    )
                 operators_by_spelling[spelling] = operator
                 spellings_by_prefix.setdefault(spelling[0], []).append(spelling)
         msgspec.structs.force_setattr(

@@ -12,10 +12,7 @@ from pyrsql.parsing.ast import (
 )
 from pyrsql.parsing.errors import ParseError
 from pyrsql.parsing.lexer import Lexer
-from pyrsql.parsing.normalization import (
-    normalize_operator_registry,
-    normalize_parse_limits,
-)
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
 from pyrsql.parsing.operators import (
     DEFAULT_OPERATOR_REGISTRY,
 )
@@ -63,11 +60,8 @@ class Parser:
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         """Initializes the parser with raw source text and limits."""
-        self._limits = normalize_parse_limits(limits, owner_type=type(self))
-        self._operator_registry = normalize_operator_registry(
-            operator_registry,
-            owner_type=type(self),
-        )
+        self._limits = DEFAULT_PARSE_LIMITS if limits is None else limits
+        self._operator_registry = operator_registry
         self._tokens = Lexer(
             source,
             limits=self._limits,
@@ -79,7 +73,7 @@ class Parser:
 
     @property
     def limits(self) -> ParseLimits:
-        """Returns the configured parser safety limits.
+        """Configured parser safety limits.
 
         Returns:
             The parser safety limits currently in use.
@@ -232,13 +226,12 @@ class Parser:
                 "Expected an argument inside list",
             )
             arguments.append(self._make_argument(argument_token))
-            if self._match(TokenKind.COMMA):
-                continue
+            if self._match(TokenKind.RPAREN):
+                return tuple(arguments)
             self._expect(
-                TokenKind.RPAREN,
-                message="Expected ')' to close argument list",
+                TokenKind.COMMA,
+                message="Expected ',' or ')' after argument",
             )
-            return tuple(arguments)
 
     @staticmethod
     def _validate_argument_count(

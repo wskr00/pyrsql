@@ -228,6 +228,7 @@ def test_query_options_with_field_whitelist_returns_updated_copy() -> None:
         distinct=True,
         field_blacklist=frozenset({"blocked"}),
         parse_limits=DEFAULT_PARSE_LIMITS,
+        field_value_converters={"name": lambda raw: raw.upper()},
     )
 
     updated = options.with_field_whitelist(frozenset({"name"}))
@@ -237,6 +238,7 @@ def test_query_options_with_field_whitelist_returns_updated_copy() -> None:
     assert updated.field_blacklist == frozenset({"blocked"})
     assert updated.distinct is True
     assert updated.parse_limits is DEFAULT_PARSE_LIMITS
+    assert updated.field_value_converters["name"]("demo") == "DEMO"
 
 
 def test_sort_options_with_field_whitelist_returns_updated_copy() -> None:

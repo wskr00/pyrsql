@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 import msgspec
@@ -62,14 +61,12 @@ _ISO_DATE_TIME_PATTERN = re.compile(
 _ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_TIME_PATTERN = re.compile(r"^\d{2}:\d{2}:\d{2}(\.\d+)?$")
 _JSON_ENCODER = msgspec.json.Encoder()
-_ORDERED_COMPARISON_OPERATORS = MappingProxyType(
-    {
-        GREATER_THAN.name: ">",
-        GREATER_THAN_OR_EQUAL.name: ">=",
-        LESS_THAN.name: "<",
-        LESS_THAN_OR_EQUAL.name: "<=",
-    },
-)
+_ORDERED_COMPARISON_OPERATORS = {
+    GREATER_THAN.name: ">",
+    GREATER_THAN_OR_EQUAL.name: ">=",
+    LESS_THAN.name: "<",
+    LESS_THAN_OR_EQUAL.name: "<=",
+}
 _IGNORE_CASE_JSON_OPERATORS = frozenset(
     {
         IGNORE_CASE.name,

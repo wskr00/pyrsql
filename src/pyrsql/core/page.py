@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
-from pyrsql.core.compiler import PageCompilationResult
-
 if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompiledArtifact
     from pyrsql.orms.base import ORM
 
 _TargetT = TypeVar("_TargetT")
@@ -115,20 +114,16 @@ class PageRequest(msgspec.Struct, frozen=True, gc=False, kw_only=True):
         """
         return self.page_size
 
-    def compile(self, *, orm: ORM) -> PageCompilationResult:
+    def compile(self, *, orm: ORM) -> CompiledArtifact:
         """Compiles the page request using the provided ORM.
 
         Args:
             orm: ORM adapter used to compile the page request.
 
         Returns:
-            The ORM-specific page compilation result.
+            The ORM-specific compiled page request.
         """
-        compiled_page = orm.compile_page_request(self)
-        return PageCompilationResult(
-            orm_name=orm.name,
-            compiled=compiled_page,
-        )
+        return orm.compile_page_request(self)
 
     def apply(
         self,

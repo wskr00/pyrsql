@@ -36,27 +36,7 @@ class SQLAlchemyORM(base.ORM):
             Mapping[str, SQLAlchemyCustomPredicate] | None
         ) = None,
     ) -> None:
-        """Creates a SQLAlchemy ORM adapter."""
-        self._translator = self._build_translator(
-            translator=translator,
-            custom_predicates=custom_predicates,
-        )
-        self._sort_translator = (
-            SQLAlchemySortTranslator()
-            if sort_translator is None
-            else sort_translator
-        )
-
-    @staticmethod
-    def _build_translator(
-        *,
-        translator: SQLAlchemyExpressionTranslator | None,
-        custom_predicates: (Mapping[str, SQLAlchemyCustomPredicate] | None),
-    ) -> SQLAlchemyExpressionTranslator:
-        """Builds the effective query translator.
-
-        Returns:
-            The translator to use for query compilation.
+        """Creates a SQLAlchemy ORM adapter.
 
         Raises:
             ValueError: If custom predicates are combined with an explicit
@@ -68,19 +48,16 @@ class SQLAlchemyORM(base.ORM):
                     "custom_predicates cannot be provided when translator is "
                     "passed explicitly.",
                 )
-            return translator
-        return SQLAlchemyExpressionTranslator(
-            custom_predicates=custom_predicates,
+            self._translator = translator
+        else:
+            self._translator = SQLAlchemyExpressionTranslator(
+                custom_predicates=custom_predicates,
+            )
+        self._sort_translator = (
+            SQLAlchemySortTranslator()
+            if sort_translator is None
+            else sort_translator
         )
-
-    @property
-    def name(self) -> str:
-        """Returns the ORM name.
-
-        Returns:
-            The stable ORM name.
-        """
-        return "sqlalchemy"
 
     def compile_query(self, query: Query) -> SQLAlchemyCompiledQuery:  # type: ignore[override]
         """Compiles a pyrsql query for SQLAlchemy.

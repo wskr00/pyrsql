@@ -65,13 +65,13 @@ def test_page_request_rejects_non_aligned_offset() -> None:
         PageRequest.from_offset(offset=15, limit=10)
 
 
-def test_page_request_compile_uses_orm_name(
+def test_page_request_compile_returns_orm_artifact(
     fake_orm_factory: Callable[..., ORM],
 ) -> None:
-    """Ensures page compilation returns the selected ORM metadata."""
+    """Returns the page artifact produced by the selected ORM."""
     compilation = PageRequest.of(0, 10).compile(orm=fake_orm_factory())
 
-    assert compilation.orm_name == "fake"
+    assert compilation.result == 0
 
 
 def test_page_request_apply_uses_orm(

@@ -27,26 +27,3 @@ class SourceSpan(msgspec.Struct, frozen=True, gc=False, kw_only=True):
             A span covering the start of the first and end of the second span.
         """
         return cls(start=start.start, end=end.end)
-
-
-class SourceText(msgspec.Struct, frozen=True, gc=False, kw_only=True):
-    """Wraps immutable source text and exposes helper methods."""
-
-    text: str
-
-    @property
-    def length(self) -> int:
-        """Returns the source length.
-
-        Returns:
-            The length of the wrapped source text.
-        """
-        return len(self.text)
-
-    def slice(self, start: int, end: int) -> str:
-        """Returns a substring by raw indices.
-
-        Returns:
-            The sliced substring.
-        """
-        return self.text[start:end]

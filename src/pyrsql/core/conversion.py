@@ -35,9 +35,8 @@ class ValueConversionError(ValueError):
         cause: Exception | None = None,
     ) -> None:
         """Builds one normalized conversion error instance."""
-        target_type_name = getattr(target_type, "__name__", repr(target_type))
         super().__init__(
-            f"Failed to convert {raw_value!r} to {target_type_name}.",
+            f"Failed to convert {raw_value!r} to {target_type.__name__}.",
         )
         if cause is not None:
             self.__cause__ = cause
@@ -245,7 +244,7 @@ class ValueConverterRegistry(msgspec.Struct, frozen=True, gc=False):
     @staticmethod
     def _convert_enum(
         raw_value: RawValue,
-        target_type: TargetType,
+        target_type: type[Enum],
     ) -> ConvertedValue:
         """Converts a string into an enum member by name first.
 
