@@ -31,7 +31,7 @@
 
 ## Subpackages
 
-- `pyrsql.adapters.fastapi` - FastAPI adapter (FastAPICriteriaConfig, RequestCriteria, CriteriaDependency)
+- `pyrsql.adapters.fastapi` - FastAPI adapter (FastAPICriteriaConfig, RequestCriteria, CriteriaDependency, SortParameterFormat)
 - `pyrsql.integrations.fastapi` - FastAPI + SQLAlchemy (FastAPISQLAlchemyIntegration, FastAPISQLAlchemyResource)
 - `pyrsql.orms.sqlalchemy` - SQLAlchemy backend (SQLAlchemyORM)
 - `pyrsql.core` - ORM-neutral core types and options

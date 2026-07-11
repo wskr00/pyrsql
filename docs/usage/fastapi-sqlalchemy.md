@@ -1,6 +1,6 @@
 # FastAPI + SQLAlchemy
 
-## Setup
+## Recommended entry point
 
 ```python
 from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
@@ -20,6 +20,23 @@ The integration works with:
 
 - synchronous SQLAlchemy execution through `Session`
 - asynchronous SQLAlchemy execution through `AsyncSession`
+
+For routes that expose one stable model contract, prefer a declarative
+resource. It keeps field policies, default ordering, page limits, and OpenAPI
+examples next to the model they describe.
+
+```python
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name"},
+    sortable_fields={"name"},
+    default_sort="name,desc",
+    max_page_size=50,
+)
+```
+
+Use `FastAPISQLAlchemyIntegration` directly for dynamic models or when a
+service layer needs to build statements outside a route dependency.
 
 ## Route-ready dependencies
 
@@ -140,9 +157,8 @@ This avoids leaking raw SQLAlchemy exceptions as `500` responses.
 
 ## Free-threaded behavior
 
-The integration caches dependency callables and base `select(model)` statements
-per model. Those shared caches are published with explicit synchronization for
-free-threaded execution.
+The integration caches base `select(model)` statements per model. That shared
+cache is published with explicit synchronization for free-threaded execution.
 
 ## Async note
 

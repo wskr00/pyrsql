@@ -10,19 +10,37 @@ capabilities in your API without coupling to a specific ORM or framework.
 ## Install
 
 ```bash
-pip install pyrsql[sqlalchemy]
+pip install pyrsql[fastapi,sqlalchemy]
 ```
 
-## First query
+## Recommended: FastAPI + SQLAlchemy
 
 ```python
-import pyrsql
-from sqlalchemy import select
-from pyrsql.orms.sqlalchemy import SQLAlchemyORM
+from typing import Annotated, Any
 
-orm = SQLAlchemyORM()
-stmt = pyrsql.parse("name==demo;age=gt=18").apply(select(User), User, orm=orm)
+from fastapi import Depends, FastAPI
+
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+app = FastAPI()
+integration = FastAPISQLAlchemyIntegration()
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name"},
+    sortable_fields={"name"},
+    default_sort="name,asc",
+)
+
+@app.get("/users")
+def list_users(
+    stmt: Annotated[Any, Depends(users.select_dependency())],
+):
+    return {"sql": str(stmt)}
 ```
+
+The integration parses request criteria, applies SQLAlchemy filters/sorting/
+pagination, and exposes a route-ready dependency. It does not execute database
+I/O.
 
 ## Key features
 
@@ -43,11 +61,11 @@ stmt = pyrsql.parse("name==demo;age=gt=18").apply(select(User), User, orm=orm)
 
 ## Integration options
 
-- **FastAPI adapter** - parse `filter`, `sort`, `page`, and `size` into
-  `RequestCriteria`
 - **FastAPI + SQLAlchemy integration** - route-ready dependencies,
   declarative `resource()` helpers, count/paginated bundles, and normalized
   backend error translation
+- **FastAPI adapter** - parse `filter`, `sort`, `page`, and `size` into
+  `RequestCriteria` when you need criteria without SQLAlchemy integration
 
 ## Next steps
 
