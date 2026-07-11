@@ -41,7 +41,7 @@ class SourceError(ValueError):
 
     @property
     def diagnostic(self) -> SourceDiagnostic:
-        """Returns the structured diagnostic for this error.
+        """Structured diagnostic for this error.
 
         Returns:
             The structured source diagnostic.
