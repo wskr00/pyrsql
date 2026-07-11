@@ -79,13 +79,13 @@ def test_query_parse_resolves_shared_default_options(
     )
 
 
-def test_query_compile_uses_orm_name(
+def test_query_compile_returns_orm_artifact(
     fake_orm_factory: Callable[..., ORM],
 ) -> None:
-    """Compiles the query with the selected ORM metadata."""
+    """Returns the query artifact produced by the selected ORM."""
     compilation = Query.parse("name==demo").compile(orm=fake_orm_factory())
 
-    assert compilation.orm_name == "fake"
+    assert compilation.result == "name==demo"
 
 
 def test_query_apply_uses_orm(

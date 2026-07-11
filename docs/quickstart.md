@@ -9,6 +9,44 @@ pip install pyrsql[fastapi]           # with FastAPI
 pip install pyrsql[fastapi,sqlalchemy]  # both
 ```
 
+## Recommended: FastAPI + SQLAlchemy
+
+For a FastAPI application backed by SQLAlchemy, start with the integration.
+It owns the public query contract for one model and gives routes a ready-to-use
+SQLAlchemy statement.
+
+```python
+from typing import Annotated, Any
+
+from fastapi import Depends, FastAPI
+
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+app = FastAPI()
+integration = FastAPISQLAlchemyIntegration()
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name"},
+    sortable_fields={"name"},
+    default_sort="name,asc",
+)
+
+@app.get("/users")
+def list_users(
+    stmt: Annotated[Any, Depends(users.select_dependency())],
+):
+    return {"sql": str(stmt)}
+```
+
+Clients can use `filter`, `sort`, `page`, and `size`. The integration also
+offers count and paginated dependencies. See [FastAPI + SQLAlchemy](usage/fastapi-sqlalchemy.md)
+for the complete route API.
+
+## Building blocks
+
+The following sections show the lower-level APIs used by the integration. They
+are useful for non-FastAPI applications or when you need direct control.
+
 ## Filter
 
 ```python
@@ -83,7 +121,7 @@ Parse and page-validation errors become structured `HTTP 400` responses.
 Semantic and backend integration errors become structured `HTTP 422`
 responses.
 
-## FastAPI + SQLAlchemy
+## Direct integration dependency
 
 ```python
 from typing import Annotated, Any

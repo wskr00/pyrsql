@@ -22,8 +22,6 @@ import pyrsql.integrations.fastapi.sqlalchemy.resource as resource_module
 from .conftest import User
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from sqlalchemy.sql import Select
 
     from pyrsql.orms.sqlalchemy import SQLAlchemyORM
@@ -31,16 +29,6 @@ if TYPE_CHECKING:
 pytest.importorskip("fastapi")
 
 pytestmark = [pytest.mark.fastapi, pytest.mark.sqlalchemy]
-
-
-def _collect_concurrent_results(
-    factory: Callable[[], object],
-    *,
-    workers: int = 8,
-) -> list[object]:
-    """Runs one factory concurrently and collects all returned values."""
-    with ThreadPoolExecutor(max_workers=workers) as executor:
-        return list(executor.map(lambda _: factory(), range(workers)))
 
 
 def test_integration_exposes_configured_criteria_dependency(
@@ -56,24 +44,6 @@ def test_integration_exposes_configured_criteria_dependency(
     dependency = integration.criteria_dependency()
 
     assert dependency.config is fastapi_criteria_config
-
-
-def test_integration_reuses_cached_dependencies(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Reuses dependency objects for the same model and integration."""
-    assert (
-        integration.criteria_dependency() is integration.criteria_dependency()
-    )
-    assert integration.select_dependency(User) is integration.select_dependency(
-        User,
-    )
-    assert integration.count_select_dependency(
-        User,
-    ) is integration.count_select_dependency(User)
-    assert integration.paginated_select_dependency(
-        User,
-    ) is integration.paginated_select_dependency(User)
 
 
 def test_default_integrations_do_not_share_the_same_orm_instance() -> None:
@@ -113,17 +83,6 @@ def test_integration_base_select_cache_is_safe_under_concurrency(
 
     assert 1 <= call_count <= 8
     assert all(statement is statements[0] for statement in statements)
-
-
-def test_integration_dependency_cache_is_safe_under_concurrency() -> None:
-    """Builds one dependency callable per model under concurrent access."""
-    integration = FastAPISQLAlchemyIntegration()
-
-    dependencies = _collect_concurrent_results(
-        lambda: integration.select_dependency(User),
-    )
-
-    assert all(dependency is dependencies[0] for dependency in dependencies)
 
 
 def test_integration_apply_delegates_to_request_criteria(
@@ -441,31 +400,6 @@ def test_resource_select_uses_statement_factory_for_base_statement(
     apply_mock.assert_called_once_with(statement, User, query_criteria)
 
 
-@pytest.mark.parametrize(
-    ("statement_factory", "pattern"),
-    [
-        pytest.param(
-            lambda: cast("Any", "invalid"),
-            r"sqlalchemy\.sql\.Select",
-            id="non-select-result",
-        ),
-    ],
-)
-def test_resource_rejects_invalid_statement_factory_results(
-    integration: FastAPISQLAlchemyIntegration,
-    statement_factory: Callable[[], object],
-    pattern: str,
-) -> None:
-    """Rejects invalid base statement factories for declarative resources."""
-    resource = integration.resource(
-        User,
-        statement_factory=cast("Callable[[], Select[Any]]", statement_factory),
-    )
-
-    with pytest.raises(TypeError, match=pattern):
-        resource.select(RequestCriteria())
-
-
 def test_resource_reuses_integration_cached_base_select(
     integration: FastAPISQLAlchemyIntegration,
 ) -> None:
@@ -473,82 +407,6 @@ def test_resource_reuses_integration_cached_base_select(
     resource = integration.resource(User)
 
     assert resource.select(RequestCriteria()) is integration.base_select(User)
-
-
-def test_resource_reuses_cached_dependencies(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Reuses dependency objects created by a declarative resource."""
-    resource = integration.resource(User, default_sort="-name")
-
-    assert resource.applier_dependency() is resource.applier_dependency()
-    assert resource.select_dependency() is resource.select_dependency()
-    assert (
-        resource.count_select_dependency() is resource.count_select_dependency()
-    )
-    assert (
-        resource.paginated_select_dependency()
-        is resource.paginated_select_dependency()
-    )
-
-
-def test_resource_select_dependency_cache_is_safe_under_concurrency(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Builds one select dependency callable under concurrent access."""
-    resource = integration.resource(User, default_sort="-name")
-    dependencies = _collect_concurrent_results(resource.select_dependency)
-
-    assert all(dependency is dependencies[0] for dependency in dependencies)
-
-
-def test_resource_applier_dependency_cache_is_safe_under_concurrency(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Builds one applier dependency callable under concurrent access."""
-    resource = integration.resource(User, default_sort="-name")
-    dependencies = _collect_concurrent_results(resource.applier_dependency)
-
-    assert all(dependency is dependencies[0] for dependency in dependencies)
-
-
-def test_resource_count_dependency_cache_is_safe_under_concurrency(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Builds one count dependency callable under concurrent access."""
-    resource = integration.resource(User, default_sort="-name")
-    dependencies = _collect_concurrent_results(
-        resource.count_select_dependency,
-    )
-
-    assert all(dependency is dependencies[0] for dependency in dependencies)
-
-
-def test_resource_paginated_dependency_cache_is_safe_under_concurrency(
-    integration: FastAPISQLAlchemyIntegration,
-) -> None:
-    """Builds one paginated dependency callable under concurrent access."""
-    resource = integration.resource(User, default_sort="-name")
-    dependencies = _collect_concurrent_results(
-        resource.paginated_select_dependency,
-    )
-
-    assert all(dependency is dependencies[0] for dependency in dependencies)
-
-
-@pytest.mark.parametrize(
-    "method_name",
-    ["select", "count_select", "paginated_select"],
-)
-def test_integration_rejects_invalid_request_criteria(
-    integration: FastAPISQLAlchemyIntegration,
-    method_name: str,
-) -> None:
-    """Rejects non-RequestCriteria values at public entrypoints."""
-    method = getattr(integration, method_name)
-
-    with pytest.raises(TypeError, match="criteria must be a RequestCriteria"):
-        method(User, cast("Any", "invalid"))
 
 
 def test_paginated_select_carries_list_and_count_statements() -> None:
@@ -572,43 +430,3 @@ def test_resource_dependency_respects_explicit_max_page_size(
     resource = integration.resource(User, max_page_size=50)
 
     assert resource.criteria_config.max_page_size == 50
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param(
-            {"query_parameter_name": ""},
-            "must not be empty",
-            id="blank-query-parameter-name",
-        ),
-        pytest.param(
-            {"sort_parameter_name": ""},
-            "must not be empty",
-            id="blank-sort-parameter-name",
-        ),
-        pytest.param(
-            {"page_parameter_name": ""},
-            "must not be empty",
-            id="blank-page-parameter-name",
-        ),
-        pytest.param(
-            {"size_parameter_name": ""},
-            "must not be empty",
-            id="blank-size-parameter-name",
-        ),
-        pytest.param(
-            {"max_page_size": 0},
-            "max_page_size",
-            id="invalid-max-page-size",
-        ),
-    ],
-)
-def test_resource_rejects_invalid_explicit_config_overrides(
-    integration: FastAPISQLAlchemyIntegration,
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Rejects explicit invalid resource config instead of falling back."""
-    with pytest.raises((TypeError, ValueError), match=pattern):
-        integration.resource(User, **cast("Any", kwargs))

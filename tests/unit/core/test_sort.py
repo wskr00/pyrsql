@@ -65,13 +65,13 @@ def test_sort_parse_keeps_empty_bound_sort_when_no_fields_are_present(
     )
 
 
-def test_sort_compile_uses_orm_name(
+def test_sort_compile_returns_orm_artifact(
     fake_orm_factory: Callable[..., ORM],
 ) -> None:
-    """Compiles the sort with the selected ORM metadata."""
+    """Returns the sort artifact produced by the selected ORM."""
     compilation = Sort.parse("name,asc").compile(orm=fake_orm_factory())
 
-    assert compilation.orm_name == "fake"
+    assert compilation.result == "name,asc"
 
 
 def test_sort_apply_uses_orm(

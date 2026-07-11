@@ -1,7 +1,7 @@
 """Dependency factories for FastAPI request integration."""
 
 from inspect import signature
-from typing import TYPE_CHECKING, Annotated, cast
+from typing import TYPE_CHECKING, Annotated, NoReturn
 
 try:
     from fastapi import HTTPException, Query
@@ -11,7 +11,10 @@ except ImportError as error:  # pragma: no cover - import guard
         "pip install pyrsql[fastapi]",
     ) from error
 
-from pyrsql.adapters.fastapi.config import FastAPICriteriaConfig
+from pyrsql.adapters.fastapi.config import (
+    FastAPICriteriaConfig,
+    SortParameterFormat,
+)
 from pyrsql.adapters.fastapi.criteria import RequestCriteria
 from pyrsql.adapters.fastapi.errors import (
     FastAPIAdapterErrorPayload,
@@ -46,7 +49,7 @@ _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
 
 def _raise_http_error(
     payload: "FastAPIAdapterErrorPayload",  # noqa: UP037
-) -> None:
+) -> NoReturn:
     """Raises a standardized FastAPI HTTP exception for adapter failures.
 
     Raises:
@@ -95,23 +98,66 @@ def _build_page_request(
         )
 
     if config.one_based_paging:
-        if resolved_page_number <= 0:
-            _raise_http_error(
-                FastAPIAdapterErrorPayload.from_page_error(
-                    config.page_parameter,
-                    error_type="page_validation_error",
-                    detail_code="invalid_page_number",
-                    message=(
-                        f"'{config.page_parameter}' must be greater than 0 "
-                        "when one_based_paging is enabled."
-                    ),
-                ),
-            )
         resolved_page_number -= 1
 
     return PageRequest.of(
         resolved_page_number,
-        cast("int", resolved_page_size),
+        resolved_page_size,
+    )
+
+
+def _build_request_criteria(
+    *,
+    config: FastAPICriteriaConfig,
+    filter_value: str | None,
+    sort_value: str | None,
+    page_value: int | None,
+    size_value: int | None,
+) -> RequestCriteria:
+    """Builds criteria from values already extracted by FastAPI.
+
+    Returns:
+        The parsed request criteria.
+    """
+    query = None
+    sort = None
+
+    if filter_value:
+        try:
+            query = PyrsqlQuery.parse(
+                filter_value,
+                options=config.query_options,
+            )
+        except _QUERY_ERROR_TYPES as error:
+            _raise_http_error(
+                FastAPIAdapterErrorPayload.from_query_error(
+                    config.filter_parameter,
+                    error,
+                ),
+            )
+
+    if sort_value:
+        try:
+            sort = PyrsqlSort.parse(
+                sort_value,
+                options=config.sort_options,
+            )
+        except _SORT_ERROR_TYPES as error:
+            _raise_http_error(
+                FastAPIAdapterErrorPayload.from_sort_error(
+                    config.sort_parameter,
+                    error,
+                ),
+            )
+
+    return RequestCriteria(
+        query=query,
+        sort=sort,
+        page_request=_build_page_request(
+            config=config,
+            page_value=page_value,
+            size_value=size_value,
+        ),
     )
 
 
@@ -121,7 +167,20 @@ def _build_criteria_callable(
     """Builds the concrete dependency callable for a fixed configuration.
 
     Returns:
-        A FastAPI-compatible callable that parses request criteria.
+        A FastAPI-compatible callable with the configured sort format.
+    """
+    if config.sort_parameter_format is SortParameterFormat.REPEATED:
+        return _build_repeated_sort_criteria_callable(config)
+    return _build_semicolon_sort_criteria_callable(config)
+
+
+def _build_semicolon_sort_criteria_callable(
+    config: FastAPICriteriaConfig,
+) -> "Callable[..., RequestCriteria]":  # noqa: UP037
+    """Builds a dependency that accepts one semicolon-delimited sort value.
+
+    Returns:
+        A FastAPI-compatible callable.
     """
 
     def dependency(
@@ -157,47 +216,65 @@ def _build_criteria_callable(
             ),
         ] = None,
     ) -> RequestCriteria:
-        query = None
-        sort = None
-
-        if filter_value:
-            try:
-                query = PyrsqlQuery.parse(
-                    filter_value,
-                    options=config.query_options,
-                )
-            except _QUERY_ERROR_TYPES as error:
-                _raise_http_error(
-                    FastAPIAdapterErrorPayload.from_query_error(
-                        config.filter_parameter,
-                        error,
-                    ),
-                )
-
-        if sort_value:
-            try:
-                sort = PyrsqlSort.parse(
-                    sort_value,
-                    options=config.sort_options,
-                )
-            except _SORT_ERROR_TYPES as error:
-                _raise_http_error(
-                    FastAPIAdapterErrorPayload.from_sort_error(
-                        config.sort_parameter,
-                        error,
-                    ),
-                )
-
-        page_request = _build_page_request(
+        return _build_request_criteria(
             config=config,
+            filter_value=filter_value,
+            sort_value=sort_value,
             page_value=page_value,
             size_value=size_value,
         )
 
-        return RequestCriteria(
-            query=query,
-            sort=sort,
-            page_request=page_request,
+    return dependency
+
+
+def _build_repeated_sort_criteria_callable(
+    config: FastAPICriteriaConfig,
+) -> "Callable[..., RequestCriteria]":  # noqa: UP037
+    """Builds a dependency that accepts repeated sort query parameters.
+
+    Returns:
+        A FastAPI-compatible callable.
+    """
+
+    def dependency(
+        filter_value: Annotated[
+            str | None,
+            Query(
+                alias=config.filter_parameter,
+                openapi_examples=config.filter_openapi_examples or None,
+            ),
+        ] = None,
+        sort_values: Annotated[
+            list[str] | None,
+            Query(
+                alias=config.sort_parameter,
+                openapi_examples=config.sort_openapi_examples or None,
+            ),
+        ] = None,
+        page_value: Annotated[
+            int | None,
+            Query(
+                alias=config.page_parameter,
+                ge=config.minimum_page_number,
+                openapi_examples=config.page_openapi_examples or None,
+            ),
+        ] = None,
+        size_value: Annotated[
+            int | None,
+            Query(
+                alias=config.size_parameter,
+                gt=0,
+                le=config.max_page_size,
+                openapi_examples=config.size_openapi_examples or None,
+            ),
+        ] = None,
+    ) -> RequestCriteria:
+        return _build_request_criteria(
+            config=config,
+            filter_value=filter_value,
+            sort_value=";".join(sort_values) if sort_values else None,
+            page_value=page_value,
+            size_value=size_value,
         )
 
     return dependency

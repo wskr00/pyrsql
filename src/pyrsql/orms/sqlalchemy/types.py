@@ -51,7 +51,6 @@ class SQLAlchemyResolvedPath(
 ):
     """Represents a resolved ORM path."""
 
-    root_model: SQLAlchemyModel
     leaf_model: SQLAlchemyModel
     field_path: str
     joins: tuple[SQLAlchemyJoinPlan, ...]
@@ -71,7 +70,6 @@ class SQLAlchemyMappedAttribute(
 
     name: str
     kind: SQLAlchemyAttributeKind
-    owner_model: SQLAlchemyModel
     attribute: SQLAlchemyAttribute
     mapper: SQLAlchemyMapper | None
     python_type: type[Any] | None

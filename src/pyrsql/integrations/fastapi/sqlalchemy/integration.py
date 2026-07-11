@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from threading import Lock
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from fastapi import Depends
+import msgspec
 from sqlalchemy import select
 
 from pyrsql.adapters.fastapi import (
@@ -25,14 +26,12 @@ from pyrsql.integrations.fastapi.sqlalchemy.helpers import (
     build_paginated_select,
     count_from_filtered_select,
     query_backend_http_errors,
-    require_request_criteria,
     sort_backend_http_errors,
 )
 from pyrsql.integrations.fastapi.sqlalchemy.resource import (
     FastAPISQLAlchemyResource,
 )
 from pyrsql.orms.sqlalchemy import SQLAlchemyORM
-from pyrsql.orms.sqlalchemy.statement import require_sqlalchemy_select
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -46,7 +45,6 @@ if TYPE_CHECKING:
     from pyrsql.orms.sqlalchemy.types import SQLAlchemyModel, SQLAlchemySelect
 
 _DEFAULT_FASTAPI_CRITERIA_CONFIG = FastAPICriteriaConfig()
-_CachedValueT = TypeVar("_CachedValueT")
 
 
 class FastAPISQLAlchemyIntegration:
@@ -55,10 +53,7 @@ class FastAPISQLAlchemyIntegration:
     __slots__ = (
         "_base_selects",
         "_cache_lock",
-        "_count_select_dependencies",
         "_criteria_dependency",
-        "_paginated_select_dependencies",
-        "_select_dependencies",
         "criteria_config",
         "orm",
     )
@@ -78,18 +73,6 @@ class FastAPISQLAlchemyIntegration:
         )
         self._criteria_dependency = CriteriaDependency(self.criteria_config)
         self._cache_lock = Lock()
-        self._select_dependencies: dict[
-            SQLAlchemyModel,
-            Callable[..., SQLAlchemySelect],
-        ] = {}
-        self._count_select_dependencies: dict[
-            SQLAlchemyModel,
-            Callable[..., SQLAlchemySelect],
-        ] = {}
-        self._paginated_select_dependencies: dict[
-            SQLAlchemyModel,
-            Callable[..., SQLAlchemyPaginatedSelect],
-        ] = {}
         self._base_selects: dict[SQLAlchemyModel, SQLAlchemySelect] = {}
 
     def criteria_dependency(self) -> CriteriaDependency:
@@ -99,24 +82,6 @@ class FastAPISQLAlchemyIntegration:
             A configured FastAPI criteria dependency.
         """
         return self._criteria_dependency
-
-    def _apply_query(
-        self,
-        statement: SQLAlchemySelect,
-        model: SQLAlchemyModel,
-        criteria: RequestCriteria,
-    ) -> SQLAlchemySelect:
-        """Applies only the filtering part of request criteria.
-
-        Returns:
-            A statement with query/filter semantics applied.
-        """
-        return apply_query_with_orm(
-            statement,
-            model,
-            criteria,
-            self.orm,
-        )
 
     def _apply_sort_and_page(
         self,
@@ -146,7 +111,12 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             The shared filtered select statement used by list and count flows.
         """
-        return self._apply_query(self.base_select(model), model, criteria)
+        return apply_query_with_orm(
+            self.base_select(model),
+            model,
+            criteria,
+            self.orm,
+        )
 
     def base_select(self, model: SQLAlchemyModel) -> SQLAlchemySelect:
         """Returns the cached base select for a model.
@@ -157,11 +127,12 @@ class FastAPISQLAlchemyIntegration:
         statement = self._base_selects.get(model)
         if statement is not None:
             return statement
-        return self._publish_cached_model_value(
-            self._base_selects,
-            model,
-            select(model),
-        )
+        with self._cache_lock:
+            statement = self._base_selects.get(model)
+            if statement is None:
+                statement = select(model)
+                self._base_selects[model] = statement
+            return statement
 
     def apply(
         self,
@@ -174,8 +145,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A statement with all request criteria applied.
         """
-        require_sqlalchemy_select(statement)
-        criteria = require_request_criteria(criteria)
         return criteria.apply(statement, model, orm=self.orm)
 
     def select(
@@ -188,7 +157,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A select statement with all request criteria applied.
         """
-        criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return self._apply_sort_and_page(
             filtered_statement,
@@ -206,7 +174,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A count statement derived from the filtered query semantics.
         """
-        criteria = require_request_criteria(criteria)
         return count_from_filtered_select(
             self._filtered_select(model, criteria),
         )
@@ -221,7 +188,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             The paired list and count statements for a paginated flow.
         """
-        criteria = require_request_criteria(criteria)
         filtered_statement = self._filtered_select(model, criteria)
         return build_paginated_select(
             statement=self._apply_sort_and_page(
@@ -241,9 +207,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields a filtered select statement.
         """
-        cached_dependency = self._select_dependencies.get(model)
-        if cached_dependency is not None:
-            return cached_dependency
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
@@ -261,11 +224,7 @@ class FastAPISQLAlchemyIntegration:
                     criteria,
                 )
 
-        return self._publish_cached_model_value(
-            self._select_dependencies,
-            model,
-            dependency,
-        )
+        return dependency
 
     def count_select_dependency(
         self,
@@ -276,9 +235,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields a count select statement.
         """
-        cached_dependency = self._count_select_dependencies.get(model)
-        if cached_dependency is not None:
-            return cached_dependency
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
@@ -291,11 +247,7 @@ class FastAPISQLAlchemyIntegration:
                 )
             return count_from_filtered_select(filtered_statement)
 
-        return self._publish_cached_model_value(
-            self._count_select_dependencies,
-            model,
-            dependency,
-        )
+        return dependency
 
     def paginated_select_dependency(
         self,
@@ -306,9 +258,6 @@ class FastAPISQLAlchemyIntegration:
         Returns:
             A FastAPI dependency that yields paired list and count statements.
         """
-        cached_dependency = self._paginated_select_dependencies.get(model)
-        if cached_dependency is not None:
-            return cached_dependency
         criteria_dependency = self.criteria_dependency()
 
         def dependency(
@@ -329,29 +278,7 @@ class FastAPISQLAlchemyIntegration:
                     filtered_statement=filtered_statement,
                 )
 
-        return self._publish_cached_model_value(
-            self._paginated_select_dependencies,
-            model,
-            dependency,
-        )
-
-    def _publish_cached_model_value(
-        self,
-        cache: dict[SQLAlchemyModel, _CachedValueT],
-        model: SQLAlchemyModel,
-        value: _CachedValueT,
-    ) -> _CachedValueT:
-        """Publishes one cached model-scoped value with minimal lock scope.
-
-        Returns:
-            The cached value shared for the model.
-        """
-        with self._cache_lock:
-            cached_value = cache.get(model)
-            if cached_value is not None:
-                return cached_value
-            cache[model] = value
-            return value
+        return dependency
 
     def resource(
         self,
@@ -399,7 +326,8 @@ class FastAPISQLAlchemyIntegration:
             sort_examples,
         )
 
-        criteria_config = FastAPICriteriaConfig(
+        criteria_config = msgspec.structs.replace(
+            self.criteria_config,
             filter_parameter=(
                 self.criteria_config.filter_parameter
                 if query_parameter_name is None
@@ -420,25 +348,15 @@ class FastAPISQLAlchemyIntegration:
                 if size_parameter_name is None
                 else size_parameter_name
             ),
-            default_page_size=self.criteria_config.default_page_size,
             max_page_size=(
                 self.criteria_config.max_page_size
                 if max_page_size is None
                 else max_page_size
             ),
-            one_based_paging=self.criteria_config.one_based_paging,
             query_options=query_options,
             sort_options=sort_options,
-            filter_openapi_examples=(
-                {}
-                if filter_openapi_examples is None
-                else filter_openapi_examples
-            ),
-            sort_openapi_examples=(
-                {} if sort_openapi_examples is None else sort_openapi_examples
-            ),
-            page_openapi_examples=self.criteria_config.page_openapi_examples,
-            size_openapi_examples=self.criteria_config.size_openapi_examples,
+            filter_openapi_examples=filter_openapi_examples,
+            sort_openapi_examples=sort_openapi_examples,
         )
 
         compiled_default_sort = None

@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING, TypeVar
 
 import msgspec
 
-from pyrsql.core.compiler import SortCompilationResult
 from pyrsql.core.options import SortOptions
 from pyrsql.sorting.binder import SortBinder
 from pyrsql.sorting.parser import SortParser
 
 if TYPE_CHECKING:
+    from pyrsql.core.compiler import CompiledArtifact
     from pyrsql.orms.base import ORM
     from pyrsql.sorting.ast import SortField
 
@@ -101,20 +101,16 @@ class Sort(msgspec.Struct, frozen=True, gc=False):
             return ()
         return SortBinder(options).bind(fields)
 
-    def compile(self, *, orm: ORM) -> SortCompilationResult:
+    def compile(self, *, orm: ORM) -> CompiledArtifact:
         """Compiles the sort using the provided ORM.
 
         Args:
             orm: ORM adapter used to compile the sort.
 
         Returns:
-            The ORM-specific sort compilation result.
+            The ORM-specific compiled sort.
         """
-        compiled_sort = orm.compile_sort(self)
-        return SortCompilationResult(
-            orm_name=orm.name,
-            compiled=compiled_sort,
-        )
+        return orm.compile_sort(self)
 
     def apply(
         self,

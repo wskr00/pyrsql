@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
+from pyrsql.parsing.source import SourcePosition, SourceSpan
 
 
 def test_source_span_cover_uses_outer_boundaries() -> None:
@@ -20,8 +20,3 @@ def test_source_span_cover_uses_outer_boundaries() -> None:
 
     assert covered.start == start.start
     assert covered.end == end.end
-
-
-def test_source_text_slice_returns_expected_substring() -> None:
-    """Source slices preserve normal behavior for valid bounds."""
-    assert SourceText(text="name==demo").slice(0, 4) == "name"

@@ -21,11 +21,7 @@ from pyrsql.orms.base import (
 )
 
 if TYPE_CHECKING:
-    from pyrsql.orms.base import (
-        CompiledPageRequest,
-        CompiledQuery,
-        CompiledSort,
-    )
+    from pyrsql.core.compiler import CompiledArtifact
 
 pytestmark = [pytest.mark.fastapi]
 
@@ -33,20 +29,15 @@ pytestmark = [pytest.mark.fastapi]
 class _UnusedORM(ORM):
     """Minimal ORM placeholder for isolated RequestCriteria.apply tests."""
 
-    @property
     @override
-    def name(self) -> str:
-        return "unused"
-
-    @override
-    def compile_query(self, query: Query) -> CompiledQuery:
+    def compile_query(self, query: Query) -> CompiledArtifact:
         del query
         raise AssertionError(
             "compile_query should not be called in this unit test",
         )
 
     @override
-    def compile_sort(self, sort: Sort) -> CompiledSort:
+    def compile_sort(self, sort: Sort) -> CompiledArtifact:
         del sort
         raise AssertionError(
             "compile_sort should not be called in this unit test",
@@ -56,7 +47,7 @@ class _UnusedORM(ORM):
     def compile_page_request(
         self,
         page_request: PageRequest,
-    ) -> CompiledPageRequest:
+    ) -> CompiledArtifact:
         del page_request
         raise AssertionError(
             "compile_page_request should not be called in this unit test",

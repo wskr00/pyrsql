@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ColumnElement
 
-_KNOWN_FUNCTION_RETURN_TYPES = MappingProxyType(
-    {
-        "lower": str,
-        "upper": str,
-        "concat": str,
-    },
-)
+_KNOWN_FUNCTION_RETURN_TYPES = {
+    "lower": str,
+    "upper": str,
+    "concat": str,
+}
 
 
 def infer_sql_function_python_type(

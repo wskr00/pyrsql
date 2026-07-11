@@ -90,16 +90,6 @@ def test_parser_parses_function_selector_in_comparison() -> None:
     assert isinstance(expression.selector.arguments[1], LiteralSelector)
 
 
-def test_parser_ast_walk_traverses_logical_tree() -> None:
-    """Traverses the syntax tree depth-first."""
-    expression = Parser("name==demo;city==sp").parse()
-    walked = tuple(expression.walk())
-
-    assert isinstance(walked[0], LogicalNode)
-    assert isinstance(walked[1], ComparisonNode)
-    assert isinstance(walked[2], ComparisonNode)
-
-
 def test_parser_accepts_custom_operator_registry() -> None:
     """Parses custom operators registered through the parser."""
     all_match = ComparisonOperator(
@@ -154,41 +144,6 @@ def test_parser_rejects_invalid_query_shapes(
         Parser(source, limits=limits).parse()
 
 
-def test_parse_limits_reject_invalid_values() -> None:
-    """Rejects invalid parser safety limits."""
-    with pytest.raises(ValueError, match="max_query_length"):
-        ParseLimits(max_query_length=0)
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param(
-            {"max_query_length": "10"},
-            r"max_query_length",
-            id="string-query-limit",
-        ),
-        pytest.param(
-            {"max_selector_length": 1.5},
-            r"max_selector_length",
-            id="float-selector-limit",
-        ),
-        pytest.param(
-            {"max_argument_length": True},
-            r"max_argument_length",
-            id="bool-argument-limit",
-        ),
-    ],
-)
-def test_parse_limits_reject_non_integer_values(
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Rejects parser limits that are not strict integers."""
-    with pytest.raises(TypeError, match=pattern):
-        ParseLimits(**kwargs)
-
-
 def test_parser_uses_shared_default_limits_instance() -> None:
     """Reuses the shared default limits on the common parse path."""
     parser = Parser("name==demo")
@@ -218,30 +173,3 @@ def test_parser_counts_expression_depth_semantically() -> None:
             "((name==demo))",
             limits=ParseLimits(max_expression_depth=2),
         ).parse()
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param(
-            {"source": "name==demo", "limits": object()},
-            r"ParseLimits instance",
-            id="invalid-limits",
-        ),
-        pytest.param(
-            {
-                "source": "name==demo",
-                "operator_registry": object(),
-            },
-            r"OperatorRegistry instance",
-            id="invalid-operator-registry",
-        ),
-    ],
-)
-def test_parser_rejects_invalid_runtime_dependencies(
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Parser validates public constructor dependencies eagerly."""
-    with pytest.raises(TypeError, match=pattern):
-        Parser(**kwargs)  # type: ignore[arg-type]

@@ -5,12 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyrsql.parsing.errors import LexError
-from pyrsql.parsing.normalization import (
-    normalize_operator_registry,
-    normalize_parse_limits,
-)
+from pyrsql.parsing.limits import DEFAULT_PARSE_LIMITS
 from pyrsql.parsing.operators import DEFAULT_OPERATOR_REGISTRY
-from pyrsql.parsing.source import SourcePosition, SourceSpan, SourceText
+from pyrsql.parsing.source import SourcePosition, SourceSpan
 from pyrsql.parsing.tokens import Token, TokenKind
 
 if TYPE_CHECKING:
@@ -23,43 +20,24 @@ class Lexer:
 
     def __init__(
         self,
-        source: str | SourceText,
+        source: str,
         *,
         limits: ParseLimits | None = None,
         operator_registry: OperatorRegistry = DEFAULT_OPERATOR_REGISTRY,
     ) -> None:
         """Initializes the lexer with source text and parser limits."""
-        self._text = self._normalize_source(source).text
+        self._text = source
         self._length = len(self._text)
-        self._limits = normalize_parse_limits(limits, owner_type=type(self))
-        self._operator_registry = normalize_operator_registry(
-            operator_registry,
-            owner_type=type(self),
-        )
+        self._limits = DEFAULT_PARSE_LIMITS if limits is None else limits
+        self._operator_registry = operator_registry
         self._index = 0
         self._line = 1
         self._column = 1
         self._validate_source_length()
 
-    @staticmethod
-    def _normalize_source(source: str | SourceText) -> SourceText:
-        """Normalizes the lexer source input.
-
-        Returns:
-            A wrapped immutable source object.
-
-        Raises:
-            TypeError: If the source is neither raw text nor ``SourceText``.
-        """
-        if isinstance(source, SourceText):
-            return source
-        if not isinstance(source, str):
-            raise TypeError("Lexer source must be a string or SourceText.")
-        return SourceText(text=source)
-
     @property
     def limits(self) -> ParseLimits:
-        """Returns the configured parser safety limits.
+        """Configured parser safety limits.
 
         Returns:
             The lexer safety limits currently in use.

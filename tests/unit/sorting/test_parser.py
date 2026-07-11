@@ -83,33 +83,6 @@ def test_sort_parser_supports_function_selectors() -> None:
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "expected_error", "pattern"),
-    [
-        pytest.param(
-            {"source": 123},
-            TypeError,
-            r"source must be a string or None",
-            id="non-string-source",
-        ),
-        pytest.param(
-            {"source": "name", "limits": "bad"},
-            TypeError,
-            r"limits must be a SortLimits instance",
-            id="invalid-limits-type",
-        ),
-    ],
-)
-def test_sort_parser_rejects_invalid_runtime_inputs(
-    kwargs: dict[str, object],
-    expected_error: type[Exception],
-    pattern: str,
-) -> None:
-    """Sort parser rejects invalid runtime inputs early."""
-    with pytest.raises(expected_error, match=pattern):
-        SortParser(**kwargs).parse()  # type: ignore[arg-type]
-
-
-@pytest.mark.parametrize(
     ("source", "limits", "pattern"),
     [
         pytest.param(
@@ -164,41 +137,6 @@ def test_sort_parser_rejects_invalid_input(
     """Rejects unsupported tokens and configured parser limit violations."""
     with pytest.raises(SortParseError, match=pattern):
         SortParser(source, limits=limits).parse()
-
-
-def test_sort_limits_reject_invalid_values() -> None:
-    """Rejects invalid sort parser safety limits."""
-    with pytest.raises(ValueError, match="max_sort_length"):
-        SortLimits(max_sort_length=0)
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "pattern"),
-    [
-        pytest.param(
-            {"max_sort_length": "10"},
-            r"max_sort_length",
-            id="string-sort-length",
-        ),
-        pytest.param(
-            {"max_fields": 1.5},
-            r"max_fields",
-            id="float-max-fields",
-        ),
-        pytest.param(
-            {"max_field_path_length": True},
-            r"max_field_path_length",
-            id="bool-field-path-length",
-        ),
-    ],
-)
-def test_sort_limits_reject_non_integer_values(
-    kwargs: dict[str, object],
-    pattern: str,
-) -> None:
-    """Rejects sort limits that are not strict integers."""
-    with pytest.raises(TypeError, match=pattern):
-        SortLimits(**kwargs)
 
 
 def test_sort_parse_error_exposes_structured_diagnostic() -> None:

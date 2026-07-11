@@ -43,7 +43,6 @@ from pyrsql.parsing.operators import (
 )
 from pyrsql.selector.ast import (
     FieldSelector,
-    FunctionSelector,
     LiteralSelector,
 )
 
@@ -154,8 +153,6 @@ class SQLAlchemyExpressionTranslator:
         Returns:
             Join plans and a SQLAlchemy predicate.
 
-        Raises:
-            SQLAlchemyORMError: If the logical operator is unsupported.
         """
         joins: list[SQLAlchemyJoinPlan] = []
         predicates: list[ColumnElement[bool]] = []
@@ -167,15 +164,9 @@ class SQLAlchemyExpressionTranslator:
             )
             joins.extend(child_joins)
             predicates.append(child_predicate)
-        match expression.operator:
-            case LogicalOperator.AND:
-                return tuple(joins), sa.and_(*predicates)
-            case LogicalOperator.OR:
-                return tuple(joins), sa.or_(*predicates)
-            case _:
-                raise SQLAlchemyORMError(
-                    f"Unsupported logical operator {expression.operator!r}.",
-                )
+        if expression.operator is LogicalOperator.AND:
+            return tuple(joins), sa.and_(*predicates)
+        return tuple(joins), sa.or_(*predicates)
 
     def _translate_comparison(
         self,
@@ -288,8 +279,6 @@ class SQLAlchemyExpressionTranslator:
         Returns:
             Join plans, a SQLAlchemy expression, and an inferred Python type.
 
-        Raises:
-            TypeError: If the selector is not a supported selector node.
         """
         if isinstance(selector, FieldSelector):
             resolved_path = self._path_resolver.resolve(
@@ -311,8 +300,6 @@ class SQLAlchemyExpressionTranslator:
             )
             return (), sa.literal(selector.value), python_type
 
-        if not isinstance(selector, FunctionSelector):
-            raise TypeError("Expected FunctionSelector")
         joins: list[SQLAlchemyJoinPlan] = []
         argument_expressions: list[ColumnElement[Any]] = []
         argument_types: list[type[Any] | None] = []

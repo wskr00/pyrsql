@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import msgspec
 
-from pyrsql.parsing.errors import ParseError
 from pyrsql.semantic.errors import (
     FieldBlacklistedError,
     FieldNotWhitelistedError,
@@ -24,6 +23,7 @@ from pyrsql.sorting.errors import (
 
 if TYPE_CHECKING:
     from pyrsql.orms import ORMError
+    from pyrsql.parsing.errors import ParseError
     from pyrsql.parsing.source import SourceSpan
 
     SortAdapterError = (
@@ -93,7 +93,7 @@ class FastAPIAdapterErrorPayload(
             A normalized FastAPI adapter payload.
         """
         error_type = "query_parse_error"
-        detail_code = getattr(error, "code", "query_parse_error")
+        detail_code = error.code
         detail_field = None
         detail_location = None
         if isinstance(error, SemanticError):
@@ -109,7 +109,7 @@ class FastAPIAdapterErrorPayload(
             ):
                 detail_field = _extract_field_from_message(error.message)
             detail_location = _build_error_location(error.span)
-        elif isinstance(error, ParseError):
+        else:
             detail_location = _build_error_location(error.span)
         return cls._single_detail_payload(
             parameter_name=parameter_name,
@@ -132,8 +132,8 @@ class FastAPIAdapterErrorPayload(
             A normalized FastAPI adapter payload.
         """
         error_type = "sort_parse_error"
-        detail_code = getattr(error, "code", "sort_parse_error")
-        detail_message = getattr(error, "message", str(error))
+        detail_code = error.code
+        detail_message = error.message
         detail_field = None
         if isinstance(
             error,
@@ -192,7 +192,7 @@ class FastAPIAdapterErrorPayload(
         return cls._single_detail_payload(
             parameter_name=parameter_name,
             error_type=error_type,
-            code=getattr(error, "code", "orm_error"),
+            code=error.code,
             detail=error_message,
             field=_extract_field_from_message(error_message),
         )
@@ -203,7 +203,7 @@ class FastAPIAdapterErrorPayload(
         Returns:
             A JSON-compatible FastAPI error detail mapping.
         """
-        problem_definition = _problem_definition(self.error_type)
+        problem_definition = _PROBLEM_DEFINITIONS[self.error_type]
         return {
             "type": problem_definition.type_uri,
             "title": problem_definition.title,
@@ -214,8 +214,8 @@ class FastAPIAdapterErrorPayload(
 
     @property
     def status_code(self) -> int:
-        """Returns the HTTP status code associated with this problem."""
-        return _problem_definition(self.error_type).status
+        """HTTP status code associated with this problem."""
+        return _PROBLEM_DEFINITIONS[self.error_type].status
 
 
 class _ProblemDefinition(msgspec.Struct, frozen=True, gc=False):
@@ -295,11 +295,6 @@ _PROBLEM_DEFINITIONS = {
         status=422,
     ),
 }
-
-
-def _problem_definition(error_type: str) -> _ProblemDefinition:
-    """Returns the top-level problem definition for one category."""
-    return _PROBLEM_DEFINITIONS[error_type]
 
 
 def _top_level_detail(

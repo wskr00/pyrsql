@@ -12,7 +12,6 @@ from pyrsql.sorting.limits import DEFAULT_SORT_LIMITS, SortLimits
 if TYPE_CHECKING:
     from pyrsql.selector.ast import SelectorNode
 
-_EMPTY_FIELDS: Final[tuple[SortField, ...]] = ()
 _MAX_SORT_PARTS: Final = 3
 _MIN_SORT_PARTS_FOR_IGNORE_CASE: Final = 2
 
@@ -27,40 +26,8 @@ class SortParser:
         limits: SortLimits | None = None,
     ) -> None:
         """Initializes the parser with raw sort text and limits."""
-        self._source = self._normalize_source(source)
-        self._limits = self._normalize_limits(limits)
-
-    @staticmethod
-    def _normalize_source(source: str | None) -> str:
-        """Validates and normalizes raw sort source text.
-
-        Returns:
-            The stripped sort source text, or an empty string for ``None``.
-
-        Raises:
-            TypeError: If the provided source is not a string or ``None``.
-        """
-        if source is None:
-            return ""
-        if not isinstance(source, str):
-            raise TypeError("Sort source must be a string or None.")
-        return source.strip()
-
-    @staticmethod
-    def _normalize_limits(limits: SortLimits | None) -> SortLimits:
-        """Validates and normalizes sort parser limits.
-
-        Returns:
-            The provided limits, or the shared defaults when omitted.
-
-        Raises:
-            TypeError: If the provided limits are not a ``SortLimits`` instance.
-        """
-        if limits is None:
-            return DEFAULT_SORT_LIMITS
-        if not isinstance(limits, SortLimits):
-            raise TypeError("Sort limits must be a SortLimits instance.")
-        return limits
+        self._source = "" if source is None else source.strip()
+        self._limits = DEFAULT_SORT_LIMITS if limits is None else limits
 
     def parse(self) -> tuple[SortField, ...]:
         """Parses the configured sort expression.
@@ -72,7 +39,7 @@ class SortParser:
             SortParseError: If the expression is invalid.
         """
         if not self._source:
-            return _EMPTY_FIELDS
+            return ()
 
         max_sort_length = self._limits.max_sort_length
         max_fields = self._limits.max_fields

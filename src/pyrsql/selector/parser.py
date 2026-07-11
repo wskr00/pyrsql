@@ -70,18 +70,26 @@ class SelectorParser:
         Returns:
             The top-level split fragments.
 
+        """
+        return tuple(
+            part
+            for part in SelectorParser._split_top_level_parts(text, delimiter)
+            if part
+        )
+
+    @staticmethod
+    def _split_top_level_parts(
+        text: str,
+        delimiter: str,
+    ) -> tuple[str, ...]:
+        """Splits text on a delimiter while preserving empty fragments.
+
+        Returns:
+            The normalized top-level fragments, including empty fragments.
+
         Raises:
-            TypeError: If the text or delimiter do not match the runtime
-                contract.
-            ValueError: If the delimiter is not a single character.
             SelectorParseError: If the brackets are unbalanced.
         """
-        if not isinstance(text, str):
-            raise TypeError("Selector fragment text must be a string.")
-        if not isinstance(delimiter, str):
-            raise TypeError("Selector delimiter must be a string.")
-        if len(delimiter) != 1:
-            raise ValueError("Selector delimiter must be a single character.")
         parts: list[str] = []
         start_index = 0
         depth = 0
@@ -95,17 +103,13 @@ class SelectorParser:
                         f"Selector fragment {text!r} has unbalanced brackets.",
                     )
             elif character == delimiter and depth == 0:
-                part = text[start_index:index].strip()
-                if part:
-                    parts.append(part)
+                parts.append(text[start_index:index].strip())
                 start_index = index + 1
         if depth != 0:
             raise SelectorParseError(
                 f"Selector fragment {text!r} has unbalanced brackets.",
             )
-        final_part = text[start_index:].strip()
-        if final_part:
-            parts.append(final_part)
+        parts.append(text[start_index:].strip())
         return tuple(parts)
 
     @staticmethod
@@ -124,33 +128,10 @@ class SelectorParser:
             SelectorParseError: If brackets are unbalanced or a fragment is
                 empty.
         """
-        parts: list[str] = []
-        start_index = 0
-        depth = 0
-        for index, character in enumerate(text):
-            if character == "[":
-                depth += 1
-            elif character == "]":
-                depth -= 1
-                if depth < 0:
-                    raise SelectorParseError(
-                        f"Selector fragment {text!r} has unbalanced brackets.",
-                    )
-            elif character == delimiter and depth == 0:
-                part = text[start_index:index].strip()
-                if not part:
-                    raise SelectorParseError(context)
-                parts.append(part)
-                start_index = index + 1
-        if depth != 0:
-            raise SelectorParseError(
-                f"Selector fragment {text!r} has unbalanced brackets.",
-            )
-        final_part = text[start_index:].strip()
-        if not final_part:
+        parts = SelectorParser._split_top_level_parts(text, delimiter)
+        if any(not part for part in parts):
             raise SelectorParseError(context)
-        parts.append(final_part)
-        return tuple(parts)
+        return parts
 
     @staticmethod
     def _normalize_selector_text(
@@ -165,22 +146,8 @@ class SelectorParser:
             The stripped selector text.
 
         Raises:
-            TypeError: If the selector text, maximum length, or context use
-                invalid runtime types.
-            ValueError: If ``max_length`` is not greater than zero.
             SelectorParseError: If the selector text is empty or too long.
         """
-        if not isinstance(raw_selector, str):
-            raise TypeError("Selector text must be a string.")
-        if not isinstance(context, str):
-            raise TypeError("Selector context must be a string.")
-        if not context:
-            raise ValueError("Selector context cannot be empty.")
-        if isinstance(max_length, bool) or not isinstance(max_length, int):
-            raise TypeError("Selector max_length must be an integer.")
-        if max_length <= 0:
-            raise ValueError("Selector max_length must be greater than 0.")
-
         normalized_selector = raw_selector.strip()
         if not normalized_selector:
             raise SelectorParseError(f"{context} cannot be empty.")
@@ -220,24 +187,19 @@ class SelectorParser:
         if not function_name:
             raise SelectorParseError(f"{context} has empty function name.")
         arguments_text = raw_selector[argument_start + 1 : argument_end]
-        try:
-            argument_fragments = self._split_required_top_level(
-                arguments_text,
-                delimiter="|",
-                context=(
-                    f"{context} function {function_name!r} "
-                    "cannot contain empty arguments."
-                ),
+        if not arguments_text.strip():
+            raise SelectorParseError(
+                f"{context} function {function_name!r} "
+                "must have at least one argument.",
             )
-        except SelectorParseError as error:
-            if str(error).startswith("Selector fragment "):
-                raise
-            if not arguments_text.strip():
-                raise SelectorParseError(
-                    f"{context} function {function_name!r} "
-                    "must have at least one argument.",
-                ) from None
-            raise
+        argument_fragments = self._split_required_top_level(
+            arguments_text,
+            delimiter="|",
+            context=(
+                f"{context} function {function_name!r} "
+                "cannot contain empty arguments."
+            ),
+        )
         return FunctionSelector(
             function_name=function_name,
             arguments=tuple(

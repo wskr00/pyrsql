@@ -148,7 +148,7 @@ class SQLAlchemyPathResolver:
                         )
                     joins.append(
                         SQLAlchemyJoinPlan(
-                            key=self._make_join_key(current_model, segment),
+                            key=f"{current_model.__name__}.{segment}",
                             attribute=mapped_attribute.attribute,
                             default_hint=JoinHint.INNER,
                             is_collection=mapped_attribute.is_collection,
@@ -171,7 +171,6 @@ class SQLAlchemyPathResolver:
                                     mapped_attribute.name,
                                 )
                             return self._build_resolved_path(
-                                root_model=model,
                                 leaf_model=current_model,
                                 field_path=field_path,
                                 joins=joins,
@@ -209,7 +208,6 @@ class SQLAlchemyPathResolver:
                 "Path resolution ended without a resolved leaf attribute.",
             )
         return self._build_resolved_path(
-            root_model=model,
             leaf_model=current_model,
             field_path=field_path,
             joins=joins,
@@ -248,7 +246,6 @@ class SQLAlchemyPathResolver:
     @staticmethod
     def _build_resolved_path(
         *,
-        root_model: type[Any],
         leaf_model: type[Any],
         field_path: str,
         joins: list[SQLAlchemyJoinPlan],
@@ -263,7 +260,6 @@ class SQLAlchemyPathResolver:
             The immutable resolved path payload.
         """
         return SQLAlchemyResolvedPath(
-            root_model=root_model,
             leaf_model=leaf_model,
             field_path=field_path,
             joins=tuple(joins),
@@ -275,18 +271,6 @@ class SQLAlchemyPathResolver:
             json_path=json_path if json_path is not None else _ROOT_JSON_PATH,
             is_json=is_json,
         )
-
-    @staticmethod
-    def _make_join_key(
-        model: type[Any],
-        segment: str,
-    ) -> str:
-        """Builds the stable join-hint lookup key for one relationship step.
-
-        Returns:
-            A stable join-hint lookup key.
-        """
-        return f"{model.__name__}.{segment}"
 
     @staticmethod
     def _validate_global_field_policy(

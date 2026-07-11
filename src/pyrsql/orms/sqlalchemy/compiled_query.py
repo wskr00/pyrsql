@@ -38,7 +38,7 @@ class SQLAlchemyCompiledQuery(
 
     def apply(
         self,
-        target: SQLAlchemySelect | object,
+        target: SQLAlchemySelect,
         model: SQLAlchemyModel,
     ) -> SQLAlchemySelect:
         """Applies the compiled query to a SQLAlchemy Select.

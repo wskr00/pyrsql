@@ -108,7 +108,6 @@ Owns user-facing ORM-agnostic objects:
 - `JSONPath`, `JSONPathComparison`
 - `JSONScalarNormalizer`, `JSONScalarValue`
 - `JoinHint`
-- `CompilationResult`, `SortCompilationResult`, `PageCompilationResult`
 
 The `core/json/` package owns JSON-aware comparison models and value
 normalization, keeping JSON semantics ORM-neutral.
@@ -185,9 +184,9 @@ Implement `pyrsql.orms.base.ORM`:
 
 ```python
 class ORM(ABC):
-    def compile_query(self, query: Query) -> CompiledQuery: ...
-    def compile_sort(self, sort: Sort) -> CompiledSort: ...
-    def compile_page_request(self, page_request: PageRequest) -> CompiledPageRequest: ...
+    def compile_query(self, query: Query) -> CompiledArtifact: ...
+    def compile_sort(self, sort: Sort) -> CompiledArtifact: ...
+    def compile_page_request(self, page_request: PageRequest) -> CompiledArtifact: ...
 ```
 
 Each method receives one ORM-neutral core object and returns a compiled object

@@ -11,6 +11,11 @@ through a language frontend, semantic binding, and pluggable backend
 lowering - making it easy to expose complex query capabilities in your API
 without coupling to a specific ORM or framework.
 
+For FastAPI applications using SQLAlchemy, the recommended entry point is
+`FastAPISQLAlchemyIntegration`. It provides route-ready dependencies and
+declarative resources; the lower-level query, adapter, and ORM APIs remain
+available when more control is needed.
+
 **Current backends:** SQLAlchemy 2.0  
 **Current framework adapters:** FastAPI  
 **Planned:** Django ORM, SQLModel, Flask
@@ -38,8 +43,40 @@ language.
 ## Quickstart
 
 ```bash
-pip install pyrsql[sqlalchemy]
+pip install pyrsql[fastapi,sqlalchemy]
 ```
+
+```python
+from typing import Annotated, Any
+
+from fastapi import Depends, FastAPI
+
+from pyrsql.integrations.fastapi import FastAPISQLAlchemyIntegration
+
+app = FastAPI()
+integration = FastAPISQLAlchemyIntegration()
+users = integration.resource(
+    User,
+    filterable_fields={"id", "name"},
+    sortable_fields={"name"},
+    default_sort="name,asc",
+    max_page_size=100,
+)
+
+@app.get("/users")
+def list_users(
+    stmt: Annotated[Any, Depends(users.select_dependency())],
+):
+    return {"sql": str(stmt)}
+```
+
+Clients can now use `filter`, `sort`, `page`, and `size` query parameters.
+See [FastAPI + SQLAlchemy](https://wskr00.github.io/pyrsql/usage/fastapi-sqlalchemy/)
+for count, pagination, custom base statements, error behavior, and async use.
+
+### Lower-level SQLAlchemy API
+
+Use the direct API when you do not need a FastAPI route dependency:
 
 ```python
 import pyrsql
@@ -49,13 +86,13 @@ from pyrsql.orms.sqlalchemy import SQLAlchemyORM
 orm = SQLAlchemyORM()
 stmt = select(User)
 
-# Filter: name equals "demo", company name contains "acme"
-stmt = pyrsql.parse("name==demo;company.name==acme*").apply(stmt, User, orm=orm)
+stmt = pyrsql.parse("name==demo;company.name==acme*").apply(
+    stmt,
+    User,
+    orm=orm,
+)
 
-# Sort: by name ascending, then company name descending
 stmt = pyrsql.Sort.parse("name,asc;company.name,desc").apply(stmt, User, orm=orm)
-
-# Paginate: page 0, 25 items per page
 stmt = pyrsql.PageRequest.of(0, 25).apply(stmt, User, orm=orm)
 ```
 
@@ -133,6 +170,9 @@ options = QueryOptions(join_hints={"User.company": JoinHint.LEFT})
 
 ### FastAPI Integration
 
+Use this adapter directly when you need only parsed `RequestCriteria`; for
+SQLAlchemy routes, prefer the integration below.
+
 ```python
 from fastapi import Depends, FastAPI
 from pyrsql.adapters.fastapi import criteria_dependency
@@ -146,10 +186,11 @@ def list_items(criteria = Depends(dependency)):
 ```
 
 - Auto-extracts `filter`, `sort`, `page`, `size` from query params
-- `HTTP 422` with structured diagnostics on parse/semantic errors
+- Structured `HTTP 400` parse errors and `HTTP 422` semantic errors
 - OpenAPI examples from configuration
 - One-based paging support
 - Custom query parameter names
+- Optional repeated sort parameters through `SortParameterFormat.REPEATED`
 
 ### FastAPI + SQLAlchemy Integration
 
@@ -164,7 +205,7 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 ```
 
 - `select_dependency`, `count_select_dependency`, `paginated_select_dependency`
-- Declarative `resource()` with auto-generated OpenAPI examples
+- Declarative `resource()` with auto-generated OpenAPI examples and field policies
 - `applier_dependency` for custom base statements
 - Compatible with both sync `Session` and async `AsyncSession` execution
 - FastAPI parse and page-validation failures become structured `HTTP 400` payloads
@@ -172,7 +213,7 @@ def list_users(stmt = Depends(integration.select_dependency(User))):
 
 ### Concurrency and Validation
 
-- Shared integration and ORM metadata caches are protected for free-threaded execution
+- Shared base-select and ORM metadata caches are protected for free-threaded execution
 - Async support is validated for adapter, ORM, and integration flows
 - Dedicated async, free-threaded, and security test suites validate these flows
 

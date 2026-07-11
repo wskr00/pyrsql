@@ -48,11 +48,6 @@ class FakeORM(ORM):
         self.sort_result = sort_result
         self.page_result = page_result
 
-    @property
-    def name(self) -> str:
-        """Returns a stable fake ORM name."""
-        return "fake"
-
     def compile_query(self, query: Query) -> FakeCompiledResult:  # type: ignore[override]
         """Builds a fake compiled query result."""
         result = (

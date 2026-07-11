@@ -64,8 +64,6 @@ class SortBinder:
         Returns:
             The semantically validated selector node.
 
-        Raises:
-            TypeError: If the selector is not a supported selector node.
         """
         if isinstance(selector, FieldSelector):
             field_path = self._field_mapping.get(
@@ -78,10 +76,6 @@ class SortBinder:
             )
         if isinstance(selector, LiteralSelector):
             return selector
-        if not isinstance(selector, FunctionSelector):
-            raise TypeError(
-                "Expected FieldSelector, LiteralSelector, or FunctionSelector.",
-            )
         self._enforce_function_access_policy(selector.function_name)
         return FunctionSelector(
             function_name=selector.function_name,
