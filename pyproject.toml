@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sqlalchemy = ["sqlalchemy>=2.0,<3.0"]
-fastapi = ["fastapi>=0.110,<1.0"]
+fastapi = ["fastapi>=0.150.0,<1.0"]
 
 [project.urls]
 Homepage = "https://github.com/wskr00/pyrsql"
