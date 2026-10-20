@@ -28,7 +28,7 @@ The project is designed around four major responsibilities:
 - backend lowering: turn validated query objects into ORM-specific statements
 - optional framework adapters and integrations: expose the core in HTTP stacks
 
-The current production backend is SQLAlchemy 2.0. The current framework
+The current production backend is SQLAlchemy 2.1+. The current framework
 adapter is FastAPI.
 
 ## Current Pipeline

@@ -16,9 +16,9 @@ For FastAPI applications using SQLAlchemy, the recommended entry point is
 declarative resources; the lower-level query, adapter, and ORM APIs remain
 available when more control is needed.
 
-**Current backends:** SQLAlchemy 2.0  
-**Current framework adapters:** FastAPI  
-**Planned:** Django ORM, SQLModel, Flask
+- **Current backends:** SQLAlchemy 2.1+
+- **Current framework adapters:** FastAPI
+- **Planned:** Django ORM, SQLModel, Flask
 
 ## Why pyrsql?
 

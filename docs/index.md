@@ -45,7 +45,7 @@ I/O.
 ## Key features
 
 - **ORM-neutral core** - `Query`, `Sort`, `PageRequest` have zero ORM dependencies
-- **Pluggable backends** - SQLAlchemy 2.0 today, Django ORM / SQLModel planned
+- **Pluggable backends** - SQLAlchemy 2.1+ today, Django ORM / SQLModel planned
 - **Pluggable adapters** - FastAPI today, Flask planned
 - **20+ built-in operators** - `==`, `=like=`, `=in=`, `=bt=`, `=nn=`, etc.
 - **Custom operators** - define your own RSQL operators with per-ORM lowering
