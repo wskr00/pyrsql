@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 class SQLAlchemyORM(base.ORM):
-    """ORM adapter for SQLAlchemy 2.0 integration."""
+    """ORM adapter for SQLAlchemy 2.1+ integration."""
 
     __slots__ = ("_sort_translator", "_translator")
 

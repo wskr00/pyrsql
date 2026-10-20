@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from enum import Enum
+from enum import StrEnum
 import re
 from types import MappingProxyType
 from typing import TypeAlias
@@ -14,7 +14,7 @@ _SQL_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 SortFieldTypeMap: TypeAlias = Mapping[str, "JSONSortScalarType"]
 
 
-class JSONSortScalarType(str, Enum):
+class JSONSortScalarType(StrEnum):
     """Supported scalar cast strategies for JSON sort expressions."""
 
     TEXT = "text"

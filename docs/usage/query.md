@@ -29,10 +29,10 @@ Query.parse("name=nn=")            # IS NOT NULL
 ## Text matching
 
 ```python
-Query.parse("name=like=demo*")     # LIKE
+Query.parse("name=like=demo")      # contains: LIKE '%demo%'
 Query.parse("name=notlike=demo")   # NOT LIKE
-Query.parse("name=ic=demo*")       # ILIKE (case-insensitive)
-Query.parse("name=ilike=DEMO")     # ILIKE alias
+Query.parse("name=ic=DEMO")        # case-insensitive equality
+Query.parse("name=ilike=DEMO")     # case-insensitive contains
 ```
 
 ## Range
@@ -54,15 +54,19 @@ Query.parse("(name==demo;age=gt=18),status==active")  # grouping
 
 ```python
 Query.parse("name=='de\\'mo'")     # quoted string with escape
-Query.parse("name=='*not a wildcard*'")  # literal asterisks inside quotes
+Query.parse('name=="Kill Bill"')   # double-quoted argument
+Query.parse("name=='*demo*'")      # quotes do not disable equality wildcards
 ```
 
 ## Wildcard matching in equality
 
-By default, `*` in equality expressions is treated as a `LIKE` wildcard:
+By default, `*` in string equality expressions is treated as a `LIKE`
+wildcard, and `^` makes the equality case-insensitive:
 
 ```python
 Query.parse("name==*demo*")        # becomes LIKE '%demo%'
+Query.parse("name==^*DEMO*")       # case-insensitive LIKE '%DEMO%'
+Query.parse("name=in=(*)")         # exact match for a literal asterisk
 ```
 
 Disable with strict mode:

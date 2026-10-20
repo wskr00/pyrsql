@@ -77,6 +77,43 @@ def test_lexer_unescapes_quoted_text() -> None:
     assert tokens[2].lexeme == "de'mo"
 
 
+@pytest.mark.parametrize(
+    ("source", "expected_operator"),
+    [
+        pytest.param("age>18", ">", id="greater-than"),
+        pytest.param("age!=18", "!=", id="not-equal"),
+        pytest.param("age<18", "<", id="less-than"),
+    ],
+)
+def test_lexer_splits_unquoted_text_before_symbolic_operators(
+    source: str,
+    expected_operator: str,
+) -> None:
+    """Recognizes symbolic operators immediately after unquoted selectors."""
+    tokens = Lexer(source).tokenize()
+
+    assert tokens[1].kind is TokenKind.COMPARISON_OPERATOR
+    assert tokens[1].lexeme == expected_operator
+
+
+@pytest.mark.parametrize(
+    ("source", "expected_text"),
+    [
+        pytest.param('name=="Kill Bill"', "Kill Bill", id="double-quoted"),
+        pytest.param("name=='Kill Bill'", "Kill Bill", id="single-quoted"),
+    ],
+)
+def test_lexer_accepts_both_quote_styles(
+    source: str,
+    expected_text: str,
+) -> None:
+    """Consumes single- and double-quoted text arguments."""
+    tokens = Lexer(source).tokenize()
+
+    assert tokens[2].kind is TokenKind.QUOTED_TEXT
+    assert tokens[2].lexeme == expected_text
+
+
 def test_lexer_tracks_source_positions() -> None:
     """Records token spans with line and column information."""
     tokens = Lexer("name==demo").tokenize()

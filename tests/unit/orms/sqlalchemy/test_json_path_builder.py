@@ -54,7 +54,7 @@ def test_builder_casts_jsonpath_predicates_to_jsonpath(
     compiled = _compile_sql(predicate, postgresql_dialect)
 
     assert expected_function_name in str(compiled)
-    assert "CAST(%(param_1)s AS JSONPATH)" in str(compiled)
+    assert "AS JSONPATH)" in str(compiled)
 
 
 def test_builder_quotes_special_jsonpath_segments(

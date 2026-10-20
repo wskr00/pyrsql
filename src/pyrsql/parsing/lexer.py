@@ -84,13 +84,13 @@ class Lexer:
                 return self._single_char_token(TokenKind.COMMA)
             case ";":
                 return self._single_char_token(TokenKind.SEMICOLON)
-            case "'":
-                return self._consume_quoted_text()
+            case "'" | '"':
+                return self._consume_quoted_text(current_char)
             case _:
                 return self._consume_unquoted_text()
 
-    def _consume_quoted_text(self) -> Token:
-        """Consumes a single-quoted text token.
+    def _consume_quoted_text(self, quote_character: str) -> Token:
+        """Consumes a single- or double-quoted text token.
 
         Returns:
             The consumed quoted token.
@@ -103,7 +103,7 @@ class Lexer:
         characters: list[str] = []
         while not self._is_at_end():
             current_char = self._advance()
-            if current_char == "'":
+            if current_char == quote_character:
                 lexeme = "".join(characters)
                 self._enforce_argument_length(lexeme, start)
                 return self._make_token(TokenKind.QUOTED_TEXT, lexeme, start)
@@ -132,7 +132,7 @@ class Lexer:
             current_char = self._peek()
             if current_char.isspace():
                 break
-            if current_char in "(),;":
+            if current_char in "(),;'\"!~<>":
                 break
             if self._match_operator_spelling(current_char) is not None:
                 break

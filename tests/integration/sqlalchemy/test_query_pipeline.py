@@ -106,13 +106,28 @@ def test_orm_applies_null_check(orm) -> None:
     assert "IS NOT NULL" in sql
 
 
-def test_orm_interprets_equality_wildcards_by_default(orm) -> None:
-    """Uses LIKE semantics for '*' in equality when strict mode is disabled."""
-    query = pyrsql.parse("name==*demo*")
+@pytest.mark.parametrize(
+    "source",
+    ["name==*demo*", "name=='*demo*'"],
+    ids=["unquoted", "quoted"],
+)
+def test_orm_interprets_equality_wildcards_by_default(orm, source) -> None:
+    """Uses LIKE semantics for '*' in equality regardless of quoting."""
+    query = pyrsql.parse(source)
     statement = orm.compile_query(query).apply(select(User), User)
     sql = render_sql(statement, literal_binds=True)
     assert "LIKE" in sql
     assert "%demo%" in sql
+
+
+def test_orm_keeps_asterisk_literal_for_like_operator(orm) -> None:
+    """Treats '*' as text in LIKE patterns while wrapping them as contains."""
+    query = pyrsql.parse("name=like=dem*o")
+    statement = orm.compile_query(query).apply(select(User), User)
+    sql = render_sql(statement, literal_binds=True)
+
+    assert "LIKE" in sql
+    assert "%dem*o%" in sql
 
 
 def test_orm_respects_strict_equality_option(orm) -> None:
@@ -136,14 +151,39 @@ def test_orm_applies_case_insensitive_equality_marker(orm) -> None:
     assert "=" in sql
 
 
-def test_orm_keeps_literal_caret_inside_string_equality(orm) -> None:
-    """Treats '^' as a case-insensitive marker only when used as a prefix."""
-    query = pyrsql.parse("name=='de^mo'")
+@pytest.mark.parametrize("value", ["de^mo", "d^e^mo"])
+def test_orm_treats_caret_anywhere_as_case_insensitive_marker(
+    orm,
+    value,
+) -> None:
+    """Removes '^' markers and compares values case-insensitively."""
+    query = pyrsql.parse(f"name=='{value}'")
     statement = orm.compile_query(query).apply(select(User), User)
     sql = render_sql(statement)
     compiled = statement.compile()
-    assert "lower(" not in sql.lower()
-    assert compiled.params["name_1"] == "de^mo"
+
+    assert "lower(" in sql.lower()
+    assert "demo" in compiled.params.values()
+
+
+def test_orm_keeps_ic_equality_separate_from_ilike(orm) -> None:
+    """Keeps case-insensitive equality and contains matching as distinct ops."""
+    equality = orm.compile_query(pyrsql.parse("name=ic=DEMO")).apply(
+        select(User),
+        User,
+    )
+    contains = orm.compile_query(pyrsql.parse("name=ilike=DEM")).apply(
+        select(User),
+        User,
+    )
+
+    equality_sql = render_sql(equality)
+    contains_sql = render_sql(contains)
+
+    assert "lower(user_account.name) =" in equality_sql
+    assert "LIKE" not in equality_sql
+    assert "LIKE" in contains_sql
+    assert "%DEM%" in contains.compile().params.values()
 
 
 def test_orm_uses_escape_character_for_like_queries(orm) -> None:
@@ -288,14 +328,14 @@ def test_orm_applies_field_specific_converter(orm) -> None:
                 "created_at": lambda raw: dt.datetime.strptime(
                     raw,
                     "%d/%m/%Y",
-                ).replace(tzinfo=dt.timezone.utc),
+                ).replace(tzinfo=dt.UTC),
             },
         ),
     )
     statement = orm.compile_query(query).apply(select(Event), Event)
     compiled = statement.compile()
     assert compiled.params["created_at_1"] == dt.datetime(
-        2026, 5, 2, 0, 0, tzinfo=dt.timezone.utc
+        2026, 5, 2, 0, 0, tzinfo=dt.UTC
     )
 
 
@@ -320,7 +360,7 @@ def test_orm_applies_jsonb_where_clause(orm, pg_dialect) -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     sql = render_sql(statement, dialect=pg_dialect)
     assert "jsonb_path_exists" in sql
-    assert "CAST(%(param_1)s AS JSONPATH)" in sql
+    assert "AS JSONPATH)" in sql
     assert "CAST(json_event.payload AS JSONB)" in sql
 
 
@@ -333,7 +373,7 @@ def test_orm_applies_json_where_clause_via_jsonb_cast(orm, pg_dialect) -> None:
     )
     sql = render_sql(statement, dialect=pg_dialect)
     assert "jsonb_path_exists" in sql
-    assert "CAST(%(param_1)s AS JSONPATH)" in sql
+    assert "AS JSONPATH)" in sql
     assert "CAST(json_document.payload AS JSONB)" in sql
 
 
@@ -407,7 +447,8 @@ def test_orm_applies_root_json_array_predicate(orm, pg_dialect) -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     compiled = statement.compile(dialect=pg_dialect)
     sql = str(compiled)
-    assert " = CAST(%(param_1)s AS JSONB)" in sql
+    assert " = CAST(" in sql
+    assert "AS JSONB)" in sql
     assert compiled.params["param_1"] == "[1,2]"
 
 
@@ -426,7 +467,8 @@ def test_orm_applies_root_json_object_predicate(orm, pg_dialect) -> None:
     statement = orm.compile_query(query).apply(select(JsonEvent), JsonEvent)
     compiled = statement.compile(dialect=pg_dialect)
     sql = str(compiled)
-    assert " = CAST(%(param_1)s AS JSONB)" in sql
+    assert " = CAST(" in sql
+    assert "AS JSONB)" in sql
     assert compiled.params["param_1"] == '{"id":1}'
 
 
@@ -447,7 +489,7 @@ def test_orm_applies_json_datetime_path_predicate(orm, pg_dialect) -> None:
     assert "@.datetime()" in compiled.params["param_1"]
     assert ".datetime()" in compiled.params["param_1"]
     assert "jsonb_path_exists" in sql
-    assert "CAST(%(param_1)s AS JSONPATH)" in sql
+    assert "AS JSONPATH)" in sql
 
 
 def test_orm_applies_json_datetime_tz_path_predicate(orm, pg_dialect) -> None:
@@ -486,4 +528,4 @@ def test_orm_uses_custom_json_path_function_names(orm, pg_dialect) -> None:
     )
     sql = render_sql(statement, dialect=pg_dialect)
     assert "custom_json_path_exists" in sql
-    assert "CAST(%(param_1)s AS JSONPATH)" in sql
+    assert "AS JSONPATH)" in sql

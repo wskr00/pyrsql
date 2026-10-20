@@ -3,7 +3,7 @@
 A compiler-oriented RSQL query engine for safe, typed, and extensible
 filtering, sorting, and pagination in Python APIs.
 
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.14t-blue?logo=python)](https://pypi.org/project/pyrsql/)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14%20%7C%203.14t-blue?logo=python)](https://pypi.org/project/pyrsql/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 pyrsql compiles RSQL query strings into ORM-specific statement objects
@@ -16,9 +16,9 @@ For FastAPI applications using SQLAlchemy, the recommended entry point is
 declarative resources; the lower-level query, adapter, and ORM APIs remain
 available when more control is needed.
 
-**Current backends:** SQLAlchemy 2.0  
-**Current framework adapters:** FastAPI  
-**Planned:** Django ORM, SQLModel, Flask
+- **Current backends:** SQLAlchemy 2.1+
+- **Current framework adapters:** FastAPI
+- **Planned:** Django ORM, SQLModel, Flask
 
 ## Why pyrsql?
 
@@ -240,6 +240,10 @@ Full documentation at **[wskr00.github.io/pyrsql](https://wskr00.github.io/pyrsq
 - Google Python Style Guide
 - Strong typing
 - ORM-neutral public API
+
+## Acknowledgements
+
+`pyrsql` was strongly inspired by [Jirutka's `rsql-parser`](https://github.com/jirutka/rsql-parser) and [PerplexHub's `rsql-jpa-specification`](https://github.com/perplexhub/rsql-jpa-specification), especially their RSQL syntax and filtering behavior. I am grateful to their maintainers and contributors for their work.
 
 ## License
 

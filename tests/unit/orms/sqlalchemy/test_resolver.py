@@ -147,7 +147,7 @@ def test_model_inspector_attribute_cache_is_safe_under_concurrency(
             "payload",
             0,
             Event,
-            dict,
+            object,
             JSONPath(),
             True,
             id="root-json-column",
