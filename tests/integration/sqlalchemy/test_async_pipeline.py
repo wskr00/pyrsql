@@ -4,13 +4,27 @@ import pytest
 
 pytest.importorskip("aiosqlite")
 pytest.importorskip("sqlalchemy")
-from sqlalchemy import select
+from sqlalchemy import String, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 import pyrsql
 from pyrsql.core.page import PageRequest
 from pyrsql.core.sort import Sort
-from tests.functional.fastapi_sqlalchemy.conftest import Base, User
+
+
+class Base(DeclarativeBase):
+    """Base for async SQLAlchemy integration tests."""
+
+
+class User(Base):
+    """Minimal user model for async pipeline tests."""
+
+    __tablename__ = "user_account"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+
 
 pytestmark = [
     pytest.mark.integration,

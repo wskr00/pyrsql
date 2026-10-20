@@ -74,7 +74,7 @@ class StringMap(dict[str, str]):  # noqa: FURB189
         pytest.param(
             "2026-05-02T10:15:30Z",
             dt.datetime,
-            dt.datetime(2026, 5, 2, 10, 15, 30, tzinfo=dt.timezone.utc),
+            dt.datetime(2026, 5, 2, 10, 15, 30, tzinfo=dt.UTC),
             id="datetime-utc",
         ),
     ],

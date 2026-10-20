@@ -5,6 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
+
+pytest.importorskip("fastapi")
+pytest.importorskip("sqlalchemy")
+
 from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.orm import DeclarativeBase
 

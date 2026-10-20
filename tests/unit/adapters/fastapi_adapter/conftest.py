@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
+pytest.importorskip("fastapi")
+
 from pyrsql.adapters.fastapi import FastAPICriteriaConfig
 from pyrsql.core.options import QueryOptions, SortOptions
 from pyrsql.core.page import PageRequest

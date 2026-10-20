@@ -22,18 +22,12 @@ def infer_sql_function_python_type(
 ) -> type[Any] | None:
     """Infers the Python type for one SQL function expression.
 
-    This helper first asks SQLAlchemy for the concrete expression type when an
-    expression is available, then falls back to cheap, explicit heuristics for
-    a small set of well-known functions.
+    This helper prefers explicit return types for known functions and argument
+    types for ``coalesce``, then asks SQLAlchemy for the expression type.
 
     Returns:
         The inferred Python type, or ``None`` when unknown.
     """
-    if function_expression is not None:
-        try:
-            return function_expression.type.python_type
-        except (AttributeError, NotImplementedError):
-            pass
     normalized_name = function_name.lower()
     known_return_type = _KNOWN_FUNCTION_RETURN_TYPES.get(normalized_name)
     if known_return_type is not None:
@@ -42,6 +36,13 @@ def infer_sql_function_python_type(
         for argument_type in argument_types:
             if argument_type is not None:
                 return argument_type
+    if function_expression is not None:
+        try:
+            inferred_type = function_expression.type.python_type
+        except (AttributeError, NotImplementedError):
+            pass
+        else:
+            return None if inferred_type is object else inferred_type
     return None
 
 
