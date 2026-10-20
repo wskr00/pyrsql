@@ -490,8 +490,8 @@ class SQLAlchemyExpressionTranslator:
         if options.strict_equality:
             return expression == value
 
-        ignore_case = value.startswith("^")
-        normalized_value = value[1:] if ignore_case else value
+        ignore_case = "^" in value
+        normalized_value = value.replace("^", "") if ignore_case else value
         if "*" in normalized_value:
             pattern = normalized_value.replace("*", "%")
             return self._build_pattern_predicate(

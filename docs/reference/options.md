@@ -26,6 +26,10 @@
 
 Notes:
 
+- `strict_equality=True` makes string `==` and `!=` compare markers such as
+  `*` and `^` literally; quoting alone does not disable them
+- `like_escape_character` applies to LIKE-based operators, including equality
+  comparisons that contain `*`
 - configuration containers are normalized into immutable views
 - procedure allow/block rules are compiled as regex policies and evaluated with
   `fullmatch`, not partial match

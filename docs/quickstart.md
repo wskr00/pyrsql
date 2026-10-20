@@ -55,7 +55,7 @@ from pyrsql import Query
 Query.parse("name==demo")            # equal
 Query.parse("age=gt=18")             # greater than
 Query.parse("id=in=(1,2,3)")         # IN
-Query.parse("name=like=demo*")       # LIKE
+Query.parse("name=like=demo")        # contains: LIKE '%demo%'
 Query.parse("score=bt=(10,20)")      # BETWEEN
 Query.parse("name==demo;age=gt=18")  # AND
 Query.parse("name==demo,age=gt=18")  # OR
