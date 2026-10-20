@@ -241,6 +241,10 @@ Full documentation at **[wskr00.github.io/pyrsql](https://wskr00.github.io/pyrsq
 - Strong typing
 - ORM-neutral public API
 
+## Acknowledgements
+
+`pyrsql` was strongly inspired by [Jirutka's `rsql-parser`](https://github.com/jirutka/rsql-parser) and [PerplexHub's `rsql-jpa-specification`](https://github.com/perplexhub/rsql-jpa-specification), especially their RSQL syntax and filtering behavior. I am grateful to their maintainers and contributors for their work.
+
 ## License
 
 [MIT](LICENSE).
