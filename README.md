@@ -112,7 +112,7 @@ stmt = pyrsql.PageRequest.of(0, 25).apply(stmt, User, orm=orm)
 ### Sort
 
 - Multi-field: `name,asc;company.name,desc,ic`
-- Ignore-case modifier (`ic`)
+- Ignore-case modifier (`ic` or `ignorecase`)
 - Function selectors: `@upper[name],asc`
 
 ### Pagination

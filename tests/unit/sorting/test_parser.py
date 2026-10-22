@@ -29,6 +29,13 @@ from pyrsql.sorting.parser import SortParser
             id="direction-and-ignore-case",
         ),
         pytest.param(
+            "company.name,desc,ignorecase",
+            "company.name",
+            SortDirection.DESCENDING,
+            True,
+            id="direction-and-ignorecase-alias",
+        ),
+        pytest.param(
             " company.name , desc , ic ",
             "company.name",
             SortDirection.DESCENDING,
