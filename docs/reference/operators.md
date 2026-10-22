@@ -48,4 +48,4 @@ markers. Use `=in=(*)` to match a literal asterisk.
 |----------|---------|-------------|
 | `asc` | `name,asc` | Ascending (default) |
 | `desc` | `name,desc` | Descending |
-| `ic` | `name,desc,ic` | Ignore case |
+| `ic`, `ignorecase` | `name,desc,ic` | Ignore case |

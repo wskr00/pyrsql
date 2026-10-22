@@ -185,7 +185,7 @@ class SortParser:
             SortParseError: If the modifier is unsupported.
         """
         match raw_flag.strip().lower():
-            case "ic":
+            case "ic" | "ignorecase":
                 return True
             case _:
                 raise SortParseError(

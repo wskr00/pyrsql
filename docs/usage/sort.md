@@ -20,6 +20,7 @@ Sort.parse("name,asc;company.name,desc")
 
 ```python
 Sort.parse("name,desc,ic")         # case-insensitive descending
+Sort.parse("name,desc,ignorecase")  # same modifier, spelled out
 ```
 
 ## Function selectors
